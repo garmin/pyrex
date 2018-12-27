@@ -1,0 +1,67 @@
+#! /bin/bash
+#
+# Copyright 2019 Garmin Ltd. or its subsidiaries
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+if [ -n "$BASH_SOURCE" ]; then
+	THIS_SCRIPT=$BASH_SOURCE
+elif [ -n "$ZSH_NAME" ]; then
+	THIS_SCRIPT=$0
+else
+	THIS_SCRIPT="$(pwd)/pyrex-init-build-env"
+fi
+
+if [ -z "$ZSH_NAME" ] && [ "$0" = "$THIS_SCRIPT" ]; then
+    echo "Error: This script needs to be sourced. Please run as '. $THIS_SCRIPT'"
+    exit 1
+fi
+
+if [ -z "$PYREX_OEROOT" ]; then
+	PYREX_OEROOT=$(readlink -f $(dirname $THIS_SCRIPT))
+fi
+
+if [ -z "$PYREX_ROOT" ]; then
+	PYREX_ROOT=$(dirname $(readlink -f $THIS_SCRIPT))
+fi
+
+if [ -z "$PYREX_OEINIT" ]; then
+	PYREX_OEINIT="$PYREX_OEROOT/oe-init-build-env"
+fi
+unset THIS_SCRIPT
+
+# Capture OE Build environment
+{
+	PYREX_CONFFILE=$(
+	(
+		set +u;
+		. $PYREX_OEROOT/oe-init-build-env "$@"
+		PYREXCONFTEMPLATE="$PYREX_OEROOT/$(cat "$BUILDDIR/conf/templateconf.cfg")/pyrex.ini.sample"
+
+		export PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREXCONFTEMPLATE
+
+		$PYREX_ROOT/pyrex.py capture 3 -- "$@"
+	) 3>&1 >&4)
+} 4>&1 >&-
+
+# Build Pyrex images
+$PYREX_ROOT/pyrex.py build "$PYREX_CONFFILE" || return 1
+
+# Setup build environment
+{
+	. <($PYREX_ROOT/pyrex.py env "$PYREX_CONFFILE" 3 3>&1 >&4)
+} 4>&1 >&-
+
+unset PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREX_CONFFILE
+
+# vim: noexpandtab
