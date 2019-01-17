@@ -40,28 +40,59 @@ if [ -z "$PYREX_OEINIT" ]; then
 fi
 unset THIS_SCRIPT
 
+pyrex_cleanup() {
+	unset PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREX_CONFFILE pyrex_cleanup
+}
+
+# Note: This file uses a lot of redirection gymnastics to get output from
+# pyrex.py.
+
 # Capture OE Build environment
 {
 	PYREX_CONFFILE=$(
 	(
 		set +u;
 		. $PYREX_OEROOT/oe-init-build-env "$@"
+		if [ $? -ne 0 ]; then
+			exit 1
+		fi
+
 		PYREXCONFTEMPLATE="$PYREX_OEROOT/$(cat "$BUILDDIR/conf/templateconf.cfg")/pyrex.ini.sample"
 
 		export PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREXCONFTEMPLATE
 
-		$PYREX_ROOT/pyrex.py capture 3 -- "$@"
-	) 3>&1 >&4)
-} 4>&1 >&-
+		# Instruct pyrex.py to output the name of the configuration file to
+		# file descriptor 11
+		$PYREX_ROOT/pyrex.py capture 11 -- "$@"
+
+	# Redirect FD 11 to stdout so that it's value is captured into the variable. Redirect stdout
+	# to FD 12
+	) 11>&1 >&12)
+
+# Redirect FD 12 back to stdout so that anything printed by pyrex.py appears on
+# stdout, and clean it up
+} 12>&1 >&-
+if [ $? -ne 0 ]; then
+	pyrex_cleanup
+	return 1
+fi
 
 # Build Pyrex images
-$PYREX_ROOT/pyrex.py build "$PYREX_CONFFILE" || return 1
+$PYREX_ROOT/pyrex.py build "$PYREX_CONFFILE"
+if [ $? -ne 0 ]; then
+	pyrex_cleanup
+	return 1
+fi
 
 # Setup build environment
 {
-	. <($PYREX_ROOT/pyrex.py env "$PYREX_CONFFILE" 3 3>&1 >&4)
-} 4>&1 >&-
+	. <($PYREX_ROOT/pyrex.py env "$PYREX_CONFFILE" 11 11>&1 >&12)
+} 12>&1 >&-
+if [ $? -ne 0 ]; then
+	pyrex_cleanup
+	return 1
+fi
 
-unset PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREX_CONFFILE
+pyrex_cleanup
 
 # vim: noexpandtab
