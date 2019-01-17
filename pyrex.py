@@ -174,11 +174,9 @@ def main():
                 docker_args.extend(['--build-arg', '%s=%s' % (e, os.envrion[e])])
 
         try:
-            buildid = subprocess.check_output(docker_args).decode('utf-8')
+            build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
         except subprocess.CalledProcessError:
             return 1
-
-        build_config['build']['buildtag'] = buildid.rstrip().split(':')[1]
 
         with open(args.conffile, 'w') as f:
             build_config.write(f)
@@ -226,6 +224,20 @@ def main():
         if os.environ.get('PYREX_DOCKER', config['docker']['enable']) == '1':
             docker_path = config['pyrex']['dockerpath']
 
+            # Validate image
+            docker_args = [docker_path, 'image', 'inspect', config['pyrex']['tag'],
+                    '--format={{ .Id }}']
+
+            try:
+                buildid = subprocess.check_output(docker_args).decode('utf-8').rstrip()
+            except subprocess.CalledProcessError as e:
+                print("Cannot verify docker image: %s\n" % e.output)
+                return 1
+
+            if buildid != config['build']['buildid']:
+                sys.stderr.write("WARNING: buildid for docker image %s has changed\n" %
+                        config['pyrex']['tag'])
+
             docker_args = [docker_path, 'run',
                     '--rm',
                     '-i',
@@ -268,7 +280,7 @@ def main():
             docker_args.extend(shlex.split(config['docker'].get('args', '')))
 
             docker_args.append('--')
-            docker_args.append(config['build']['buildtag'])
+            docker_args.append(config['pyrex']['tag'])
             docker_args.extend(args.command)
 
             os.execvp(docker_args[0], docker_args)
