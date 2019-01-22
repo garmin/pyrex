@@ -37,8 +37,8 @@ EXIT_WAIT_PHASES = 2
 # container without having to wait any longer
 SIGNAL_ENABLE_WAIT_TIME = 10
 
-# Wait 60 seconds for normal exit and forever for sigterm
-WAIT_FOREVER_DEFAULT = [60, -1]
+# Wait 1 seconds for normal exit and forever for sigterm
+WAIT_FOREVER_DEFAULT = [0.5, -1]
 
 # Container shutdown has the following phases:
 #  1) Wait for a defined amount of time for processes to exit on their own
