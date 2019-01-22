@@ -64,8 +64,6 @@ RUN apt-get -y update && apt-get -y install \
     sudo \
     curl \
     locales \
-# Icecream distributed compiling
-    icecc \
 # An updated version of Git (from the PPA source above)
 # that supports doing Yocto externalsrc recipes against free-
 # standing working copies that use Git worktrees.
@@ -77,6 +75,12 @@ RUN apt-get -y update && apt-get -y install \
     screen \
 # Required to build tini from source
     cmake \
+# Required to build icecream from source
+    autotools-dev \
+    autoconf \
+    libtool \
+    libcap-ng-dev \
+    liblzo2-dev \
 && rm -rf /var/lib/apt/lists/*
 
 # Install wine, needed to test meta-mingw SDKs
@@ -93,6 +97,32 @@ RUN addgroup --gid $MY_GID $MY_GROUP && \
 # Allow user to run any command as root
 RUN echo "$MY_USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
+# Use a recent version of Icecream, which has many bug fixes
+RUN mkdir -p /usr/src/icecream && \
+    cd /usr/src/icecream && \
+    ICECREAM_VER="1.2" && \
+    wget -O icecream.tar.gz https://github.com/icecc/icecream/archive/${ICECREAM_VER}.tar.gz && \
+    tar -xvzf icecream.tar.gz && \
+    cd icecream-${ICECREAM_VER} && \
+    wget -O recompile.patch https://github.com/icecc/icecream/commit/cd082c64adcd3c2a22dc0565f6e5b249a975694a.patch && \
+    patch -p1 < recompile.patch && \
+    cd .. && \
+    mkdir build && \
+    cd build && \
+    ../icecream-${ICECREAM_VER}/autogen.sh && \
+    ../icecream-${ICECREAM_VER}/configure \
+        --prefix=/usr \
+        --enable-gcc-color-diagnostics \
+        --enable-gcc-show-caret \
+        --enable-gcc-fdirectives-only \
+        --enable-clang-rewrite-includes \
+        --without-man \
+        && \
+    make && \
+    make install && \
+    cd / && \
+    rm -rf /usr/src/icecream
+
 # Setup Icecream distributed compiling client. The client tries several IPC
 # mechanisms to find the daemon, including connecting to a localhost TCP
 # socket. Since the local Icecream daemon (iceccd) is not started when the
@@ -101,7 +131,7 @@ RUN echo "$MY_USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 RUN mkdir -p /usr/share/icecc/toolchain && \
     cd /usr/share/icecc/toolchain/ && \
     TC_NAME=$(mktemp) && \
-    /usr/lib/icecc/icecc-create-env --gcc $(which gcc) $(which g++) 5> $TC_NAME && \
+    /usr/libexec/icecc/icecc-create-env --gcc $(which gcc) $(which g++) 5> $TC_NAME && \
     mv $(cat $TC_NAME) native-gcc.tar.gz && \
     rm $TC_NAME
 
