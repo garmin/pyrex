@@ -40,42 +40,38 @@ if [ -z "$PYREX_OEINIT" ]; then
 fi
 unset THIS_SCRIPT
 
+if [ -z "$PYREX_TEMP_FILE" ]; then
+	PYREX_TEMP_FILE=$(mktemp -t pyrex.XXXXXX)
+fi
+
 pyrex_cleanup() {
-	unset PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREX_CONFFILE pyrex_cleanup
+	rm -f "$PYREX_TEMP_FILE"
+	unset PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREX_CONFFILE PYREX_TEMP_FILE pyrex_cleanup
 }
 
-# Note: This file uses a lot of redirection gymnastics to get output from
-# pyrex.py.
-
 # Capture OE Build environment
-{
-	PYREX_CONFFILE=$(
-	(
-		set +u;
-		. $PYREX_OEROOT/oe-init-build-env "$@"
-		if [ $? -ne 0 ]; then
-			exit 1
-		fi
+(
+	# Use a subshell and turn off undefined variables causing an error
+	set +u;
 
-		PYREXCONFTEMPLATE="$PYREX_OEROOT/$(cat "$BUILDDIR/conf/templateconf.cfg")/pyrex.ini.sample"
+	. $PYREX_OEROOT/oe-init-build-env "$@"
+	if [ $? -ne 0 ]; then
+		exit 1
+	fi
 
-		export PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREXCONFTEMPLATE
+	PYREXCONFTEMPLATE="$PYREX_OEROOT/$(cat "$BUILDDIR/conf/templateconf.cfg")/pyrex.ini.sample"
 
-		# Instruct pyrex.py to output the name of the configuration file to
-		# file descriptor 11
-		$PYREX_ROOT/pyrex.py capture 11 -- "$@"
+	export PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREXCONFTEMPLATE
 
-	# Redirect FD 11 to stdout so that it's value is captured into the variable. Redirect stdout
-	# to FD 12
-	) 11>&1 >&12)
-
-# Redirect FD 12 back to stdout so that anything printed by pyrex.py appears on
-# stdout, and clean it up
-} 12>&1 >&-
+	# Instruct pyrex.py to output the name of the configuration file to
+	# file descriptor 11
+	$PYREX_ROOT/pyrex.py capture 11 -- "$@" 11> $PYREX_TEMP_FILE
+)
 if [ $? -ne 0 ]; then
 	pyrex_cleanup
 	return 1
 fi
+PYREX_CONFFILE=$(cat $PYREX_TEMP_FILE)
 
 # Build Pyrex images
 $PYREX_ROOT/pyrex.py build "$PYREX_CONFFILE"
@@ -85,9 +81,13 @@ if [ $? -ne 0 ]; then
 fi
 
 # Setup build environment
-{
-	. <($PYREX_ROOT/pyrex.py env "$PYREX_CONFFILE" 11 11>&1 >&12)
-} 12>&1 >&-
+$PYREX_ROOT/pyrex.py env "$PYREX_CONFFILE" 11 11> $PYREX_TEMP_FILE
+if [ $? -ne 0 ]; then
+	pyrex_cleanup
+	return 1
+fi
+
+. $PYREX_TEMP_FILE
 if [ $? -ne 0 ]; then
 	pyrex_cleanup
 	return 1
