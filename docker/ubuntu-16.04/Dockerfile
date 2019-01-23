@@ -163,8 +163,9 @@ RUN mkdir -p /usr/src/tini && \
 
 # Add startup scripts
 COPY ./startup.sh /usr/libexec/tini/startup.sh
+COPY ./wrapper.py /usr/libexec/tini/wrapper.py
 COPY ./cleanup.py /usr/libexec/tini/cleanup.py
-RUN chmod +x /usr/libexec/tini/cleanup.py /usr/libexec/tini/startup.sh
+RUN chmod +x /usr/libexec/tini/cleanup.py /usr/libexec/tini/startup.sh /usr/libexec/tini/wrapper.py
 
 # Use tini as the init process and instruct it to invoke the cleanup script
 # once the primary command dies

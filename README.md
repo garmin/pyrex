@@ -215,6 +215,12 @@ The following items are either known to not work, or haven't been fully tested:
   impossible).  The only terminal for that is known to work inside the
   container `screen`. Thankfully, the default value for `OE_TERMINAL` of
   `auto` chooses this by default with the default Pyrex Docker image.
+* **Shell job control** Currently, using `CTRL+Z` to background the container
+  doesn't work. It might be possible to get it to work one day, but until then
+  the `SIGTSTP` signal is ignored by all child processes in Pyrex to prevent it
+  from causing bad behaviors. It is still possible to pause the container using
+  the `docker pause` command, but this doesn't integrate with the parent shells
+  job control.
 
 ## FAQ
 * *Why use a Ubuntu image as the default?* The default Docker image that Pyrex

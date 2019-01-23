@@ -238,6 +238,8 @@ def main():
                 sys.stderr.write("WARNING: buildid for docker image %s has changed\n" %
                         config['pyrex']['tag'])
 
+            command_prefix = ['/usr/libexec/tini/wrapper.py'] + config['docker'].get('commandprefix', '').splitlines()
+
             docker_args = [docker_path, 'run',
                     '--rm',
                     '-i',
@@ -247,7 +249,7 @@ def main():
                     '-e', 'PYREX_CLEANUP_EXIT_WAIT',
                     '-e', 'PYREX_CLEANUP_LOG_FILE',
                     '-e', 'PYREX_CLEANUP_LOG_LEVEL',
-                    '-e', 'PYREX_COMMAND_PREFIX=%s' % ' '.join(config['docker'].get('commandprefix', '').splitlines()),
+                    '-e', 'PYREX_COMMAND_PREFIX=%s' % ' '.join(command_prefix),
                     '-e', 'TINI_VERBOSITY',
                     '--workdir', os.getcwd(),
                     ]
