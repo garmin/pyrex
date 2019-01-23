@@ -68,7 +68,7 @@ First, add Pyrex to your project. There are many ways of doing this, but for
 this example, we will just clone it into a subdirectory of [poky][].
 
 ```shell
-git clone <> meta-pyrex
+git clone https://github.com/garmin/pyrex.git meta-pyrex
 ```
 
 *NOTE: Cloning down Pyrex with the name `meta-pyrex` can be helpful if you want
@@ -195,8 +195,8 @@ two ways:
 
 1. Set `${docker:enable}` to `0` in `pyrex.ini` which will disable using Docker
    for all commands
-2. Set the environment variable `PYREX_DOCKER`. Any Pyrex commands run with
-   this variable set to `0` will not be run in the Docker container.
+2. Set the environment variable `PYREX_DOCKER` to `0`. Any Pyrex commands run
+   with this variable will not be run in the Docker container.
 
 ## What doesn't work?
 The following items are either known to not work, or haven't been fully tested:
