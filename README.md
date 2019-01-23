@@ -108,6 +108,11 @@ PYREX_OEINIT="$(pwd)/oe-init-build-env"
 # correct)
 PYREX_ROOT="$(pwd)/meta-pyrex"
 
+# The location of the pyrex.ini template file to use if the user doesn't
+# already have one. Defaults to "$TEMPLATECONF/pyrex.ini.sample" (the same
+# location that oe-init-build-env will look for local.conf.sample & friends)
+PYREXCONFTEMPLATE="$(pwd)/pyrex.ini.sample"
+
 . $(pwd)/meta-pyrex/pyrex-init-build-env
 ```
 

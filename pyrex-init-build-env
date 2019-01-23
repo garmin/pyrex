@@ -59,7 +59,9 @@ pyrex_cleanup() {
 		exit 1
 	fi
 
-	PYREXCONFTEMPLATE="$PYREX_OEROOT/$(cat "$BUILDDIR/conf/templateconf.cfg")/pyrex.ini.sample"
+	if [ -z "${PYREXCONFTEMPLATE}" ]; then
+		PYREXCONFTEMPLATE="$PYREX_OEROOT/$(cat "$BUILDDIR/conf/templateconf.cfg")/pyrex.ini.sample"
+	fi
 
 	export PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREXCONFTEMPLATE
 
