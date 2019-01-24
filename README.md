@@ -113,7 +113,9 @@ PYREX_ROOT="$(pwd)/meta-pyrex"
 # location that oe-init-build-env will look for local.conf.sample & friends)
 PYREXCONFTEMPLATE="$(pwd)/pyrex.ini.sample"
 
-. $(pwd)/meta-pyrex/pyrex-init-build-env
+# Source the core pyrex environment script. Note that you must pass the
+# arguments
+. $(pwd)/meta-pyrex/pyrex-init-build-env "$@"
 ```
 
 ### Configuration
