@@ -54,7 +54,7 @@ pyrex_cleanup() {
 	# Use a subshell and turn off undefined variables causing an error
 	set +u;
 
-	. $PYREX_OEROOT/oe-init-build-env "$@"
+	. $PYREX_OEINIT "$@"
 	if [ $? -ne 0 ]; then
 		exit 1
 	fi
