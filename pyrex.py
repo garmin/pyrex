@@ -35,9 +35,6 @@ THIS_SCRIPT = os.path.basename(__file__)
 PYREX_VERSION = '1'
 MINIMUM_DOCKER_VERSION = 17
 
-with open(os.path.join(os.path.dirname(__file__), 'pyrex.ini'), 'r') as f:
-    DEFAULT_PYREXCONF = f.read().replace('@VERSION@', PYREX_VERSION)
-
 class Config(configparser.ConfigParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, interpolation=configparser.ExtendedInterpolation(), comment_prefixes=['#'], delimiters=['='], **kwargs)
@@ -50,6 +47,15 @@ class Config(configparser.ConfigParser):
         merging configs together"""
         return {section: values for (section, values) in self.items(raw=True)}
 
+def read_default_config(keep_values):
+    with open(os.path.join(os.path.dirname(__file__), 'pyrex.ini'), 'r') as f:
+        l = f.read().replace('@VERSION@', PYREX_VERSION)
+        if keep_values:
+            l = l.replace('%', '')
+        else:
+            l = l.replace('%', '#')
+        return l
+
 def load_configs(conffile):
     # Load the build time config file
     build_config = Config()
@@ -58,7 +64,7 @@ def load_configs(conffile):
 
     # Load the default config, except the version
     user_config = Config()
-    user_config.read_string(DEFAULT_PYREXCONF)
+    user_config.read_string(read_default_config(True))
     del user_config['pyrex']['version']
 
     # Load user config file
@@ -94,7 +100,7 @@ def main():
                 shutil.copyfile(template, conffile)
             else:
                 with open(conffile, 'w') as f:
-                    f.write(DEFAULT_PYREXCONF)
+                    f.write(read_default_config(False))
 
         user_config.read(conffile)
 
