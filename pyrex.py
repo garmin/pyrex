@@ -47,9 +47,14 @@ class Config(configparser.ConfigParser):
         merging configs together"""
         return {section: values for (section, values) in self.items(raw=True)}
 
-def read_default_config(path):
+def read_default_config(path, keep_values):
     with open(path, 'r') as f:
-        return f.read().replace('@VERSION@', PYREX_VERSION)
+        l = f.read().replace('@VERSION@', PYREX_VERSION)
+        if keep_values:
+            l = l.replace('%', '')
+        else:
+            l = l.replace('%', '#')
+        return l
 
 def load_configs(conffile, defaultconf):
     # Load the build time config file
@@ -59,7 +64,7 @@ def load_configs(conffile, defaultconf):
 
     # Load the default config, except the version
     user_config = Config()
-    user_config.read_string(read_default_config(defaultconf))
+    user_config.read_string(read_default_config(defaultconf, True))
     del user_config['pyrex']['version']
 
     # Load user config file
@@ -90,7 +95,7 @@ def main():
                 shutil.copyfile(args.template, args.conffile)
             else:
                 with open(args.conffile, 'w') as f:
-                    f.write(read_default_config(args.defaultconf))
+                    f.write(read_default_config(args.defaultconf, False))
 
         user_config.read(args.conffile)
 
