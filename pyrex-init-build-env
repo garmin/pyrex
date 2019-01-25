@@ -60,11 +60,19 @@ pyrex_cleanup() {
 		PYREXCONFTEMPLATE="$PYREX_OEROOT/$(cat "$BUILDDIR/conf/templateconf.cfg")/pyrex.ini.sample"
 	fi
 
-	export PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREXCONFTEMPLATE
-
 	# Instruct pyrex.py to output the name of the configuration file to
 	# file descriptor 11
-	$PYREX_ROOT/pyrex.py capture 11 -- "$@" 11> $PYREX_TEMP_FILE
+	$PYREX_ROOT/pyrex.py capture \
+		$PYREX_ROOT \
+		$PYREX_ROOT/pyrex.ini \
+		$BUILDDIR/conf/pyrex.ini \
+		$PYREXCONFTEMPLATE \
+		$PYREX_OEROOT \
+		-D builddir $BUILDDIR \
+		-D oeroot $PYREX_OEROOT \
+		11 -- \
+		$PYREX_OEINIT "$@" \
+		11> $PYREX_TEMP_FILE
 )
 if [ $? -ne 0 ]; then
 	pyrex_cleanup
@@ -73,14 +81,14 @@ fi
 PYREX_CONFFILE=$(cat $PYREX_TEMP_FILE)
 
 # Build Pyrex images
-$PYREX_ROOT/pyrex.py build "$PYREX_CONFFILE"
+$PYREX_ROOT/pyrex.py build $PYREX_ROOT/pyrex.ini "$PYREX_CONFFILE"
 if [ $? -ne 0 ]; then
 	pyrex_cleanup
 	return 1
 fi
 
 # Setup build environment
-$PYREX_ROOT/pyrex.py env "$PYREX_CONFFILE" 11 11> $PYREX_TEMP_FILE
+$PYREX_ROOT/pyrex.py env $PYREX_ROOT/pyrex.ini "$PYREX_CONFFILE" 11 11> $PYREX_TEMP_FILE
 if [ $? -ne 0 ]; then
 	pyrex_cleanup
 	return 1

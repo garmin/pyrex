@@ -35,9 +35,6 @@ THIS_SCRIPT = os.path.basename(__file__)
 PYREX_VERSION = '1'
 MINIMUM_DOCKER_VERSION = 17
 
-with open(os.path.join(os.path.dirname(__file__), 'pyrex.ini'), 'r') as f:
-    DEFAULT_PYREXCONF = f.read().replace('@VERSION@', PYREX_VERSION)
-
 class Config(configparser.ConfigParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, interpolation=configparser.ExtendedInterpolation(), comment_prefixes=['#'], delimiters=['='], **kwargs)
@@ -50,7 +47,11 @@ class Config(configparser.ConfigParser):
         merging configs together"""
         return {section: values for (section, values) in self.items(raw=True)}
 
-def load_configs(conffile):
+def read_default_config(path):
+    with open(path, 'r') as f:
+        return f.read().replace('@VERSION@', PYREX_VERSION)
+
+def load_configs(conffile, defaultconf):
     # Load the build time config file
     build_config = Config()
     with open(conffile, 'r') as f:
@@ -58,7 +59,7 @@ def load_configs(conffile):
 
     # Load the default config, except the version
     user_config = Config()
-    user_config.read_string(DEFAULT_PYREXCONF)
+    user_config.read_string(read_default_config(defaultconf))
     del user_config['pyrex']['version']
 
     # Load user config file
@@ -82,21 +83,16 @@ def load_configs(conffile):
 
 def main():
     def capture(args):
-        builddir = os.environ['BUILDDIR']
-        conffile = os.path.abspath(os.path.join(builddir, 'conf', 'pyrex.ini'))
-        template = os.environ['PYREXCONFTEMPLATE']
-        oeinit = os.environ['PYREX_OEINIT']
-
         user_config = Config()
 
-        if not os.path.isfile(conffile):
-            if os.path.isfile(template):
-                shutil.copyfile(template, conffile)
+        if not os.path.isfile(args.conffile):
+            if os.path.isfile(args.template):
+                shutil.copyfile(args.template, args.conffile)
             else:
-                with open(conffile, 'w') as f:
-                    f.write(DEFAULT_PYREXCONF)
+                with open(args.conffile, 'w') as f:
+                    f.write(read_default_config(args.defaultconf))
 
-        user_config.read(conffile)
+        user_config.read(args.conffile)
 
         try:
             if user_config['pyrex']['version'] != PYREX_VERSION:
@@ -110,12 +106,13 @@ def main():
         build_config = Config()
 
         build_config['build'] = {}
-        build_config['build']['builddir'] = builddir
-        build_config['build']['oeroot'] = os.environ['PYREX_OEROOT']
-        build_config['build']['oeinit'] = oeinit
-        build_config['build']['pyrexroot'] = os.environ['PYREX_ROOT']
-        build_config['build']['initcommand'] = ' '.join(shlex.quote(a) for a in [oeinit] + args.init)
-        build_config['build']['userconfig'] = conffile
+        for d in args.define:
+            build_config['build'][d[0]] = d[1]
+
+        build_config['build']['pyrexroot'] = args.pyrexroot
+        build_config['build']['userconfig'] = args.conffile
+        build_config['build']['initcommand'] = ' '.join(shlex.quote(s) for s in args.initcommand)
+        build_config['build']['initroot'] = args.initroot
         build_config['build']['username'] = pwd.getpwuid(os.getuid()).pw_name
         build_config['build']['groupname'] = grp.getgrgid(os.getgid()).gr_name
 
@@ -137,7 +134,7 @@ def main():
         return 0
 
     def build(args):
-        config, build_config = load_configs(args.conffile)
+        config, build_config = load_configs(args.conffile, args.defaultconf)
 
         docker_path = config['pyrex']['dockerpath']
 
@@ -194,9 +191,9 @@ def main():
         with open(shimfile, 'w') as f:
             f.write(textwrap.dedent('''\
                 #! /bin/sh
-                exec {pyrexroot}/{this_script} run {conffile} -- "$(basename $0)" "$@"
-                '''.format(pyrexroot=config['build']['pyrexroot'], conffile=args.conffile,
-                    this_script=THIS_SCRIPT)))
+                exec {pyrexroot}/{this_script} run {defaultconf} {conffile} -- "$(basename $0)" "$@"
+                '''.format(pyrexroot=config['build']['pyrexroot'], defaultconf=args.defaultconf,
+                    conffile=args.conffile, this_script=THIS_SCRIPT)))
         os.chmod(shimfile, stat.S_IRWXU)
 
         # Write out the shell convenience command
@@ -204,8 +201,9 @@ def main():
         with open(shellfile, 'w') as f:
             f.write(textwrap.dedent('''\
                 #! /bin/sh
-                exec {pyrexroot}/{this_script} run {conffile} -- {shell} "$@"
-                '''.format(pyrexroot=config['build']['pyrexroot'], conffile=args.conffile,
+                exec {pyrexroot}/{this_script} run {defaultconf} {conffile} -- {shell} "$@"
+                '''.format(pyrexroot=config['build']['pyrexroot'], defaultconf=args.defaultconf,
+                    conffile=args.conffile,
                     shell=config['pyrex']['shell'], this_script=THIS_SCRIPT)))
         os.chmod(shellfile, stat.S_IRWXU)
 
@@ -219,7 +217,7 @@ def main():
         return 0
 
     def run(args):
-        config, _ = load_configs(args.conffile)
+        config, _ = load_configs(args.conffile, args.defaultconf)
 
         if os.environ.get('PYREX_DOCKER', config['docker']['enable']) == '1':
             docker_path = config['pyrex']['dockerpath']
@@ -245,7 +243,7 @@ def main():
                     '-i',
                     '--net=host',
                     '-e', 'PYREX_INIT_COMMAND=%s' % config['build']['initcommand'],
-                    '-e', 'PYREX_OEROOT=%s' % config['build']['oeroot'],
+                    '-e', 'PYREX_INIT_ROOT=%s' % config['build']['initroot'],
                     '-e', 'PYREX_CLEANUP_EXIT_WAIT',
                     '-e', 'PYREX_CLEANUP_LOG_FILE',
                     '-e', 'PYREX_CLEANUP_LOG_LEVEL',
@@ -295,7 +293,7 @@ def main():
 
             env = os.environ.copy()
             env['PYREX_INIT_COMMAND'] = config['build']['initcommand']
-            env['PYREX_OEROOT'] = config['build']['oeroot']
+            env['PYREX_INIT_ROOT'] = config['build']['initroot']
 
             os.execve(startup_args[0], startup_args, env)
 
@@ -303,7 +301,7 @@ def main():
             sys.exit(1)
 
     def env(args):
-        config, _ = load_configs(args.conffile)
+        config, _ = load_configs(args.conffile, args.defaultconf)
 
         def write_cmd(c):
             os.write(args.fd, c.encode('utf-8'))
@@ -317,20 +315,29 @@ def main():
     subparsers = parser.add_subparsers(title='subcommands', description='Setup subcommands')
 
     capture_parser = subparsers.add_parser('capture', help='Capture OE init environment')
+    capture_parser.add_argument('pyrexroot', help='Root of the Pyrex repository')
+    capture_parser.add_argument('defaultconf', help='Default config file')
+    capture_parser.add_argument('conffile', help='User config file location')
+    capture_parser.add_argument('template', help='User config file template')
+    capture_parser.add_argument('initroot', help='Starting directory when initializing the environment')
     capture_parser.add_argument('fd', help='Output file descriptor', type=int)
-    capture_parser.add_argument('init', nargs='*', help='Initialization arguments', default=[])
+    capture_parser.add_argument('-D', '--define', help='Define a build variable', nargs=2, action='append', default=[])
+    capture_parser.add_argument('initcommand', nargs='+', help='Environment initialization command')
     capture_parser.set_defaults(func=capture)
 
     build_parser = subparsers.add_parser('build', help='Build Pyrex image')
+    build_parser.add_argument('defaultconf', help='Default config file')
     build_parser.add_argument('conffile', help='Pyrex config file')
     build_parser.set_defaults(func=build)
 
     run_parser = subparsers.add_parser('run', help='Run command in Pyrex')
+    run_parser.add_argument('defaultconf', help='Default config file')
     run_parser.add_argument('conffile', help='Pyrex config file')
     run_parser.add_argument('command', nargs='*', help='Command to execute', default=[])
     run_parser.set_defaults(func=run)
 
     env_parser = subparsers.add_parser('env', help='Setup Pyrex environment')
+    env_parser.add_argument('defaultconf', help='Default config file')
     env_parser.add_argument('conffile', help='Pyrex config file')
     env_parser.add_argument('fd', help='Output file descriptor', type=int)
     env_parser.set_defaults(func=env)
