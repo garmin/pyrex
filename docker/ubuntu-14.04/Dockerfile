@@ -122,7 +122,7 @@ RUN mkdir -p /usr/src/icecream && \
         --prefix=/usr \
         --enable-gcc-color-diagnostics \
         --enable-gcc-show-caret \
-        --enable-gcc-fdirectives-only \
+        --disable-gcc-fdirectives-only \
         --enable-clang-rewrite-includes \
         --without-man \
         && \
