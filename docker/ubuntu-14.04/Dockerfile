@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:trusty
+# See below for why the MY_ prefix is used.
+ARG MY_REGISTRY
+FROM ${MY_REGISTRY}/ubuntu:trusty
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # USER and GROUP are reserved keywords in Dockerfile syntax, so put the goofy
