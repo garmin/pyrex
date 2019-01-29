@@ -2,7 +2,7 @@
 Containerize your bitbake
 
 [![Build Status](https://travis-ci.org/garmin/pyrex.svg?branch=master)](https://travis-ci.org/garmin/pyrex)
-[![Coverage Status](https://coveralls.io/repos/github/garmin/pyrex/badge.svg?branch=ci)](https://coveralls.io/github/garmin/pyrex?branch=ci)
+[![Coverage Status](https://coveralls.io/repos/github/garmin/pyrex/badge.svg?branch=master)](https://coveralls.io/github/garmin/pyrex?branch=master)
 
 ## What is Pyrex?
 At its core, Pyrex is an attempt to provided a consistent environment in which
