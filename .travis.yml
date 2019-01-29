@@ -6,8 +6,10 @@ python:
 services:
   - docker
 before_install:
-  - git clone git://git.yoctoproject.org/poky -b yocto-2.6
-  - ln -s ../pyrex-init-build-env poky/pyrex-init-build-env
+  - wget https://downloads.yoctoproject.org/releases/yocto/yocto-2.6/poky-thud-20.0.0.tar.bz2
+  - tar -xvf poky-thud-20.0.0.tar.bz2
+  - ln -s poky-thud-20.0.0 poky
+  - ln -s ../pyrex-init-build-env poky/
 install:
   - pip3 install coverage
   - pip3 install coveralls
