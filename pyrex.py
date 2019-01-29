@@ -195,14 +195,23 @@ def main():
             pass
         os.makedirs(shimdir)
 
+        # Write out run convenience command
+        runfile = os.path.join(shimdir, 'pyrex-run')
+        with open(runfile, 'w') as f:
+            f.write(textwrap.dedent('''\
+                #! /bin/sh
+                exec {pyrexroot}/{this_script} run {conffile} -- "$@"
+                '''.format(pyrexroot=config['build']['pyrexroot'], conffile=args.conffile,
+                    this_script=THIS_SCRIPT)))
+        os.chmod(runfile, stat.S_IRWXU)
+
         # Write out the shim file
         shimfile = os.path.join(shimdir, 'exec-shim-pyrex')
         with open(shimfile, 'w') as f:
             f.write(textwrap.dedent('''\
                 #! /bin/sh
-                exec {pyrexroot}/{this_script} run {conffile} -- "$(basename $0)" "$@"
-                '''.format(pyrexroot=config['build']['pyrexroot'], conffile=args.conffile,
-                    this_script=THIS_SCRIPT)))
+                exec {runfile} "$(basename $0)" "$@"
+                '''.format(runfile=runfile)))
         os.chmod(shimfile, stat.S_IRWXU)
 
         # Write out the shell convenience command
@@ -210,10 +219,10 @@ def main():
         with open(shellfile, 'w') as f:
             f.write(textwrap.dedent('''\
                 #! /bin/sh
-                exec {pyrexroot}/{this_script} run {conffile} -- {shell} "$@"
-                '''.format(pyrexroot=config['build']['pyrexroot'], conffile=args.conffile,
-                    shell=config['pyrex']['shell'], this_script=THIS_SCRIPT)))
+                exec {runfile} {shell} "$@"
+                '''.format(runfile=runfile, shell=config['pyrex']['shell'])))
         os.chmod(shellfile, stat.S_IRWXU)
+
 
         for g in config['pyrex']['commands'].split():
             if g:

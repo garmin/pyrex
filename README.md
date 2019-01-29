@@ -178,6 +178,10 @@ in a Pyrex environment will run a shell in the Docker image, allowing
 interactive commands to be run. This can be very useful for debugging Pyrex
 containers.
 
+You can also run arbitrary commands in the container with the `pyrex-run`
+command. Be aware that any changes made to the container are not persistent,
+and will be discarded when `pyrex-run` exits.
+
 #### Managing multiple Docker images
 It may occasionally be necessary to maintain multiple different Docker images
 simultaneously. Pyrex can handle this without any problems, however it should
