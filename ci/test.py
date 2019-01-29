@@ -18,31 +18,35 @@ import os
 import shutil
 import subprocess
 import unittest
+import threading
 
 PYREX_ROOT = os.path.join(os.path.dirname(__file__), '..')
 
 class TestPyrex(unittest.TestCase):
     def setUp(self):
-        build_dir = os.path.join(PYREX_ROOT, 'build')
+        self.build_dir = os.path.abspath(os.path.join(PYREX_ROOT, 'build'))
 
         def cleanup_build():
-            if os.path.isdir(build_dir):
-                shutil.rmtree(build_dir)
+            if os.path.isdir(self.build_dir):
+                shutil.rmtree(self.build_dir)
 
         cleanup_build()
-        os.makedirs(build_dir)
+        os.makedirs(self.build_dir)
         self.addCleanup(cleanup_build)
-
 
         def cleanup_env():
             os.environ = self.old_environ
 
-        bin_dir = os.path.abspath(os.path.join(build_dir, 'bin'))
+        # OE requires that "python" be python2, not python3
+        bin_dir = os.path.join(self.build_dir, 'bin')
         self.old_environ = os.environ.copy()
         os.makedirs(bin_dir)
         os.symlink('/usr/bin/python2', os.path.join(bin_dir, 'python'))
         os.environ['PATH'] = bin_dir + ':' + os.environ['PATH']
         self.addCleanup(cleanup_env)
+
+        self.thread_dir = os.path.join(self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident()))
+        os.makedirs(self.thread_dir)
 
     def assertSubprocess(self, *args, returncode=0, **kwargs):
         try:
@@ -54,9 +58,45 @@ class TestPyrex(unittest.TestCase):
             ret = 0
 
         self.assertEqual(ret, returncode, msg='%s: %s' % (' '.join(*args), output.decode('utf-8')))
+        return output
+
+    def assertPyrexCommand(self, *args, **kwargs):
+        cmd_file = os.path.join(self.thread_dir, 'command')
+        with open(cmd_file, 'w') as f:
+            f.write(' && '.join(['. ./poky/pyrex-init-build-env'] + list(args)))
+        return self.assertSubprocess(['/bin/bash', cmd_file], cwd=PYREX_ROOT, **kwargs)
 
     def test_init(self):
-        self.assertSubprocess(['/bin/bash', '-c', '. ../poky/pyrex-init-build-env && true'], cwd=os.path.join(PYREX_ROOT, 'build'))
+        self.assertPyrexCommand('true')
+
+    def test_bitbake_parse(self):
+        self.assertPyrexCommand('bitbake -p')
+
+    def test_pyrex_shell(self):
+        self.assertPyrexCommand('pyrex-shell -c "exit 3"', returncode=3)
+
+    def test_pyrex_run(self):
+        self.assertPyrexCommand('pyrex-run /bin/false', returncode=1)
+
+    def test_disable_pyrex(self):
+        # Capture our cgroups
+        with open('/proc/self/cgroup', 'r') as f:
+            cgroup = f.read()
+
+        pyrex_cgroup_file = os.path.join(self.thread_dir, 'pyrex_cgroup')
+
+        # Capture cgroups when pyrex is enabled
+        self.assertPyrexCommand('pyrex-shell -c "cat /proc/self/cgroup > %s"' % pyrex_cgroup_file)
+        with open(pyrex_cgroup_file, 'r') as f:
+            pyrex_cgroup = f.read()
+        self.assertNotEqual(cgroup, pyrex_cgroup)
+
+        env = os.environ.copy()
+        env['PYREX_DOCKER'] = '0'
+        self.assertPyrexCommand('pyrex-shell -c "cat /proc/self/cgroup > %s"' % pyrex_cgroup_file, env=env)
+        with open(pyrex_cgroup_file, 'r') as f:
+            pyrex_cgroup = f.read()
+        self.assertEqual(cgroup, pyrex_cgroup)
 
 if __name__ == "__main__":
     unittest.main()
