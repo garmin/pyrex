@@ -177,7 +177,7 @@ def main():
 
         for e in ('http_proxy', 'https_proxy'):
             if e in os.environ:
-                docker_args.extend(['--build-arg', '%s=%s' % (e, os.envrion[e])])
+                docker_args.extend(['--build-arg', '%s=%s' % (e, os.environ[e])])
 
         try:
             build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
