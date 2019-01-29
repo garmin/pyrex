@@ -1,0 +1,24 @@
+language: python
+python:
+  - "3.4"
+#  - "3.5"
+#  - "3.6"
+services:
+  - docker
+before_install:
+  - git clone git://git.yoctoproject.org/poky -b yocto-2.6
+  - ln -s ../pyrex-init-build-env poky/pyrex-init-build-env
+install:
+  - pip3 install coverage
+  - pip3 install coveralls
+before_script:
+  - printf '\nimport coverage\ncoverage.process_startup()\n' >> "/home/travis/virtualenv/python${TRAVIS_PYTHON_VERSION}/lib/python${TRAVIS_PYTHON_VERSION}/sitecustomize.py"
+
+  # Remove old coverage reports
+  - rm -f .coverage-report.*
+script: COVERAGE_PROCESS_START=${TRAVIS_BUILD_DIR}/.coveragerc ci/test.py -v
+after_success:
+  - coverage3 combine
+  - coveralls
+
+

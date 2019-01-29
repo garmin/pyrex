@@ -1,0 +1,5 @@
+[run]
+omit = ci/*test*
+parallel = True
+data_file = ${TRAVIS_BUILD_DIR}/.coverage
+
