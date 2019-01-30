@@ -1,0 +1,26 @@
+language: python
+python:
+  - "3.4"
+#  - "3.5"
+#  - "3.6"
+services:
+  - docker
+before_install:
+  - wget https://downloads.yoctoproject.org/releases/yocto/yocto-2.6/poky-thud-20.0.0.tar.bz2
+  - tar -xvf poky-thud-20.0.0.tar.bz2
+  - ln -s poky-thud-20.0.0 poky
+  - ln -s ../pyrex-init-build-env poky/
+install:
+  - pip3 install coverage
+  - pip3 install coveralls
+before_script:
+  - printf '\nimport coverage\ncoverage.current_coverage = coverage.process_startup()\n' >> "/home/travis/virtualenv/python${TRAVIS_PYTHON_VERSION}/lib/python${TRAVIS_PYTHON_VERSION}/sitecustomize.py"
+
+  # Remove old coverage reports
+  - rm -f .coverage-report.*
+script: COVERAGE_PROCESS_START=${TRAVIS_BUILD_DIR}/.coveragerc ci/test.py -v
+after_success:
+  - coverage3 combine
+  - coveralls
+
+

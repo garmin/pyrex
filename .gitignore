@@ -2,3 +2,7 @@
 *.bak
 *.pyc
 
+/poky/
+
+.coverage
+.coverage.*
