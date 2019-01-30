@@ -86,6 +86,19 @@ def load_configs(conffile):
 
     return user_config, build_config
 
+def stop_coverage():
+    """
+    Helper to stop coverage reporting
+    """
+    try:
+        import coverage
+        c = getattr(coverage, 'current_coverage')
+        if c is not None:
+            c.stop()
+            c.save()
+    except:
+        pass
+
 def main():
     def capture(args):
         builddir = os.environ['BUILDDIR']
@@ -301,6 +314,8 @@ def main():
             docker_args.append(config['pyrex']['tag'])
             docker_args.extend(args.command)
 
+            stop_coverage()
+
             os.execvp(docker_args[0], docker_args)
 
             print("Cannot exec docker!")
@@ -312,6 +327,8 @@ def main():
             env = os.environ.copy()
             env['PYREX_INIT_COMMAND'] = config['build']['initcommand']
             env['PYREX_OEROOT'] = config['build']['oeroot']
+
+            stop_coverage()
 
             os.execve(startup_args[0], startup_args, env)
 

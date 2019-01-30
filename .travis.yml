@@ -14,7 +14,7 @@ install:
   - pip3 install coverage
   - pip3 install coveralls
 before_script:
-  - printf '\nimport coverage\ncoverage.process_startup()\n' >> "/home/travis/virtualenv/python${TRAVIS_PYTHON_VERSION}/lib/python${TRAVIS_PYTHON_VERSION}/sitecustomize.py"
+  - printf '\nimport coverage\ncoverage.current_coverage = coverage.process_startup()\n' >> "/home/travis/virtualenv/python${TRAVIS_PYTHON_VERSION}/lib/python${TRAVIS_PYTHON_VERSION}/sitecustomize.py"
 
   # Remove old coverage reports
   - rm -f .coverage-report.*
