@@ -270,6 +270,9 @@ The following items are either known to not work, or haven't been fully tested:
   that users should not rely on (or be concerned with). Python was chosen
   because it is already a dependency for using bitbake, so it should already be
   present on a host machine.
+* *Were you aware of
+  [Pyrex](http://www.cosc.canterbury.ac.nz/greg.ewing/python/Pyrex/)?* Oops.
+  Hopefully there isn't too much confusion; that Pyrex looks abandoned anyway
 
 [OE_TERMINAL]: https://www.yoctoproject.org/docs/current/mega-manual/mega-manual.html#var-OE_TERMINAL
 [CROPS]: https://github.com/crops
