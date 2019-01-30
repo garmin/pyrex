@@ -102,7 +102,7 @@ RUN apt-get -y update && apt-get -y install \
 && rm -rf /var/lib/apt/lists/*
 
 RUN addgroup --gid $MY_GID $MY_GROUP && \
-    adduser --uid $MY_UID --gid $MY_GID --home /home/$MY_USER --shell /bin/sh --disabled-password --gecos "" $MY_USER
+    adduser --uid $MY_UID --gid $MY_GID --home $MY_HOME --shell /bin/sh --disabled-password --gecos "" $MY_USER
 
 # Allow user to run any command as root
 RUN echo "$MY_USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
@@ -146,7 +146,7 @@ RUN mkdir -p /usr/share/icecc/toolchain && \
     rm $TC_NAME
 
 ENV ICECC_VERSION=/usr/share/icecc/toolchain/native-gcc.tar.gz
-ENV INIT_DIR=/home/$MY_USER
+ENV INIT_DIR=$MY_HOME
 
 # Generate locales
 RUN locale-gen en_US.UTF-8
@@ -155,7 +155,7 @@ ENV LC_ALL en_US.UTF-8
 
 # Turn on background color erase. This fixes screen not correctly erasing when
 # it is nested in another terminal emulator
-RUN echo "defbce on" >> /home/$MY_USER/.screenrc
+RUN echo "defbce on" >> $MY_HOME/.screenrc
 
 # Download and install tini
 RUN mkdir -p /usr/src/tini && \

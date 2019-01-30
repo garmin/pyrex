@@ -138,7 +138,7 @@ RUN mkdir -p /usr/share/icecc/toolchain && \
     rm $TC_NAME
 
 ENV ICECC_VERSION=/usr/share/icecc/toolchain/native-gcc.tar.gz
-ENV INIT_DIR=/home/$MY_USER
+ENV INIT_DIR=$MY_HOME
 
 # Generate locales
 RUN locale-gen en_US.UTF-8
@@ -147,7 +147,7 @@ ENV LC_ALL en_US.UTF-8
 
 # Turn on background color erase. This fixes screen not correctly erasing when
 # it is nested in another terminal emulator
-RUN echo "defbce on" >> /home/$MY_USER/.screenrc
+RUN echo "defbce on" >> $MY_HOME/.screenrc
 
 # Download and install tini
 RUN mkdir -p /usr/src/tini && \
