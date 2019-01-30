@@ -169,6 +169,7 @@ def main():
             '--build-arg', 'MY_UID=%d' % os.getuid(),
             '--build-arg', 'MY_GID=%d' % os.getgid(),
             '--build-arg', 'MY_HOME=%s' % config['pyrex']['home'],
+            '--build-arg', 'MY_REGISTRY=%s' % config['pyrex']['registry'],
             '-t', config['pyrex']['tag'],
             '-f', config['pyrex']['dockerfile'],
             '--network=host',
