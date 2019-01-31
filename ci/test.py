@@ -39,31 +39,43 @@ class TestPyrex(unittest.TestCase):
             os.environ = self.old_environ
 
         # OE requires that "python" be python2, not python3
-        bin_dir = os.path.join(self.build_dir, 'bin')
+        self.bin_dir = os.path.join(self.build_dir, 'bin')
         self.old_environ = os.environ.copy()
-        os.makedirs(bin_dir)
-        os.symlink('/usr/bin/python2', os.path.join(bin_dir, 'python'))
-        os.environ['PATH'] = bin_dir + ':' + os.environ['PATH']
+        os.makedirs(self.bin_dir)
+        os.symlink('/usr/bin/python2', os.path.join(self.bin_dir, 'python'))
+        os.environ['PATH'] = self.bin_dir + ':' + os.environ['PATH']
         os.environ['PYREX_DOCKER_BUILD_QUIET'] = '0'
         self.addCleanup(cleanup_env)
 
         self.thread_dir = os.path.join(self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident()))
         os.makedirs(self.thread_dir)
 
-    def assertSubprocess(self, *args, returncode=0, **kwargs):
-        with subprocess.Popen(*args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs) as proc:
-            while True:
-                out = proc.stdout.readline().decode('utf-8')
-                if not out and proc.poll() is not None:
-                    break
+    def assertSubprocess(self, *args, capture=False, returncode=0, **kwargs):
+        if capture:
+            try:
+                output = subprocess.check_output(*args, stderr=subprocess.STDOUT, **kwargs)
+            except subprocess.CalledProcessError as e:
+                ret = e.returncode
+                output = e.output
+            else:
+                ret = 0
 
-                if out:
-                    sys.stdout.write(out)
+            self.assertEqual(ret, returncode, msg='%s: %s' % (' '.join(*args), output.decode('utf-8')))
+            return output
+        else:
+            with subprocess.Popen(*args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs) as proc:
+                while True:
+                    out = proc.stdout.readline().decode('utf-8')
+                    if not out and proc.poll() is not None:
+                        break
 
-            ret = proc.poll()
+                    if out:
+                        sys.stdout.write(out)
 
-        self.assertEqual(ret, returncode, msg='%s failed')
-        return None
+                ret = proc.poll()
+
+            self.assertEqual(ret, returncode, msg='%s failed')
+            return None
 
     def assertPyrexCommand(self, *args, **kwargs):
         cmd_file = os.path.join(self.thread_dir, 'command')
@@ -107,6 +119,28 @@ class TestPyrex(unittest.TestCase):
         env = os.environ.copy()
         env['PYREX_DOCKER_BUILD_QUIET'] = '1'
         self.assertPyrexCommand('true', env=env)
+
+    def test_no_docker_build(self):
+        # Prevent docker from working
+        os.symlink('/bin/false', os.path.join(self.bin_dir, 'docker'))
+
+        # Docker will fail if invoked here
+        env = os.environ.copy()
+        env['PYREX_DOCKER'] = '0'
+        self.assertPyrexCommand('true', env=env)
+
+        # Verify that pyrex won't allow you to try and use docker later
+        output = self.assertPyrexCommand('PYREX_DOCKER=1 bitbake', returncode=1, capture=True, env=env).decode('utf-8')
+        self.assertIn('Docker was not enabled when the environment was setup', output)
+
+    def test_bad_docker(self):
+        # Prevent docker from working
+        os.symlink('/bin/false', os.path.join(self.bin_dir, 'docker'))
+
+        # Verify that attempting to run build pyrex without docker shows the
+        # installation instructions
+        output = self.assertPyrexCommand('true', returncode=1, capture=True).decode('utf-8')
+        self.assertIn('Unable to run', output)
 
 if __name__ == "__main__":
     unittest.main()

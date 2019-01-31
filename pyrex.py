@@ -103,6 +103,9 @@ def get_tag_buildid(config):
     docker_args = [config['pyrex']['dockerpath'], 'image', 'inspect', config['pyrex']['tag'], '--format={{ .Id }}']
     return subprocess.check_output(docker_args).decode('utf-8').rstrip()
 
+def use_docker(config):
+    return os.environ.get('PYREX_DOCKER', config['docker']['enable']) == '1'
+
 def main():
     def capture(args):
         builddir = os.environ['BUILDDIR']
@@ -162,50 +165,61 @@ def main():
     def build(args):
         config, build_config = load_configs(args.conffile)
 
-        docker_path = config['pyrex']['dockerpath']
+        if use_docker(config):
+            docker_path = config['pyrex']['dockerpath']
 
-        # Check minimum docker version
-        output = subprocess.check_output([docker_path, '--version']).decode('utf-8')
-        m = re.match(r'.*version +([^\s,]+)', output)
-        if m is None:
-            sys.stderr.write('Could not get docker version!\n')
-            return 1
+            # Check minimum docker version
+            try:
+                output = subprocess.check_output([docker_path, '--version']).decode('utf-8')
+            except subprocess.CalledProcessError:
+                print("Unable to run '%s' as docker. Please make sure you have it installed." % docker_path)
+                print("For installation instructions, see the docker website. Commonly,")
+                print("one of the following is relevant:")
+                print("  https://docs.docker.com/install/linux/docker-ce/ubuntu/")
+                print("  https://docs.docker.com/install/linux/docker-ce/fedora/")
 
-        version = m.group(1)
+            m = re.match(r'.*version +([^\s,]+)', output)
+            if m is None:
+                sys.stderr.write('Could not get docker version!\n')
+                return 1
 
-        if int(version.split('.')[0]) < MINIMUM_DOCKER_VERSION:
-            sys.stderr.write("Docker version is too old (have %s), need >= %d\n" % (version, MINIMUM_DOCKER_VERSION))
-            return 1
+            version = m.group(1)
 
-        print("Getting Docker image up to date...")
+            if int(version.split('.')[0]) < MINIMUM_DOCKER_VERSION:
+                sys.stderr.write("Docker version is too old (have %s), need >= %d\n" % (version, MINIMUM_DOCKER_VERSION))
+                return 1
 
-        docker_args = [docker_path, 'build',
-            '--build-arg', 'MY_USER=%s' % config['build']['username'],
-            '--build-arg', 'MY_GROUP=%s' % config['build']['groupname'],
-            '--build-arg', 'MY_UID=%d' % os.getuid(),
-            '--build-arg', 'MY_GID=%d' % os.getgid(),
-            '--build-arg', 'MY_HOME=%s' % config['pyrex']['home'],
-            '--build-arg', 'MY_REGISTRY=%s' % config['pyrex']['registry'],
-            '-t', config['pyrex']['tag'],
-            '-f', config['pyrex']['dockerfile'],
-            '--network=host',
-            os.path.join(config['build']['pyrexroot'], 'docker')
-            ]
+            print("Getting Docker image up to date...")
 
-        for e in ('http_proxy', 'https_proxy'):
-            if e in os.environ:
-                docker_args.extend(['--build-arg', '%s=%s' % (e, os.environ[e])])
+            docker_args = [docker_path, 'build',
+                '--build-arg', 'MY_USER=%s' % config['build']['username'],
+                '--build-arg', 'MY_GROUP=%s' % config['build']['groupname'],
+                '--build-arg', 'MY_UID=%d' % os.getuid(),
+                '--build-arg', 'MY_GID=%d' % os.getgid(),
+                '--build-arg', 'MY_HOME=%s' % config['pyrex']['home'],
+                '--build-arg', 'MY_REGISTRY=%s' % config['pyrex']['registry'],
+                '-t', config['pyrex']['tag'],
+                '-f', config['pyrex']['dockerfile'],
+                '--network=host',
+                os.path.join(config['build']['pyrexroot'], 'docker')
+                ]
 
-        try:
-            if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1':
-                docker_args.append('-q')
-                build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
-            else:
-                subprocess.check_call(docker_args)
-                build_config['build']['buildid'] = get_tag_buildid(config)
+            for e in ('http_proxy', 'https_proxy'):
+                if e in os.environ:
+                    docker_args.extend(['--build-arg', '%s=%s' % (e, os.environ[e])])
 
-        except subprocess.CalledProcessError:
-            return 1
+            try:
+                if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1':
+                    docker_args.append('-q')
+                    build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
+                else:
+                    subprocess.check_call(docker_args)
+                    build_config['build']['buildid'] = get_tag_buildid(config)
+
+            except subprocess.CalledProcessError:
+                return 1
+        else:
+            build_config['build']['buildid'] = ''
 
         with open(args.conffile, 'w') as f:
             build_config.write(f)
@@ -259,7 +273,11 @@ def main():
     def run(args):
         config, _ = load_configs(args.conffile)
 
-        if os.environ.get('PYREX_DOCKER', config['docker']['enable']) == '1':
+        if use_docker(config):
+            if not config['build']['buildid']:
+                print("Docker was not enabled when the environment was setup. Cannot use it now!")
+                return 1
+
             docker_path = config['pyrex']['dockerpath']
 
             try:
