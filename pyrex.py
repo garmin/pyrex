@@ -169,7 +169,15 @@ def main():
             docker_path = config['pyrex']['dockerpath']
 
             # Check minimum docker version
-            output = subprocess.check_output([docker_path, '--version']).decode('utf-8')
+            try:
+                output = subprocess.check_output([docker_path, '--version']).decode('utf-8')
+            except subprocess.CalledProcessError:
+                print("Unable to run '%s' as docker. Please make sure you have it installed." % docker_path)
+                print("For installation instructions, see the docker website. Commonly,")
+                print("one of the following is relevant:")
+                print("  https://docs.docker.com/install/linux/docker-ce/ubuntu/")
+                print("  https://docs.docker.com/install/linux/docker-ce/fedora/")
+
             m = re.match(r'.*version +([^\s,]+)', output)
             if m is None:
                 sys.stderr.write('Could not get docker version!\n')

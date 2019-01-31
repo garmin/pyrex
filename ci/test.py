@@ -133,5 +133,14 @@ class TestPyrex(unittest.TestCase):
         output = self.assertPyrexCommand('PYREX_DOCKER=1 bitbake', returncode=1, capture=True, env=env).decode('utf-8')
         self.assertIn('Docker was not enabled when the environment was setup', output)
 
+    def test_bad_docker(self):
+        # Prevent docker from working
+        os.symlink('/bin/false', os.path.join(self.bin_dir, 'docker'))
+
+        # Verify that attempting to run build pyrex without docker shows the
+        # installation instructions
+        output = self.assertPyrexCommand('true', returncode=1, capture=True).decode('utf-8')
+        self.assertIn('Unable to run', output)
+
 if __name__ == "__main__":
     unittest.main()
