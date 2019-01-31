@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import unittest
 import threading
+import sys
 
 PYREX_ROOT = os.path.join(os.path.dirname(__file__), '..')
 
@@ -43,22 +44,26 @@ class TestPyrex(unittest.TestCase):
         os.makedirs(bin_dir)
         os.symlink('/usr/bin/python2', os.path.join(bin_dir, 'python'))
         os.environ['PATH'] = bin_dir + ':' + os.environ['PATH']
+        os.environ['PYREX_DOCKER_BUILD_QUIET'] = '0'
         self.addCleanup(cleanup_env)
 
         self.thread_dir = os.path.join(self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident()))
         os.makedirs(self.thread_dir)
 
     def assertSubprocess(self, *args, returncode=0, **kwargs):
-        try:
-            output = subprocess.check_output(*args, stderr=subprocess.STDOUT, **kwargs)
-        except subprocess.CalledProcessError as e:
-            ret = e.returncode
-            output = e.output
-        else:
-            ret = 0
+        with subprocess.Popen(*args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs) as proc:
+            while True:
+                out = proc.stdout.readline().decode('utf-8')
+                if not out and proc.poll() is not None:
+                    break
 
-        self.assertEqual(ret, returncode, msg='%s: %s' % (' '.join(*args), output.decode('utf-8')))
-        return output
+                if out:
+                    sys.stdout.write(out)
+
+            ret = proc.poll()
+
+        self.assertEqual(ret, returncode, msg='%s failed')
+        return None
 
     def assertPyrexCommand(self, *args, **kwargs):
         cmd_file = os.path.join(self.thread_dir, 'command')
@@ -97,6 +102,11 @@ class TestPyrex(unittest.TestCase):
         with open(pyrex_cgroup_file, 'r') as f:
             pyrex_cgroup = f.read()
         self.assertEqual(cgroup, pyrex_cgroup)
+
+    def test_quiet_build(self):
+        env = os.environ.copy()
+        env['PYREX_DOCKER_BUILD_QUIET'] = '1'
+        self.assertPyrexCommand('true', env=env)
 
 if __name__ == "__main__":
     unittest.main()

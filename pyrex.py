@@ -99,6 +99,10 @@ def stop_coverage():
     except:
         pass
 
+def get_tag_buildid(config):
+    docker_args = [config['pyrex']['dockerpath'], 'image', 'inspect', config['pyrex']['tag'], '--format={{ .Id }}']
+    return subprocess.check_output(docker_args).decode('utf-8').rstrip()
+
 def main():
     def capture(args):
         builddir = os.environ['BUILDDIR']
@@ -176,7 +180,6 @@ def main():
         print("Getting Docker image up to date...")
 
         docker_args = [docker_path, 'build',
-            '-q',
             '--build-arg', 'MY_USER=%s' % config['build']['username'],
             '--build-arg', 'MY_GROUP=%s' % config['build']['groupname'],
             '--build-arg', 'MY_UID=%d' % os.getuid(),
@@ -194,7 +197,13 @@ def main():
                 docker_args.extend(['--build-arg', '%s=%s' % (e, os.environ[e])])
 
         try:
-            build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
+            if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1':
+                docker_args.append('-q')
+                build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
+            else:
+                subprocess.check_call(docker_args)
+                build_config['build']['buildid'] = get_tag_buildid(config)
+
         except subprocess.CalledProcessError:
             return 1
 
@@ -253,12 +262,8 @@ def main():
         if os.environ.get('PYREX_DOCKER', config['docker']['enable']) == '1':
             docker_path = config['pyrex']['dockerpath']
 
-            # Validate image
-            docker_args = [docker_path, 'image', 'inspect', config['pyrex']['tag'],
-                    '--format={{ .Id }}']
-
             try:
-                buildid = subprocess.check_output(docker_args).decode('utf-8').rstrip()
+                buildid = get_tag_buildid(config)
             except subprocess.CalledProcessError as e:
                 print("Cannot verify docker image: %s\n" % e.output)
                 return 1
