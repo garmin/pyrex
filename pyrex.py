@@ -177,6 +177,7 @@ def main():
                 print("one of the following is relevant:")
                 print("  https://docs.docker.com/install/linux/docker-ce/ubuntu/")
                 print("  https://docs.docker.com/install/linux/docker-ce/fedora/")
+                return 1
 
             m = re.match(r'.*version +([^\s,]+)', output)
             if m is None:
