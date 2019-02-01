@@ -47,10 +47,10 @@ class Config(configparser.ConfigParser):
         merging configs together"""
         return {section: values for (section, values) in self.items(raw=True)}
 
-def read_default_config(keep_values):
+def read_default_config(keep_defaults):
     with open(os.path.join(os.path.dirname(__file__), 'pyrex.ini'), 'r') as f:
         l = f.read().replace('@VERSION@', PYREX_VERSION)
-        if keep_values:
+        if keep_defaults:
             l = l.replace('%', '')
         else:
             l = l.replace('%', '#')
