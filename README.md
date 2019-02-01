@@ -242,15 +242,6 @@ The following items are either known to not work, or haven't been fully tested:
   there that are lighter weight (e.g. Alpine Linux), but Ubuntu was chosen
   because it is one of the [Sanity Tested Distros][] that Yocto supports. Pyrex
   aims to support a vanilla Yocto setup with minimal manual configuration.
-* *Why are the Docker images built on the fly?/Why aren't the Pyrex Docker
-  images published on Dockerhub?* The main reason that the Pyrex docker image
-  is built on the fly is to accommodate making the user that runs commands
-  inside the Docker container be equivalent to the user running the commands on
-  the outside. Each container is built with the owning user encoded into it and
-  thus can't be shared with any other users. This may not be ideal, but was the
-  best solution we have so far come up, even after evaluating some alternatives
-  like [fixuid](https://github.com/boxboat/fixuid). If you have better
-  alternatives, please feel free to propose them!
 * *What's with [cleanup.py](./docker/cleanup.py)?* When a Docker container's
   main process exits, any remaining process appears to be sent a `SIGKILL`.
   This can cause a significant problem with many of the child processes that

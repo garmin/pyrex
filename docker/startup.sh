@@ -16,6 +16,20 @@
 
 declare -a COMMAND=("$@")
 
+if [ "$PYREX_IN_DOCKER" == "1" ]; then
+    eval $(fixuid -q)
+
+    # Give the new username sudo permissions
+    echo "$PYREX_NEW_USER ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers > /dev/null
+
+    # Rename user and group
+    sudo groupmod -n $PYREX_NEW_GROUP $GROUP > /dev/null
+    sudo usermod -l $PYREX_NEW_USER $USER > /dev/null
+
+    USER=$PYREX_NEW_USER
+    GROUP=$PYREX_NEW_GROUP
+fi
+
 # Consume all arguments before sourcing the environment script
 shift $#
 
