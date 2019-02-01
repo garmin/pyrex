@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import configparser
 import grp
 import os
 import pwd
@@ -21,10 +22,13 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 import threading
 import unittest
 
 PYREX_ROOT = os.path.join(os.path.dirname(__file__), '..')
+sys.path.append(PYREX_ROOT)
+import pyrex
 
 class TestPyrex(unittest.TestCase):
     def setUp(self):
@@ -37,6 +41,11 @@ class TestPyrex(unittest.TestCase):
         cleanup_build()
         os.makedirs(self.build_dir)
         self.addCleanup(cleanup_build)
+
+        conf_dir = os.path.join(self.build_dir, 'conf')
+        os.makedirs(conf_dir)
+
+        self.pyrex_conf = os.path.join(conf_dir, 'pyrex.ini')
 
         def cleanup_env():
             os.environ = self.old_environ
@@ -52,6 +61,28 @@ class TestPyrex(unittest.TestCase):
 
         self.thread_dir = os.path.join(self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident()))
         os.makedirs(self.thread_dir)
+
+        test_image = os.environ.get('TEST_IMAGE')
+        if test_image:
+            conf = self.get_config()
+            conf['pyrex']['dockerimage'] = test_image
+            conf.write_conf()
+
+    def get_config(self):
+        class Config(configparser.RawConfigParser):
+            def write_conf(self):
+                write_config_helper(self)
+
+        def write_config_helper(conf):
+            with open(self.pyrex_conf, 'w') as f:
+                conf.write(f)
+
+        config = Config()
+        if os.path.exists(self.pyrex_conf):
+            config.read(self.pyrex_conf)
+        else:
+            config.read_string(pyrex.read_default_config(True))
+        return config
 
     def assertSubprocess(self, *args, capture=False, returncode=0, **kwargs):
         if capture:
