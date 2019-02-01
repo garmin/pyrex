@@ -12,18 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# See below for why the MY_ prefix is used.
 ARG MY_REGISTRY
 FROM ${MY_REGISTRY}/ubuntu:xenial
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
-
-# USER and GROUP are reserved keywords in Dockerfile syntax, so put the goofy
-# MY_ prefix in front of these things.
-ARG MY_USER
-ARG MY_GROUP
-ARG MY_UID
-ARG MY_GID
-ARG MY_HOME
 
 # Install software required to add ppa's
 RUN apt-get -y update && apt-get -y install \
@@ -93,11 +84,15 @@ RUN dpkg --add-architecture i386 && \
     wine \
 && rm -rf /var/lib/apt/lists/*
 
-RUN addgroup --gid $MY_GID $MY_GROUP && \
-    adduser --uid $MY_UID --gid $MY_GID --home $MY_HOME --shell /bin/sh --disabled-password --gecos "" $MY_USER
+env USER pyrex
+env GROUP pyrex
+env HOME /home/pyrex
 
-# Allow user to run any command as root
-RUN echo "$MY_USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+RUN addgroup --gid 1000 $GROUP && \
+    adduser --uid 1000 --ingroup $GROUP --home $HOME --shell /bin/sh --disabled-password --gecos "" $USER
+
+# Allow pyrex to run any command as root
+RUN echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Use a recent version of Icecream, which has many bug fixes
 RUN mkdir -p /usr/src/icecream && \
@@ -138,7 +133,7 @@ RUN mkdir -p /usr/share/icecc/toolchain && \
     rm $TC_NAME
 
 ENV ICECC_VERSION=/usr/share/icecc/toolchain/native-gcc.tar.gz
-ENV INIT_DIR=$MY_HOME
+ENV INIT_DIR=$HOME
 
 # Generate locales
 RUN locale-gen en_US.UTF-8
@@ -147,7 +142,7 @@ ENV LC_ALL en_US.UTF-8
 
 # Turn on background color erase. This fixes screen not correctly erasing when
 # it is nested in another terminal emulator
-RUN echo "defbce on" >> $MY_HOME/.screenrc
+RUN echo "defbce on" >> $HOME/.screenrc
 
 # Download and install tini
 RUN mkdir -p /usr/src/tini && \
@@ -169,9 +164,16 @@ COPY ./wrapper.py /usr/libexec/tini/wrapper.py
 COPY ./cleanup.py /usr/libexec/tini/cleanup.py
 RUN chmod +x /usr/libexec/tini/cleanup.py /usr/libexec/tini/startup.sh /usr/libexec/tini/wrapper.py
 
+# Install and configure the fixuid script
+RUN curl -SsL https://github.com/boxboat/fixuid/releases/download/v0.4/fixuid-0.4-linux-amd64.tar.gz | tar -C /usr/local/bin -xzf - && \
+    chown root:root /usr/local/bin/fixuid && \
+    chmod 4755 /usr/local/bin/fixuid && \
+    mkdir -p /etc/fixuid && \
+    printf "user: $USER\ngroup: $GROUP\npaths:\n  - $HOME" > /etc/fixuid/config.yml
+
 # Use tini as the init process and instruct it to invoke the cleanup script
 # once the primary command dies
-USER $MY_USER:$MY_GROUP
+USER $USER:$GROUP
 ENTRYPOINT ["/usr/local/bin/tini", "-P", "/usr/libexec/tini/cleanup.py", "{}", ";", "--", "/bin/bash", "/usr/libexec/tini/startup.sh"]
 
 # The startup script is expected to chain along to some other

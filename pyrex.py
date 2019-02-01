@@ -193,11 +193,6 @@ def main():
             print("Getting Docker image up to date...")
 
             docker_args = [docker_path, 'build',
-                '--build-arg', 'MY_USER=%s' % config['build']['username'],
-                '--build-arg', 'MY_GROUP=%s' % config['build']['groupname'],
-                '--build-arg', 'MY_UID=%d' % os.getuid(),
-                '--build-arg', 'MY_GID=%d' % os.getgid(),
-                '--build-arg', 'MY_HOME=%s' % config['pyrex']['home'],
                 '--build-arg', 'MY_REGISTRY=%s' % config['pyrex']['registry'],
                 '-t', config['pyrex']['tag'],
                 '-f', config['pyrex']['dockerfile'],
@@ -297,6 +292,10 @@ def main():
                     '--rm',
                     '-i',
                     '--net=host',
+                    '-u', '%s:%s' % (os.getuid(), os.getgid()),
+                    '-e', 'PYREX_IN_DOCKER=1',
+                    '-e', 'PYREX_NEW_USER=%s' % config['build']['username'],
+                    '-e', 'PYREX_NEW_GROUP=%s' % config['build']['groupname'],
                     '-e', 'PYREX_INIT_COMMAND=%s' % config['build']['initcommand'],
                     '-e', 'PYREX_OEROOT=%s' % config['build']['oeroot'],
                     '-e', 'PYREX_CLEANUP_EXIT_WAIT',
@@ -351,6 +350,7 @@ def main():
             env = os.environ.copy()
             env['PYREX_INIT_COMMAND'] = config['build']['initcommand']
             env['PYREX_OEROOT'] = config['build']['oeroot']
+            env['PYREX_IN_DOCKER'] = '0'
 
             stop_coverage()
 
