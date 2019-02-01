@@ -101,7 +101,7 @@ def stop_coverage():
         pass
 
 def get_tag_buildid(config):
-    docker_args = [config['pyrex']['dockerpath'], 'image', 'inspect', config['pyrex']['tag'], '--format={{ .Id }}']
+    docker_args = [config['pyrex']['dockerpath'], 'image', 'inspect', config['pyrex']['image'], '--format={{ .Id }}']
     return subprocess.check_output(docker_args).decode('utf-8').rstrip()
 
 def use_docker(config):
@@ -191,30 +191,43 @@ def main():
                 sys.stderr.write("Docker version is too old (have %s), need >= %d\n" % (version, MINIMUM_DOCKER_VERSION))
                 return 1
 
-            print("Getting Docker image up to date...")
+            if config['pyrex']['buildlocal'] == '1':
+                print("Getting Docker image up to date...")
+                docker_args = [docker_path, 'build',
+                    '--build-arg', 'MY_REGISTRY=%s' % config['pyrex']['registry'],
+                    '-t', config['pyrex']['image'],
+                    '-f', config['dockerbuild']['dockerfile'],
+                    '--network=host',
+                    os.path.join(config['build']['pyrexroot'], 'docker')
+                    ]
 
-            docker_args = [docker_path, 'build',
-                '--build-arg', 'MY_REGISTRY=%s' % config['pyrex']['registry'],
-                '-t', config['pyrex']['tag'],
-                '-f', config['pyrex']['dockerfile'],
-                '--network=host',
-                os.path.join(config['build']['pyrexroot'], 'docker')
-                ]
+                for e in ('http_proxy', 'https_proxy'):
+                    if e in os.environ:
+                        docker_args.extend(['--build-arg', '%s=%s' % (e, os.environ[e])])
 
-            for e in ('http_proxy', 'https_proxy'):
-                if e in os.environ:
-                    docker_args.extend(['--build-arg', '%s=%s' % (e, os.environ[e])])
+                try:
+                    if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1':
+                        docker_args.append('-q')
+                        build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
+                    else:
+                        subprocess.check_call(docker_args)
+                        build_config['build']['buildid'] = get_tag_buildid(config)
 
-            try:
-                if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1':
-                    docker_args.append('-q')
-                    build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
-                else:
-                    subprocess.check_call(docker_args)
+                except subprocess.CalledProcessError:
+                    return 1
+            else:
+                try:
+                    # Try to get the image This will fail if the image doesn't
+                    # exist locally
                     build_config['build']['buildid'] = get_tag_buildid(config)
+                except subprocess.CalledProcessError:
+                    try:
+                        docker_args = [docker_path, 'pull', '%s/%s' % (config['pyrex']['registry'], config['pyrex']['image'])]
+                        subprocess.check_call(docker_args)
 
-            except subprocess.CalledProcessError:
-                return 1
+                        build_config['build']['buildid'] = get_tag_buildid(config)
+                    except subprocess.CalledProcessError:
+                        return 1
         else:
             build_config['build']['buildid'] = ''
 
@@ -285,7 +298,7 @@ def main():
 
             if buildid != config['build']['buildid']:
                 sys.stderr.write("WARNING: buildid for docker image %s has changed\n" %
-                        config['pyrex']['tag'])
+                        config['pyrex']['image'])
 
             command_prefix = ['/usr/libexec/tini/wrapper.py'] + config['docker'].get('commandprefix', '').splitlines()
 
@@ -338,7 +351,7 @@ def main():
             docker_args.extend(shlex.split(config['docker'].get('args', '')))
 
             docker_args.append('--')
-            docker_args.append(config['pyrex']['tag'])
+            docker_args.append(config['pyrex']['image'])
             docker_args.extend(args.command)
 
             stop_coverage()
