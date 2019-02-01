@@ -196,6 +196,16 @@ to it. In addition, it is highly recommended that the tag include the variables
 `${build:username}` and `${build:groupname}` to ensure that multiple users
 sharing a computer do not overwrite each others tags.
 
+#### Pulling prebuilt images
+If you want Pyrex to pull a prebuild image (e.g. from Docker Hub or some other
+registry) instead of building the image locally every time the environment is
+sourced, set `${config:buildlocal}` to `0` and set `${config:tag}` to the name
+of the image you would like to pull.
+
+*Note: For reproducibility reasons, it may be unwise to do this if you just
+going to pull the `latest` tag for an image. In that case, you are probably
+better off building the images locally*
+
 ### Running Pyrex
 Once Pyrex is configured, using it is very straight forward. First, source the
 Pyrex environment setup you created. This will setup up the current shell to

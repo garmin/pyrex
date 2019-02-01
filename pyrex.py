@@ -216,32 +216,46 @@ def main():
                 sys.stderr.write("Docker version is too old (have %s), need >= %d\n" % (version, MINIMUM_DOCKER_VERSION))
                 return 1
 
-            print("Getting Docker image up to date...")
+            if config['config']['buildlocal'] == '1':
+                print("Getting Docker image up to date...")
 
-            docker_args = [docker_path, 'build',
-                '-t', config['config']['tag'],
-                '-f', config['config']['dockerfile'],
-                '--network=host',
-                os.path.join(config['build']['pyrexroot'], 'docker')
-                ]
+                docker_args = [docker_path, 'build',
+                    '-t', config['config']['tag'],
+                    '-f', config['dockerbuild']['dockerfile'],
+                    '--network=host',
+                    os.path.join(config['build']['pyrexroot'], 'docker')
+                    ]
 
-            if config['config']['registry']:
-                docker_args.extend(['--build-arg', 'MY_REGISTRY=%s/' % config['config']['registry']])
+                if config['config']['registry']:
+                    docker_args.extend(['--build-arg', 'MY_REGISTRY=%s/' % config['config']['registry']])
 
-            for e in ('http_proxy', 'https_proxy'):
-                if e in os.environ:
-                    docker_args.extend(['--build-arg', '%s=%s' % (e, os.environ[e])])
+                for e in ('http_proxy', 'https_proxy'):
+                    if e in os.environ:
+                        docker_args.extend(['--build-arg', '%s=%s' % (e, os.environ[e])])
 
-            try:
-                if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1':
-                    docker_args.append('-q')
-                    build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
-                else:
-                    subprocess.check_call(docker_args)
+                try:
+                    if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1':
+                        docker_args.append('-q')
+                        build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
+                    else:
+                        subprocess.check_call(docker_args)
+                        build_config['build']['buildid'] = get_tag_buildid(config)
+
+                except subprocess.CalledProcessError:
+                    return 1
+            else:
+                try:
+                    # Try to get the image This will fail if the image doesn't
+                    # exist locally
                     build_config['build']['buildid'] = get_tag_buildid(config)
+                except subprocess.CalledProcessError:
+                    try:
+                        docker_args = [docker_path, 'pull', config['config']['tag']]
+                        subprocess.check_call(docker_args)
 
-            except subprocess.CalledProcessError:
-                return 1
+                        build_config['build']['buildid'] = get_tag_buildid(config)
+                    except subprocess.CalledProcessError:
+                        return 1
         else:
             print(textwrap.fill("Running outside of Docker. No guarantees are made about your Linux " +
                                 "distribution's compatibility with Yocto."))

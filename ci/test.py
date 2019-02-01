@@ -340,6 +340,24 @@ class PyrexCore(PyrexTest):
 
         self.assertPyrexHostCommand('true', returncode=1, env=env)
 
+    def test_local_build(self):
+        # Run any command to build the images locally
+        self.assertPyrexHostCommand('true')
+
+        conf = self.get_config()
+
+        # Trying to build with an invalid registry should fail
+        conf['config']['registry'] = 'does.not.exist.invalid'
+        conf.write_conf()
+        self.assertPyrexHostCommand('true', returncode=1)
+
+        # Disable building locally any try again (from the previously cached build)
+        conf['config']['buildlocal'] = '0'
+        conf.write_conf()
+
+        self.assertPyrexHostCommand('true')
+
+
 class TestImage(PyrexTest):
     def test_tini(self):
         self.assertPyrexContainerCommand('tini --version')
