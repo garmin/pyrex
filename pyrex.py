@@ -30,6 +30,7 @@ import shlex
 import glob
 import textwrap
 import stat
+import pathlib
 
 THIS_SCRIPT = os.path.basename(__file__)
 PYREX_VERSION = '1'
@@ -312,7 +313,10 @@ def main():
 
             # Configure binds
             for b in config['docker']['bind'].split():
-                docker_args.extend(['--mount', 'type=bind,src={b},dst={b}'.format(b=b)])
+                src = b.replace('@HOME@', os.path.expanduser('~'))
+                dst = b.replace('@HOME@', config['pyrex']['home'])
+
+                docker_args.extend(['--mount', 'type=bind,src={src},dst={dst}'.format(src=src, dst=dst)])
 
             # Pass environment variables
             for e in config['docker']['envvars'].split():
