@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG MY_REGISTRY
+ARG MY_REGISTRY=docker.io
 FROM ${MY_REGISTRY}/ubuntu:xenial
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 

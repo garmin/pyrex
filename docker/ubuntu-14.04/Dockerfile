@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # See below for why the MY_ prefix is used.
-ARG MY_REGISTRY
+ARG MY_REGISTRY=docker.io
 FROM ${MY_REGISTRY}/ubuntu:trusty
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
