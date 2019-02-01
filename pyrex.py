@@ -206,12 +206,14 @@ def main():
                 '--build-arg', 'MY_UID=%d' % os.getuid(),
                 '--build-arg', 'MY_GID=%d' % os.getgid(),
                 '--build-arg', 'MY_HOME=%s' % config['pyrex']['home'],
-                '--build-arg', 'MY_REGISTRY=%s' % config['pyrex']['registry'],
                 '-t', config['pyrex']['tag'],
                 '-f', config['pyrex']['dockerfile'],
                 '--network=host',
                 os.path.join(config['build']['pyrexroot'], 'docker')
                 ]
+
+            if config['pyrex']['registry']:
+                docker_args.extend(['--build-arg', 'MY_REGISTRY=%s/' % config['pyrex']['registry']])
 
             for e in ('http_proxy', 'https_proxy'):
                 if e in os.environ:

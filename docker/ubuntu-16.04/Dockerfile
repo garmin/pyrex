@@ -13,8 +13,8 @@
 # limitations under the License.
 
 # See below for why the MY_ prefix is used.
-ARG MY_REGISTRY
-FROM ${MY_REGISTRY}/ubuntu:xenial
+ARG MY_REGISTRY=
+FROM ${MY_REGISTRY}ubuntu:xenial
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # USER and GROUP are reserved keywords in Dockerfile syntax, so put the goofy
