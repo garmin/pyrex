@@ -14,12 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import grp
 import os
+import pwd
 import shutil
+import stat
 import subprocess
-import unittest
-import threading
 import sys
+import threading
+import unittest
 
 PYREX_ROOT = os.path.join(os.path.dirname(__file__), '..')
 
@@ -77,23 +80,32 @@ class TestPyrex(unittest.TestCase):
             self.assertEqual(ret, returncode, msg='%s failed')
             return None
 
-    def assertPyrexCommand(self, *args, **kwargs):
+    def assertPyrexHostCommand(self, *args, **kwargs):
         cmd_file = os.path.join(self.thread_dir, 'command')
         with open(cmd_file, 'w') as f:
             f.write(' && '.join(['. ./poky/pyrex-init-build-env'] + list(args)))
         return self.assertSubprocess(['/bin/bash', cmd_file], cwd=PYREX_ROOT, **kwargs)
 
+    def assertPyrexContainerShellCommand(self, *args, **kwargs):
+        cmd_file = os.path.join(self.thread_dir, 'container_command')
+        with open(cmd_file, 'w') as f:
+            f.write(' && '.join(args))
+        return self.assertPyrexHostCommand('pyrex-shell %s' % cmd_file, **kwargs)
+
+    def assertPyrexContainerCommand(self, cmd, **kwargs):
+        return self.assertPyrexHostCommand('pyrex-run %s' % cmd, **kwargs)
+
     def test_init(self):
-        self.assertPyrexCommand('true')
+        self.assertPyrexHostCommand('true')
 
     def test_bitbake_parse(self):
-        self.assertPyrexCommand('bitbake -p')
+        self.assertPyrexHostCommand('bitbake -p')
 
     def test_pyrex_shell(self):
-        self.assertPyrexCommand('pyrex-shell -c "exit 3"', returncode=3)
+        self.assertPyrexContainerShellCommand('exit 3', returncode=3)
 
     def test_pyrex_run(self):
-        self.assertPyrexCommand('pyrex-run /bin/false', returncode=1)
+        self.assertPyrexContainerCommand('/bin/false', returncode=1)
 
     def test_disable_pyrex(self):
         # Capture our cgroups
@@ -103,14 +115,14 @@ class TestPyrex(unittest.TestCase):
         pyrex_cgroup_file = os.path.join(self.thread_dir, 'pyrex_cgroup')
 
         # Capture cgroups when pyrex is enabled
-        self.assertPyrexCommand('pyrex-shell -c "cat /proc/self/cgroup > %s"' % pyrex_cgroup_file)
+        self.assertPyrexContainerShellCommand('cat /proc/self/cgroup > %s' % pyrex_cgroup_file)
         with open(pyrex_cgroup_file, 'r') as f:
             pyrex_cgroup = f.read()
         self.assertNotEqual(cgroup, pyrex_cgroup)
 
         env = os.environ.copy()
         env['PYREX_DOCKER'] = '0'
-        self.assertPyrexCommand('pyrex-shell -c "cat /proc/self/cgroup > %s"' % pyrex_cgroup_file, env=env)
+        self.assertPyrexContainerShellCommand('cat /proc/self/cgroup > %s' % pyrex_cgroup_file, env=env)
         with open(pyrex_cgroup_file, 'r') as f:
             pyrex_cgroup = f.read()
         self.assertEqual(cgroup, pyrex_cgroup)
@@ -118,7 +130,7 @@ class TestPyrex(unittest.TestCase):
     def test_quiet_build(self):
         env = os.environ.copy()
         env['PYREX_DOCKER_BUILD_QUIET'] = '1'
-        self.assertPyrexCommand('true', env=env)
+        self.assertPyrexHostCommand('true', env=env)
 
     def test_no_docker_build(self):
         # Prevent docker from working
@@ -127,10 +139,10 @@ class TestPyrex(unittest.TestCase):
         # Docker will fail if invoked here
         env = os.environ.copy()
         env['PYREX_DOCKER'] = '0'
-        self.assertPyrexCommand('true', env=env)
+        self.assertPyrexHostCommand('true', env=env)
 
         # Verify that pyrex won't allow you to try and use docker later
-        output = self.assertPyrexCommand('PYREX_DOCKER=1 bitbake', returncode=1, capture=True, env=env).decode('utf-8')
+        output = self.assertPyrexHostCommand('PYREX_DOCKER=1 bitbake', returncode=1, capture=True, env=env).decode('utf-8')
         self.assertIn('Docker was not enabled when the environment was setup', output)
 
     def test_bad_docker(self):
@@ -139,8 +151,29 @@ class TestPyrex(unittest.TestCase):
 
         # Verify that attempting to run build pyrex without docker shows the
         # installation instructions
-        output = self.assertPyrexCommand('true', returncode=1, capture=True).decode('utf-8')
+        output = self.assertPyrexHostCommand('true', returncode=1, capture=True).decode('utf-8')
         self.assertIn('Unable to run', output)
+
+    def test_ownership(self):
+        # Test that files created in docker are the same UID/GID as the user
+        # running outside
+
+        test_file = os.path.join(self.thread_dir, 'ownertest')
+        if os.path.exists(test_file):
+            os.unlink(test_file)
+
+        self.assertPyrexContainerShellCommand('echo "$(id -un):$(id -gn)" > %s' % test_file)
+
+        s = os.stat(test_file)
+
+        self.assertEqual(s.st_uid, os.getuid())
+        self.assertEqual(s.st_gid, os.getgid())
+
+        with open(test_file, 'r') as f:
+            (username, groupname) = f.read().rstrip().split(':')
+
+        self.assertEqual(username, pwd.getpwuid(os.getuid()).pw_name)
+        self.assertEqual(groupname, grp.getgrgid(os.getgid()).gr_name)
 
 if __name__ == "__main__":
     unittest.main()
