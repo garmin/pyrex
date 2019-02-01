@@ -13,8 +13,8 @@
 # limitations under the License.
 
 # See below for why the MY_ prefix is used.
-ARG MY_REGISTRY
-FROM ${MY_REGISTRY}/ubuntu:trusty
+ARG MY_REGISTRY=
+FROM ${MY_REGISTRY}ubuntu:trusty
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to add ppa's

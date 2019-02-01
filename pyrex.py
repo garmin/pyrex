@@ -194,12 +194,14 @@ def main():
             if config['pyrex']['buildlocal'] == '1':
                 print("Getting Docker image up to date...")
                 docker_args = [docker_path, 'build',
-                    '--build-arg', 'MY_REGISTRY=%s' % config['pyrex']['registry'],
                     '-t', config['pyrex']['image'],
                     '-f', config['dockerbuild']['dockerfile'],
                     '--network=host',
                     os.path.join(config['build']['pyrexroot'], 'docker')
                     ]
+
+                if config['pyrex']['registry']:
+                    docker_args.extend(['--build-arg', 'MY_REGISTRY=%s/' % config['pyrex']['registry']])
 
                 for e in ('http_proxy', 'https_proxy'):
                     if e in os.environ:
@@ -222,7 +224,12 @@ def main():
                     build_config['build']['buildid'] = get_tag_buildid(config)
                 except subprocess.CalledProcessError:
                     try:
-                        docker_args = [docker_path, 'pull', '%s/%s' % (config['pyrex']['registry'], config['pyrex']['image'])]
+                        image = config['pyrex']['image']
+                        registry = config['pyrex']['registry']
+                        if registry:
+                            image = '/'.join(registry, image)
+
+                        docker_args = [docker_path, 'pull', image]
                         subprocess.check_call(docker_args)
 
                         build_config['build']['buildid'] = get_tag_buildid(config)
