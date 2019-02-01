@@ -162,13 +162,18 @@ Bitbake tends to encode file paths into some of its internal state (*Note*
 **Not** sstate, which should always be position independent), and remapping the
 paths might make it difficult to do builds outside of Pyrex if necessary.
 
+It is not recommended to map your entire home directory into the Pyrex
+container. However, you may occasionally find need to bind subdirectories of
+your home directory into the container. In order to properly bind them
+properly, you *must* prefix the path with `~/` to represent your home. Pyrex
+will automatically coerce any bind path that starts with `~/` to map your home
+directory to the home directory of the pyrex user running in the container. For
+example, a common use case it to bind your .ssh directory into the container so
+that git fetches over ssh work. To do this, you would add `~/.ssh` to
+`${docker:bind}`
+
 You should **never** map directories like `/usr/bin`, `/etc/`, `/` as these
-will probably just break the container. It is probably also unwise to map your
-entire home directory; although in some cases may be necessary to map
-$HOME/.ssh or other directories to access SSH keys and the like. For user
-convenience, the proxy user created in the Docker image by default has the same
-$HOME as the user who created the container, so these types of bind can be done
-by simply adding `${env:HOME}/.ssh` to `docker:bind`
+will probably just break the container.
 
 #### Specifying an alternate Docker image
 An alternate Dockerfile can be specified by setting the `pyrex:dockerfile`
