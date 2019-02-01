@@ -62,6 +62,12 @@ class TestPyrex(unittest.TestCase):
         self.thread_dir = os.path.join(self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident()))
         os.makedirs(self.thread_dir)
 
+        test_image = os.environ.get('TEST_IMAGE')
+        if test_image:
+            conf = self.get_config()
+            conf['pyrex']['dockerimage'] = test_image
+            conf.write_conf()
+
     def get_config(self):
         class Config(configparser.RawConfigParser):
             def write_conf(self):
