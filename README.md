@@ -176,8 +176,8 @@ You should **never** map directories like `/usr/bin`, `/etc/`, `/` as these
 will probably just break the container.
 
 #### Specifying an alternate Docker image
-An alternate Dockerfile can be specified by setting the `pyrex:dockerfile`
-attribute.
+An alternate Dockerfile can be specified by setting the
+`dockerbuild:dockerfile` attribute.
 
 #### Debugging the container
 In the event that you need to get a shell into the container to run some
@@ -193,13 +193,20 @@ and will be discarded when `pyrex-run` exits.
 #### Managing multiple Docker images
 It may occasionally be necessary to maintain multiple different Docker images
 simultaneously. Pyrex can handle this without any problems, however it should
-be noted that each different image should be given a unique tag using the
-`${pyrex:tag}` variable. This variable specifies the name of the tag that Pyrex
+be noted that each different image should be given a unique name using the
+`${pyrex:image}` variable. This variable specifies the name of the tag that Pyrex
 will attach to the image when it is built to prevent Docker from thinking the
-image is unused and removing it. Each image should have unique tag assigned to
-it. In addition, it is highly recommended that the tag include the variables
-`${build:username}` and `${build:groupname}` to ensure that multiple users
-sharing a computer do not overwrite each others tags.
+image is unused and removing it.
+
+#### Pulling prebuilt images
+If you want Pyrex to pull a prebuild image (e.g. from Docker Hub or some other
+registry) instead of building the image locally every time the environment is
+sourced, set `${pyrex:buildlocal}` to `0` and set `${pyrex:image}` to the name
+of the image you would like to pull.
+
+*Note: For reproducibility reasons, it may be unwise to do this if you just
+going to pull the `latest` tag for an image. In that case, you are probably
+better off building the images locally*
 
 ### Running Pyrex
 Once Pyrex is configured, using it is very straight forward. First, source the

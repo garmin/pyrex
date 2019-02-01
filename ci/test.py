@@ -65,7 +65,7 @@ class TestPyrex(unittest.TestCase):
         test_image = os.environ.get('TEST_IMAGE')
         if test_image:
             conf = self.get_config()
-            conf['pyrex']['dockerimage'] = test_image
+            conf['pyrex']['pyreximage'] = test_image
             conf.write_conf()
 
     def get_config(self):
@@ -111,10 +111,10 @@ class TestPyrex(unittest.TestCase):
             self.assertEqual(ret, returncode, msg='%s failed')
             return None
 
-    def assertPyrexHostCommand(self, *args, **kwargs):
+    def assertPyrexHostCommand(self, *args, suppress_init=False, **kwargs):
         cmd_file = os.path.join(self.thread_dir, 'command')
         with open(cmd_file, 'w') as f:
-            f.write(' && '.join(['. ./poky/pyrex-init-build-env'] + list(args)))
+            f.write(' && '.join(['. ./poky/pyrex-init-build-env %s' % ('', '> /dev/null')[suppress_init]] + list(args)))
         return self.assertSubprocess(['/bin/bash', cmd_file], cwd=PYREX_ROOT, **kwargs)
 
     def assertPyrexContainerShellCommand(self, *args, **kwargs):
@@ -241,6 +241,22 @@ class TestPyrex(unittest.TestCase):
 
         self.assertPyrexContainerShellCommand('echo "hello" > %s/test2.txt' % tilda_test_dir, env=env)
         self.assertTrue(os.path.exists(os.path.join(tilda_test_dir, 'test2.txt')))
+
+    def test_prebuilt(self):
+        # Run any command to build the images locally
+        self.assertPyrexHostCommand('true')
+
+        conf = self.get_config()
+
+        # Trying to build with an invalid registry should fail
+        conf['pyrex']['registry'] = 'does.not.exist.invalid'
+        conf.write_conf()
+        self.assertPyrexHostCommand('true', returncode=1)
+
+        # Disable building locally any try again
+        conf['pyrex']['buildlocal'] = '0'
+        conf.write_conf()
+        self.assertPyrexHostCommand('true')
 
 if __name__ == "__main__":
     unittest.main()
