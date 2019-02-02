@@ -1,26 +1,32 @@
 language: python
 python:
-  - "3.4"
-#  - "3.5"
-#  - "3.6"
+- '3.4'
 env:
+  global:
+  - secure: AnmwQHZdnKvbjAXAzdIJ8zJV37fMJ0VJA56z/4rW95c8q76XcFJgiNC15v36YrXzIkz+/PmmEGBh0biWueLkKzndIM0JdCU19n5mUbX+py6zxbqaO6Er7uzfBIxvM+HqnL+2NO2INh+hYXoP+CLxh79EGLg24X1Gb4Ma0ZyqnzmdklJt5m6pWRuI1IwQJtfw7cdvMMK/VmYQT2ZLwXzbfCZFWi2Jq6iKMAmh6l44pZKUO9ZqpIMwhKmC1WTAWU+Sz0PhL98EVKX3GSvjh4u9tYLcdzEz5PViGuviazgny/qGyrCUmMwcABUK4oHbK88JiqxSdHJx8J8nMZQefIh7quE53HDC9zsjPihjIxR5CP4CPARy0cjk5TdVXCn0xaOiOt07+M/KrD6dY4Nv5uvzVwNPKTr0zCeUiV81V5lMIHV2ZBVVVbKJYptpl9t6xZ5D7z+F0/LnkyRDCeH8ecNwlLoR63IW8AKLY2wpiMyYluiJVOxatbJd+TLq4bT52vXKCdHbet0CIv5Dw3Nn+bDJ4vRWEYbL1kb7FIYCJXAebGMq4Ishta4R4CYGoCtr8a2aAHRjGHRqNd0o5opb5+SgxKfxA51jkk6jCy8psu2H69hXjkGqY3qrw+6PSfUvW3wDFhs7IqoKHMfyCh/OfKxA6wTdEykNvXuA5VSnWzsNHV0=
+  matrix:
   - TEST_IMAGE=ubuntu-14.04
   - TEST_IMAGE=ubuntu-16.04
 services:
-  - docker
+- docker
 before_install:
-  - ./ci/prepare.sh
+- "./ci/prepare.sh"
 install:
-  - pip3 install coverage
-  - pip3 install coveralls
+- pip3 install coverage
+- pip3 install coveralls
 before_script:
-  - printf '\nimport coverage\ncoverage.current_coverage = coverage.process_startup()\n' >> "/home/travis/virtualenv/python${TRAVIS_PYTHON_VERSION}/lib/python${TRAVIS_PYTHON_VERSION}/sitecustomize.py"
-
-  # Remove old coverage reports
-  - rm -f .coverage-report.*
+- echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+- printf '\nimport coverage\ncoverage.current_coverage = coverage.process_startup()\n'
+  >> "/home/travis/virtualenv/python${TRAVIS_PYTHON_VERSION}/lib/python${TRAVIS_PYTHON_VERSION}/sitecustomize.py"
+- rm -f .coverage-report.*
 script: COVERAGE_PROCESS_START=${TRAVIS_BUILD_DIR}/.coveragerc ci/test.py -v
 after_success:
-  - coverage3 combine
-  - coveralls
-
-
+- coverage3 combine
+- coveralls
+deploy:
+  provider: script
+  script: "./ci/deploy_docker.sh $TEST_IMAGE"
+  on:
+    all_branches: true
+    condition: "$TRAVIS_PULL_REQUEST == false && ($TRAVIS_BRANCH == master || $TRAVIS_TAG
+      =~ ^v[0-9].*$)"
