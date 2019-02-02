@@ -33,7 +33,7 @@ import stat
 import pathlib
 
 THIS_SCRIPT = os.path.basename(__file__)
-PYREX_VERSION = '1'
+PYREX_CONFVERSION = '1'
 MINIMUM_DOCKER_VERSION = 17
 
 class Config(configparser.ConfigParser):
@@ -50,7 +50,7 @@ class Config(configparser.ConfigParser):
 
 def read_default_config(keep_defaults):
     with open(os.path.join(os.path.dirname(__file__), 'pyrex.ini'), 'r') as f:
-        l = f.read().replace('@VERSION@', PYREX_VERSION)
+        l = f.read().replace('@CONFVERSION@', PYREX_CONFVERSION)
         if keep_defaults:
             l = l.replace('%', '')
         else:
@@ -66,7 +66,7 @@ def load_configs(conffile):
     # Load the default config, except the version
     user_config = Config()
     user_config.read_string(read_default_config(True))
-    del user_config['pyrex']['version']
+    del user_config['pyrex']['confversion']
 
     # Load user config file
     with open(build_config['build']['userconfig'], 'r') as f:
@@ -126,8 +126,9 @@ def main():
         user_config.read(conffile)
 
         try:
-            if user_config['pyrex']['version'] != PYREX_VERSION:
-                sys.stderr.write("Bad pyrex conf version '%s'\n" % user_config['pyrex']['version'])
+            confversion = user_config['pyrex']['confversion']
+            if confversion != PYREX_CONFVERSION:
+                sys.stderr.write("Bad pyrex conf version '%s'\n" % user_config['pyrex']['confversion'])
                 return 1
         except KeyError:
             sys.stderr.write("Cannot find pyrex conf version!\n")
