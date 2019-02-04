@@ -31,6 +31,8 @@ import glob
 import textwrap
 import stat
 
+VERSION = '0.0.1'
+
 THIS_SCRIPT = os.path.basename(__file__)
 PYREX_CONFVERSION = '1'
 MINIMUM_DOCKER_VERSION = 17
@@ -83,6 +85,9 @@ def load_configs(conffile):
     for env in user_config['config']['envimport'].split():
         if env in os.environ:
             user_config['env'][env] = os.environ[env]
+
+    user_config.add_section('pyrex')
+    user_config['pyrex']['version'] = VERSION
 
     return user_config, build_config
 

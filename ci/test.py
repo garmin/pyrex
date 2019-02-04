@@ -357,6 +357,25 @@ class PyrexCore(PyrexTest):
 
         self.assertPyrexHostCommand('true')
 
+    def test_version(self):
+        self.assertRegex(pyrex.VERSION, r'^([0-9]+\.){2}[0-9]+(-.*)?$', msg="Version '%s' is invalid" % pyrex.VERSION)
+
+    def test_version_tag(self):
+        tag = None
+        if os.environ.get('TRAVIS_TAG'):
+            tag = os.environ['TRAVIS_TAG']
+        else:
+            try:
+                tags = subprocess.check_output(['git', '-C', PYREX_ROOT, 'tag', '-l', '--points-at', 'HEAD']).decode('utf-8').splitlines()
+                if tags:
+                    tag = tags[0]
+            except subprocess.CalledProcessError:
+                pass
+
+        if not tag:
+            self.skipTest('No tag found')
+
+        self.assertEqual('v%s' % pyrex.VERSION, tag)
 
 class TestImage(PyrexTest):
     def test_tini(self):
