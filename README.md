@@ -144,10 +144,10 @@ For more information about specific configuration values, see the default
 #### Binding directories into Docker
 In order for bitbake running in Docker to be able to build, it must have access
 to the data and config files from the host system. To make this easy, a
-variable called `docker:bind` is specified in the config file. Any directory
-that appears in this variable will be bound into the docker image at the same
-path (e.g. `/foo/bar` in the host will be bound to `/foo/bar` in Docker. By
-default, only the Openembedded root directory (a.k.a. `$PYREX_OEROOT`,
+variable called `run:bind` is specified in the config file. Any directory that
+appears in this variable will be bound into the docker image at the same path
+(e.g. `/foo/bar` in the host will be bound to `/foo/bar` in Docker. By default,
+only the Openembedded root directory (a.k.a. `$PYREX_OEROOT`,
 `${build:oeroot}`) is bound. This is the minimum that can be bound, and is
 generally sufficient for most use cases. If additional directories need to be
 accessed by the Docker image, they can be added to this list by the user.
@@ -168,10 +168,10 @@ entire home directory; although in some cases may be necessary to map
 $HOME/.ssh or other directories to access SSH keys and the like. For user
 convenience, the proxy user created in the Docker image by default has the same
 $HOME as the user who created the container, so these types of bind can be done
-by simply adding `${env:HOME}/.ssh` to `docker:bind`
+by simply adding `${env:HOME}/.ssh` to `run:bind`
 
 #### Specifying an alternate Docker image
-An alternate Dockerfile can be specified by setting the `pyrex:dockerfile`
+An alternate Dockerfile can be specified by setting the `config:dockerfile`
 attribute.
 
 #### Debugging the container
@@ -189,17 +189,17 @@ and will be discarded when `pyrex-run` exits.
 It may occasionally be necessary to maintain multiple different Docker images
 simultaneously. Pyrex can handle this without any problems, however it should
 be noted that each different image should be given a unique tag using the
-`${pyrex:tag}` variable. This variable specifies the name of the tag that Pyrex
-will attach to the image when it is built to prevent Docker from thinking the
-image is unused and removing it. Each image should have unique tag assigned to
-it. In addition, it is highly recommended that the tag include the variables
+`${config:tag}` variable. This variable specifies the name of the tag that
+Pyrex will attach to the image when it is built to prevent Docker from thinking
+the image is unused and removing it. Each image should have unique tag assigned
+to it. In addition, it is highly recommended that the tag include the variables
 `${build:username}` and `${build:groupname}` to ensure that multiple users
 sharing a computer do not overwrite each others tags.
 
 ### Running Pyrex
 Once Pyrex is configured, using it is very straight forward. First, source the
 Pyrex environment setup you created. This will setup up the current shell to
-run the commands listed in `${pyrex:command}` inside of Pyrex. Once this is
+run the commands listed in `${config:command}` inside of Pyrex. Once this is
 done, you can simply run those commands and they will be executed in Pyrex.
 
 ### Bypassing Pyrex
@@ -207,7 +207,7 @@ In some cases, it may be desirable to bypass Pyrex and run the commands it
 wraps locally instead of in the docker container. This can be done in one of
 two ways:
 
-1. Set `${docker:enable}` to `0` in `pyrex.ini` which will disable using Docker
+1. Set `${run:enable}` to `0` in `pyrex.ini` which will disable using Docker
    for all commands
 2. Set the environment variable `PYREX_DOCKER` to `0`. Any Pyrex commands run
    with this variable will not be run in the Docker container.

@@ -65,7 +65,7 @@ class TestPyrex(unittest.TestCase):
         test_image = os.environ.get('TEST_IMAGE')
         if test_image:
             conf = self.get_config()
-            conf['pyrex']['dockerimage'] = test_image
+            conf['config']['pyreximage'] = test_image
             conf.write_conf()
 
     def get_config(self):
