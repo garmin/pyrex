@@ -18,6 +18,7 @@ import configparser
 import grp
 import os
 import pwd
+import re
 import shutil
 import stat
 import subprocess
@@ -257,6 +258,23 @@ class TestPyrex(unittest.TestCase):
         conf['config']['buildlocal'] = '0'
         conf.write_conf()
         self.assertPyrexHostCommand('true')
+
+    def test_version(self):
+        tag = None
+        if os.environ.get('TRAVIS_TAG'):
+            tag = os.environ['TRAVIS_TAG']
+        else:
+            try:
+                tags = subprocess.check_output(['git', '-C', PYREX_ROOT, 'tag', '-l', '--points-at', 'HEAD']).decode('utf-8').splitlines()
+                if tags:
+                    tag = tags[0]
+            except subprocess.CalledProcessError:
+                pass
+
+        if not tag or re.match(r'^v[0-9]', tag) is None:
+            raise unittest.SkipTest('No version tag found')
+
+        self.assertEqual(pyrex.VERSION, tag[1:], "Tag doesn't match pyrex version")
 
 if __name__ == "__main__":
     unittest.main()
