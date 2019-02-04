@@ -65,7 +65,7 @@ class TestPyrex(unittest.TestCase):
         test_image = os.environ.get('TEST_IMAGE')
         if test_image:
             conf = self.get_config()
-            conf['pyrex']['pyreximage'] = test_image
+            conf['config']['pyreximage'] = test_image
             conf.write_conf()
 
     def get_config(self):
@@ -217,10 +217,10 @@ class TestPyrex(unittest.TestCase):
         env['HOME'] = temp_home
 
         conf = self.get_config()
-        orig_bind = conf['docker']['bind']
+        orig_bind = conf['run']['bind']
 
         # Test binding by special token
-        conf['docker']['bind'] = orig_bind + ' ~/test'
+        conf['run']['bind'] = orig_bind + ' ~/test'
         conf.write_conf()
 
         self.assertPyrexContainerShellCommand('echo "hello" > /home/pyrex/test/test1.txt', env=env)
@@ -230,13 +230,13 @@ class TestPyrex(unittest.TestCase):
         home_file = os.path.join(self.thread_dir, 'home.txt')
         output = self.assertPyrexContainerShellCommand('echo $HOME > %s' % home_file, env=env, capture=True)
         with open(home_file, 'r') as f:
-            self.assertEqual(f.read().rstrip(), conf['pyrex']['home'])
+            self.assertEqual(f.read().rstrip(), conf['config']['home'])
 
         # Test that tildas not expanded if they are not at the beginning of the path
         tilda_test_dir = os.path.join(temp_dir, '~')
         os.makedirs(tilda_test_dir)
 
-        conf['docker']['bind'] = orig_bind + ' ' + tilda_test_dir
+        conf['run']['bind'] = orig_bind + ' ' + tilda_test_dir
         conf.write_conf()
 
         self.assertPyrexContainerShellCommand('echo "hello" > %s/test2.txt' % tilda_test_dir, env=env)
@@ -249,12 +249,12 @@ class TestPyrex(unittest.TestCase):
         conf = self.get_config()
 
         # Trying to build with an invalid registry should fail
-        conf['pyrex']['registry'] = 'does.not.exist.invalid'
+        conf['config']['registry'] = 'does.not.exist.invalid'
         conf.write_conf()
         self.assertPyrexHostCommand('true', returncode=1)
 
         # Disable building locally any try again
-        conf['pyrex']['buildlocal'] = '0'
+        conf['config']['buildlocal'] = '0'
         conf.write_conf()
         self.assertPyrexHostCommand('true')
 

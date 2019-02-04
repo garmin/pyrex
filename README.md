@@ -144,10 +144,10 @@ For more information about specific configuration values, see the default
 #### Binding directories into Docker
 In order for bitbake running in Docker to be able to build, it must have access
 to the data and config files from the host system. To make this easy, a
-variable called `docker:bind` is specified in the config file. Any directory
-that appears in this variable will be bound into the docker image at the same
-path (e.g. `/foo/bar` in the host will be bound to `/foo/bar` in Docker. By
-default, only the Openembedded root directory (a.k.a. `$PYREX_OEROOT`,
+variable called `run:bind` is specified in the config file. Any directory that
+appears in this variable will be bound into the docker image at the same path
+(e.g. `/foo/bar` in the host will be bound to `/foo/bar` in Docker. By default,
+only the Openembedded root directory (a.k.a. `$PYREX_OEROOT`,
 `${build:oeroot}`) is bound. This is the minimum that can be bound, and is
 generally sufficient for most use cases. If additional directories need to be
 accessed by the Docker image, they can be added to this list by the user.
@@ -170,7 +170,7 @@ will automatically coerce any bind path that starts with `~/` to map your home
 directory to the home directory of the pyrex user running in the container. For
 example, a common use case it to bind your .ssh directory into the container so
 that git fetches over ssh work. To do this, you would add `~/.ssh` to
-`${docker:bind}`
+`${run:bind}`
 
 You should **never** map directories like `/usr/bin`, `/etc/`, `/` as these
 will probably just break the container.
@@ -194,15 +194,15 @@ and will be discarded when `pyrex-run` exits.
 It may occasionally be necessary to maintain multiple different Docker images
 simultaneously. Pyrex can handle this without any problems, however it should
 be noted that each different image should be given a unique name using the
-`${pyrex:image}` variable. This variable specifies the name of the tag that Pyrex
-will attach to the image when it is built to prevent Docker from thinking the
-image is unused and removing it.
+`${config:image}` variable. This variable specifies the name of the tag that
+Pyrex will attach to the image when it is built to prevent Docker from thinking
+the image is unused and removing it.
 
 #### Pulling prebuilt images
 If you want Pyrex to pull a prebuild image (e.g. from Docker Hub or some other
 registry) instead of building the image locally every time the environment is
-sourced, set `${pyrex:buildlocal}` to `0` and set `${pyrex:image}` to the name
-of the image you would like to pull.
+sourced, set `${config:buildlocal}` to `0` and set `${config:image}` to the
+name of the image you would like to pull.
 
 *Note: For reproducibility reasons, it may be unwise to do this if you just
 going to pull the `latest` tag for an image. In that case, you are probably
@@ -211,7 +211,7 @@ better off building the images locally*
 ### Running Pyrex
 Once Pyrex is configured, using it is very straight forward. First, source the
 Pyrex environment setup you created. This will setup up the current shell to
-run the commands listed in `${pyrex:command}` inside of Pyrex. Once this is
+run the commands listed in `${config:command}` inside of Pyrex. Once this is
 done, you can simply run those commands and they will be executed in Pyrex.
 
 ### Bypassing Pyrex
@@ -219,7 +219,7 @@ In some cases, it may be desirable to bypass Pyrex and run the commands it
 wraps locally instead of in the docker container. This can be done in one of
 two ways:
 
-1. Set `${docker:enable}` to `0` in `pyrex.ini` which will disable using Docker
+1. Set `${run:enable}` to `0` in `pyrex.ini` which will disable using Docker
    for all commands
 2. Set the environment variable `PYREX_DOCKER` to `0`. Any Pyrex commands run
    with this variable will not be run in the Docker container.
