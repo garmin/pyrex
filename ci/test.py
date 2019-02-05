@@ -206,5 +206,15 @@ class TestPyrex(unittest.TestCase):
         self.assertEqual(username, pwd.getpwuid(os.getuid()).pw_name)
         self.assertEqual(groupname, grp.getgrgid(os.getgid()).gr_name)
 
+    def test_duplicate_binds(self):
+        temp_dir = tempfile.mkdtemp('-pyrex')
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        conf = self.get_config()
+        conf['run']['bind'] += ' %s %s' % (temp_dir, temp_dir)
+        conf.write_conf()
+
+        self.assertPyrexContainerShellCommand('true')
+
 if __name__ == "__main__":
     unittest.main()

@@ -326,7 +326,7 @@ def main():
                 docker_args.extend(['-t', '-e', 'TERM=%s' % os.environ['TERM']])
 
             # Configure binds
-            for b in config['run']['bind'].split():
+            for b in set(config['run']['bind'].split()):
                 docker_args.extend(['--mount', 'type=bind,src={b},dst={b}'.format(b=b)])
 
             # Pass environment variables
