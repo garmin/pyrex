@@ -63,11 +63,18 @@ class TestPyrex(unittest.TestCase):
         self.thread_dir = os.path.join(self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident()))
         os.makedirs(self.thread_dir)
 
+        conf = self.get_config()
+
         test_image = os.environ.get('TEST_IMAGE')
         if test_image:
-            conf = self.get_config()
             conf['config']['pyreximage'] = test_image
-            conf.write_conf()
+
+        # Always build the latest image locally for testing
+        conf['config']['pyrextag'] = 'latest'
+        conf['config']['buildlocal'] = '1'
+
+        conf.write_conf()
+
 
     def get_config(self):
         class Config(configparser.RawConfigParser):
