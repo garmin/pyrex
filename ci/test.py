@@ -65,11 +65,9 @@ class PyrexTest(unittest.TestCase):
         self.thread_dir = os.path.join(self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident()))
         os.makedirs(self.thread_dir)
 
-        self.test_image = os.environ.get(TEST_IMAGE_ENV_VAR)
-        if self.test_image:
-            conf = self.get_config()
-            conf['config']['dockerimage'] = self.test_image
-            conf.write_conf()
+        # Write out the default test config
+        conf = self.get_config()
+        conf.write_conf()
 
     def get_config(self, defaults=False):
         class Config(configparser.RawConfigParser):
@@ -85,6 +83,17 @@ class PyrexTest(unittest.TestCase):
             config.read(self.pyrex_conf)
         else:
             config.read_string(pyrex.read_default_config(True))
+
+            # Setup the config suitable for testing
+            self.test_image = os.environ.get(TEST_IMAGE_ENV_VAR)
+            if self.test_image:
+                config['config']['dockerimage'] = self.test_image
+
+            # Always build the latest image locally for testing. Use a tag that
+            # isn't present on docker hub so that any attempt to pull it fails
+            config['config']['pyrextag'] = 'ci-test'
+            config['config']['buildlocal'] = '1'
+
         return config
 
     def assertSubprocess(self, *args, capture=False, returncode=0, **kwargs):
@@ -305,8 +314,6 @@ class PyrexCore(PyrexTest):
         conftemplate = os.path.join(temp_dir, 'pyrex.ini.sample')
 
         conf = self.get_config(defaults=True)
-        if self.test_image:
-            conf['config']['pyreximage'] = self.test_image
         with open(conftemplate, 'w') as f:
             conf.write(f)
 
@@ -329,8 +336,6 @@ class PyrexCore(PyrexTest):
         conftemplate = os.path.join(temp_dir, 'pyrex.ini.sample')
 
         conf = self.get_config(defaults=True)
-        if self.test_image:
-            conf['config']['pyreximage'] = self.test_image
         del conf['config']['confversion']
         with open(conftemplate, 'w') as f:
             conf.write(f)

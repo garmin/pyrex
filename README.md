@@ -171,8 +171,8 @@ $HOME as the user who created the container, so these types of bind can be done
 by simply adding `${env:HOME}/.ssh` to `run:bind`
 
 #### Specifying an alternate Docker image
-An alternate Dockerfile can be specified by setting the `config:dockerfile`
-attribute.
+An alternate Dockerfile can be specified by setting the
+`dockerbuild:dockerfile` attribute.
 
 #### Debugging the container
 In the event that you need to get a shell into the container to run some
@@ -185,26 +185,19 @@ You can also run arbitrary commands in the container with the `pyrex-run`
 command. Be aware that any changes made to the container are not persistent,
 and will be discarded when `pyrex-run` exits.
 
-#### Managing multiple Docker images
-It may occasionally be necessary to maintain multiple different Docker images
-simultaneously. Pyrex can handle this without any problems, however it should
-be noted that each different image should be given a unique tag using the
-`${config:tag}` variable. This variable specifies the name of the tag that
-Pyrex will attach to the image when it is built to prevent Docker from thinking
-the image is unused and removing it. Each image should have unique tag assigned
-to it. In addition, it is highly recommended that the tag include the variables
-`${build:username}` and `${build:groupname}` to ensure that multiple users
-sharing a computer do not overwrite each others tags.
+#### Pulling the image
+By default, Pyrex will pull a docker image from dockerhub that matches the
+version of Pyrex you are running. In most cases this is probably what you want.
+However, if you are doing active Pyrex development or don't want to pull from a
+registry for some other reason, Pyrex can be configured to build the image
+locally when the environment is sources. To do this, set `${config:buildlocal}`
+to `1` and `${dockerbuild:dockerfile}` to the Dockerfile that describes what
+you want built.
 
-#### Pulling prebuilt images
-If you want Pyrex to pull a prebuild image (e.g. from Docker Hub or some other
-registry) instead of building the image locally every time the environment is
-sourced, set `${config:buildlocal}` to `0` and set `${config:tag}` to the name
-of the image you would like to pull.
-
-*Note: For reproducibility reasons, it may be unwise to do this if you just
-going to pull the `latest` tag for an image. In that case, you are probably
-better off building the images locally*
+While you *can* instruct Pyrex to pull the `latest` tag from dockehub for a
+given image instead of a versioned release tag, this is highly discouraged, as
+it will most certainly cause problems. In these cases, you probably want to
+build the image locally instead.
 
 ### Running Pyrex
 Once Pyrex is configured, using it is very straight forward. First, source the
@@ -252,15 +245,6 @@ The following items are either known to not work, or haven't been fully tested:
   there that are lighter weight (e.g. Alpine Linux), but Ubuntu was chosen
   because it is one of the [Sanity Tested Distros][] that Yocto supports. Pyrex
   aims to support a vanilla Yocto setup with minimal manual configuration.
-* *Why are the Docker images built on the fly?/Why aren't the Pyrex Docker
-  images published on Dockerhub?* The main reason that the Pyrex docker image
-  is built on the fly is to accommodate making the user that runs commands
-  inside the Docker container be equivalent to the user running the commands on
-  the outside. Each container is built with the owning user encoded into it and
-  thus can't be shared with any other users. This may not be ideal, but was the
-  best solution we have so far come up, even after evaluating some alternatives
-  like [fixuid](https://github.com/boxboat/fixuid). If you have better
-  alternatives, please feel free to propose them!
 * *What's with [cleanup.py](./docker/cleanup.py)?* When a Docker container's
   main process exits, any remaining process appears to be sent a `SIGKILL`.
   This can cause a significant problem with many of the child processes that
