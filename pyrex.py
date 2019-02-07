@@ -154,7 +154,7 @@ def main():
         except:
             pass
 
-        build_conffile = os.path.join(user_config['config']['tempdir'], 'pyrex.ini')
+        build_conffile = os.path.join(user_config['config']['tempdir'], 'build.ini')
 
         with open(build_conffile, 'w') as f:
             build_config.write(f)
