@@ -149,8 +149,6 @@ def main():
         build_config['build']['pyrexroot'] = os.environ['PYREX_ROOT']
         build_config['build']['initcommand'] = ' '.join(shlex.quote(a) for a in [oeinit] + args.init)
         build_config['build']['userconfig'] = conffile
-        build_config['build']['username'] = pwd.getpwuid(os.getuid()).pw_name
-        build_config['build']['groupname'] = grp.getgrgid(os.getgid()).gr_name
 
         # Merge the build config into the user config (so that interpolation works)
         user_config.read_dict(build_config.getrawdict())
@@ -313,16 +311,21 @@ def main():
                 sys.stderr.write("WARNING: buildid for docker image %s has changed\n" %
                         config['config']['image'])
 
+            uid = os.getuid()
+            gid = os.getgid()
+            username = pwd.getpwuid(uid).pw_name
+            groupname = grp.getgrgid(gid).gr_name
+
             command_prefix = ['/usr/libexec/tini/wrapper.py'] + config['run'].get('commandprefix', '').splitlines()
 
             docker_args = [docker_path, 'run',
                     '--rm',
                     '-i',
                     '--net=host',
-                    '-u', '%s:%s' % (os.getuid(), os.getgid()),
+                    '-u', '%d:%d' % (uid, gid),
                     '-e', 'PYREX_IN_DOCKER=1',
-                    '-e', 'PYREX_NEW_USER=%s' % config['build']['username'],
-                    '-e', 'PYREX_NEW_GROUP=%s' % config['build']['groupname'],
+                    '-e', 'PYREX_NEW_USER=%s' % username,
+                    '-e', 'PYREX_NEW_GROUP=%s' % groupname,
                     '-e', 'PYREX_INIT_COMMAND=%s' % config['build']['initcommand'],
                     '-e', 'PYREX_OEROOT=%s' % config['build']['oeroot'],
                     '-e', 'PYREX_CLEANUP_EXIT_WAIT',
@@ -351,8 +354,8 @@ def main():
             # Special case: Make the user SSH authentication socket available in Docker
             if 'SSH_AUTH_SOCK' in os.environ:
                 docker_args.extend([
-                    '--mount', 'type=bind,src=%s,dst=/tmp/%s-ssh-agent-sock' % (os.environ['SSH_AUTH_SOCK'], config['build']['username']),
-                    '-e', 'SSH_AUTH_SOCK=/tmp/%s-ssh-agent-sock' % config['build']['username'],
+                    '--mount', 'type=bind,src=%s,dst=/tmp/%s-ssh-agent-sock' % (os.environ['SSH_AUTH_SOCK'], username),
+                    '-e', 'SSH_AUTH_SOCK=/tmp/%s-ssh-agent-sock' % username,
                     ])
 
             # Pass along BB_ENV_EXTRAWHITE and anything it has whitelisted
