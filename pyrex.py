@@ -199,15 +199,17 @@ def main():
                 print("Getting Docker image up to date...")
                 docker_args = [docker_path, 'build',
                     '-t', config['config']['image'],
-                    '-f', config['dockerbuild']['dockerfile'],
-                    '--network=host',
-                    os.path.join(config['build']['pyrexroot'], 'docker')
+                    '-f', config['dockerbuild']['dockerfile']
                     ]
+
+                docker_args.extend(shlex.split(config['dockerbuild']['args']))
+
+                docker_args.append(os.path.join(config['build']['pyrexroot'], 'docker'))
 
                 if config['config']['registry']:
                     docker_args.extend(['--build-arg', 'MY_REGISTRY=%s/' % config['config']['registry']])
 
-                for e in ('http_proxy', 'https_proxy'):
+                for e in set(config['dockerbuild']['envargs'].split()):
                     if e in os.environ:
                         docker_args.extend(['--build-arg', '%s=%s' % (e, os.environ[e])])
 
