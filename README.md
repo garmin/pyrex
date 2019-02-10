@@ -239,6 +239,11 @@ The following items are either known to not work, or haven't been fully tested:
   the `docker pause` command, but this doesn't integrate with the parent shells
   job control.
 
+## Developing on Pyrex
+
+ If you are doing development on Pyrex itself, please read the [Developer
+ Documentation](./DEVELOPING.md)
+
 ## FAQ
 * *Why use a Ubuntu image as the default?* The default Docker image that Pyrex
   creates is based on Ubuntu. Yes, it is known that there are other images out
