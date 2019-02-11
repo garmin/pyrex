@@ -172,11 +172,19 @@ def main():
             try:
                 output = subprocess.check_output([docker_path, '--version']).decode('utf-8')
             except (subprocess.CalledProcessError, FileNotFoundError):
-                print("Unable to run '%s' as docker. Please make sure you have it installed." % docker_path)
-                print("For installation instructions, see the docker website. Commonly,")
-                print("one of the following is relevant:")
+                print(textwrap.fill(("Unable to run '%s' as docker. Please make sure you have it installed." +
+                                     "For installation instructions, see the docker website. Commonly, " +
+                                     "one of the following is relevant:") % docker_path))
+                print()
                 print("  https://docs.docker.com/install/linux/docker-ce/ubuntu/")
                 print("  https://docs.docker.com/install/linux/docker-ce/fedora/")
+                print()
+                print(textwrap.fill("To attempt running the build on your native operating system's set " +
+                                    "of packages, use:"))
+                print()
+                print("  export PYREX_DOCKER=0")
+                print("  . init-build-env ...")
+                print()
                 return 1
 
             m = re.match(r'.*version +([^\s,]+)', output)
@@ -220,6 +228,9 @@ def main():
             except subprocess.CalledProcessError:
                 return 1
         else:
+            print(textwrap.fill("Running outside of Docker. No guarantees are made about your Linux " +
+                                "distribution's compatibility with Yocto."))
+            print()
             build_config['build']['buildid'] = ''
 
         with open(args.conffile, 'w') as f:
