@@ -171,7 +171,7 @@ def main():
             # Check minimum docker version
             try:
                 output = subprocess.check_output([docker_path, '--version']).decode('utf-8')
-            except subprocess.CalledProcessError:
+            except (subprocess.CalledProcessError, FileNotFoundError):
                 print("Unable to run '%s' as docker. Please make sure you have it installed." % docker_path)
                 print("For installation instructions, see the docker website. Commonly,")
                 print("one of the following is relevant:")
