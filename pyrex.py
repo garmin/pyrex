@@ -177,6 +177,10 @@ def main():
                 print("one of the following is relevant:")
                 print("  https://docs.docker.com/install/linux/docker-ce/ubuntu/")
                 print("  https://docs.docker.com/install/linux/docker-ce/fedora/")
+                print("")
+                print("If you don't want to install docker, please disable it by setting:")
+                print(" PYREX_DOCKER=0")
+                print("in your environment")
                 return 1
 
             m = re.match(r'.*version +([^\s,]+)', output)
