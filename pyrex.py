@@ -106,32 +106,51 @@ def get_tag_buildid(config):
 def use_docker(config):
     return os.environ.get('PYREX_DOCKER', config['run']['enable']) == '1'
 
+def copy_templateconf(conffile):
+    template = os.environ['PYREXCONFTEMPLATE']
+
+    if os.path.isfile(template):
+        shutil.copyfile(template, conffile)
+    else:
+        with open(conffile, 'w') as f:
+            f.write(read_default_config(False))
+
+def check_confversion(user_config):
+    confversion = user_config['config']['confversion']
+    if confversion != PYREX_CONFVERSION:
+        sys.stderr.write("Bad pyrex conf version '%s'\n" % user_config['config']['confversion'])
+        return False
+    return True
+
 def main():
     def capture(args):
         builddir = os.environ['BUILDDIR']
         conffile = os.path.abspath(os.path.join(builddir, 'conf', 'pyrex.ini'))
-        template = os.environ['PYREXCONFTEMPLATE']
         oeinit = os.environ['PYREX_OEINIT']
 
         user_config = Config()
 
         if not os.path.isfile(conffile):
-            if os.path.isfile(template):
-                shutil.copyfile(template, conffile)
-            else:
-                with open(conffile, 'w') as f:
-                    f.write(read_default_config(False))
+            copy_templateconf(conffile)
 
         user_config.read(conffile)
 
         try:
-            confversion = user_config['config']['confversion']
-            if confversion != PYREX_CONFVERSION:
-                sys.stderr.write("Bad pyrex conf version '%s'\n" % user_config['config']['confversion'])
+            if not check_confversion(user_config):
                 return 1
         except KeyError:
-            sys.stderr.write("Cannot find pyrex conf version!\n")
-            return 1
+            sys.stderr.write("Cannot find pyrex conf version! Restoring from template\n")
+
+            copy_templateconf(conffile)
+
+            user_config = Config()
+            user_config.read(conffile)
+            try:
+                if not check_confversion(user_config):
+                    return 1
+            except KeyError:
+                sys.stderr.write("Still cannot find pyrex conf version!\n")
+                return 1
 
         # Setup the build configuration
         build_config = Config()

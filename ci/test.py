@@ -62,13 +62,13 @@ class TestPyrex(unittest.TestCase):
         self.thread_dir = os.path.join(self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident()))
         os.makedirs(self.thread_dir)
 
-        test_image = os.environ.get('TEST_IMAGE')
-        if test_image:
+        self.test_image = os.environ.get('TEST_IMAGE')
+        if self.test_image:
             conf = self.get_config()
-            conf['config']['pyreximage'] = test_image
+            conf['config']['pyreximage'] = self.test_image
             conf.write_conf()
 
-    def get_config(self):
+    def get_config(self, defaults=False):
         class Config(configparser.RawConfigParser):
             def write_conf(self):
                 write_config_helper(self)
@@ -78,7 +78,7 @@ class TestPyrex(unittest.TestCase):
                 conf.write(f)
 
         config = Config()
-        if os.path.exists(self.pyrex_conf):
+        if os.path.exists(self.pyrex_conf) and not defaults:
             config.read(self.pyrex_conf)
         else:
             config.read_string(pyrex.read_default_config(True))
@@ -215,6 +215,76 @@ class TestPyrex(unittest.TestCase):
         conf.write_conf()
 
         self.assertPyrexContainerShellCommand('true')
+
+    def test_bad_confversion(self):
+        # Verify that a bad config is an error
+        conf = self.get_config()
+        conf['config']['confversion'] = '0'
+        conf.write_conf()
+
+        self.assertPyrexHostCommand('true', returncode=1)
+
+    def test_conftemplate_ignored(self):
+        # Write out a template with a bad version in an alternate location. It
+        # should be ignored
+        temp_dir = tempfile.mkdtemp('-pyrex')
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        conftemplate = os.path.join(temp_dir, 'pyrex.ini.sample')
+
+        conf = self.get_config(defaults=True)
+        conf['config']['confversion'] = '0'
+        with open(conftemplate, 'w') as f:
+            conf.write(f)
+
+        self.assertPyrexHostCommand('true')
+
+    def test_conf_upgrade(self):
+        conf = self.get_config()
+        del conf['config']['confversion']
+        conf.write_conf()
+
+        # Write out a template in an alternate location. It will be respected
+        temp_dir = tempfile.mkdtemp('-pyrex')
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        conftemplate = os.path.join(temp_dir, 'pyrex.ini.sample')
+
+        conf = self.get_config(defaults=True)
+        if self.test_image:
+            conf['config']['pyreximage'] = self.test_image
+        with open(conftemplate, 'w') as f:
+            conf.write(f)
+
+        env = os.environ.copy()
+        env['PYREXCONFTEMPLATE'] = conftemplate
+
+        self.assertPyrexHostCommand('true', env=env)
+
+    def test_bad_conf_upgrade(self):
+        # Write out a template in an alternate location, but it also fails to
+        # have a confversion
+        conf = self.get_config()
+        del conf['config']['confversion']
+        conf.write_conf()
+
+        # Write out a template in an alternate location. It will be respected
+        temp_dir = tempfile.mkdtemp('-pyrex')
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        conftemplate = os.path.join(temp_dir, 'pyrex.ini.sample')
+
+        conf = self.get_config(defaults=True)
+        if self.test_image:
+            conf['config']['pyreximage'] = self.test_image
+        del conf['config']['confversion']
+        with open(conftemplate, 'w') as f:
+            conf.write(f)
+
+        env = os.environ.copy()
+        env['PYREXCONFTEMPLATE'] = conftemplate
+
+        self.assertPyrexHostCommand('true', returncode=1, env=env)
 
 if __name__ == "__main__":
     unittest.main()
