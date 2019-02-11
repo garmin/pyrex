@@ -23,7 +23,10 @@ shift
 
 cd $DOCKER_DIR
 
-if [ -n "$TRAVIS_TAG" ]; then
+if echo "$IMAGE" | grep -q ":"; then
+    TAG=$(echo $IMAGE | cut -f2 -d:)
+    IMAGE=$(echo $IMAGE | cut -f1 -d:)
+elif [ -n "$TRAVIS_TAG" ]; then
     TAG=$TRAVIS_TAG
 else
     TAG=latest

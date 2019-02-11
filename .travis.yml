@@ -24,9 +24,13 @@ after_success:
 - coverage3 combine
 - coveralls
 deploy:
-  provider: script
+- provider: script
   script: "./ci/deploy_docker.sh $TEST_IMAGE"
   on:
     all_branches: true
     condition: "$TRAVIS_PULL_REQUEST == false && ($TRAVIS_BRANCH == master || $TRAVIS_TAG
       =~ ^v[0-9].*$)"
+- provider: script
+  script: "./ci/deploy_docker.sh $TEST_IMAGE:next"
+  on:
+    branch: next
