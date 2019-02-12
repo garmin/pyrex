@@ -3,13 +3,13 @@ python:
   - "3.4"
 #  - "3.5"
 #  - "3.6"
+env:
+  - TEST_IMAGE=ubuntu-14.04
+  - TEST_IMAGE=ubuntu-16.04
 services:
   - docker
 before_install:
-  - wget https://downloads.yoctoproject.org/releases/yocto/yocto-2.6/poky-thud-20.0.0.tar.bz2
-  - tar -xvf poky-thud-20.0.0.tar.bz2
-  - ln -s poky-thud-20.0.0 poky
-  - ln -s ../pyrex-init-build-env poky/
+  - ./ci/prepare.sh
 install:
   - pip3 install coverage
   - pip3 install coveralls

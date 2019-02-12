@@ -32,7 +32,7 @@ import textwrap
 import stat
 
 THIS_SCRIPT = os.path.basename(__file__)
-PYREX_VERSION = '1'
+PYREX_CONFVERSION = '1'
 MINIMUM_DOCKER_VERSION = 17
 
 class Config(configparser.ConfigParser):
@@ -47,10 +47,10 @@ class Config(configparser.ConfigParser):
         merging configs together"""
         return {section: values for (section, values) in self.items(raw=True)}
 
-def read_default_config(keep_values):
+def read_default_config(keep_defaults):
     with open(os.path.join(os.path.dirname(__file__), 'pyrex.ini'), 'r') as f:
-        l = f.read().replace('@VERSION@', PYREX_VERSION)
-        if keep_values:
+        l = f.read().replace('@CONFVERSION@', PYREX_CONFVERSION)
+        if keep_defaults:
             l = l.replace('%', '')
         else:
             l = l.replace('%', '#')
@@ -65,7 +65,7 @@ def load_configs(conffile):
     # Load the default config, except the version
     user_config = Config()
     user_config.read_string(read_default_config(True))
-    del user_config['pyrex']['version']
+    del user_config['config']['confversion']
 
     # Load user config file
     with open(build_config['build']['userconfig'], 'r') as f:
@@ -80,7 +80,7 @@ def load_configs(conffile):
     except configparser.DuplicateSectionError:
         pass
 
-    for env in user_config['pyrex']['envimport'].split():
+    for env in user_config['config']['envimport'].split():
         if env in os.environ:
             user_config['env'][env] = os.environ[env]
 
@@ -100,37 +100,57 @@ def stop_coverage():
         pass
 
 def get_tag_buildid(config):
-    docker_args = [config['pyrex']['dockerpath'], 'image', 'inspect', config['pyrex']['tag'], '--format={{ .Id }}']
+    docker_args = [config['config']['dockerpath'], 'image', 'inspect', config['config']['tag'], '--format={{ .Id }}']
     return subprocess.check_output(docker_args).decode('utf-8').rstrip()
 
 def use_docker(config):
-    return os.environ.get('PYREX_DOCKER', config['docker']['enable']) == '1'
+    return os.environ.get('PYREX_DOCKER', config['run']['enable']) == '1'
+
+def copy_templateconf(conffile):
+    template = os.environ['PYREXCONFTEMPLATE']
+
+    if os.path.isfile(template):
+        shutil.copyfile(template, conffile)
+    else:
+        with open(conffile, 'w') as f:
+            f.write(read_default_config(False))
+
+def check_confversion(user_config):
+    confversion = user_config['config']['confversion']
+    if confversion != PYREX_CONFVERSION:
+        sys.stderr.write("Bad pyrex conf version '%s'\n" % user_config['config']['confversion'])
+        return False
+    return True
 
 def main():
     def capture(args):
         builddir = os.environ['BUILDDIR']
         conffile = os.path.abspath(os.path.join(builddir, 'conf', 'pyrex.ini'))
-        template = os.environ['PYREXCONFTEMPLATE']
         oeinit = os.environ['PYREX_OEINIT']
 
         user_config = Config()
 
         if not os.path.isfile(conffile):
-            if os.path.isfile(template):
-                shutil.copyfile(template, conffile)
-            else:
-                with open(conffile, 'w') as f:
-                    f.write(read_default_config(False))
+            copy_templateconf(conffile)
 
         user_config.read(conffile)
 
         try:
-            if user_config['pyrex']['version'] != PYREX_VERSION:
-                sys.stderr.write("Bad pyrex conf version '%s'\n" % user_config['pyrex']['version'])
+            if not check_confversion(user_config):
                 return 1
         except KeyError:
-            sys.stderr.write("Cannot find pyrex conf version!\n")
-            return 1
+            sys.stderr.write("Cannot find pyrex conf version! Restoring from template\n")
+
+            copy_templateconf(conffile)
+
+            user_config = Config()
+            user_config.read(conffile)
+            try:
+                if not check_confversion(user_config):
+                    return 1
+            except KeyError:
+                sys.stderr.write("Still cannot find pyrex conf version!\n")
+                return 1
 
         # Setup the build configuration
         build_config = Config()
@@ -149,11 +169,11 @@ def main():
         user_config.read_dict(build_config.getrawdict())
 
         try:
-            os.makedirs(user_config['pyrex']['tempdir'])
+            os.makedirs(user_config['config']['tempdir'])
         except:
             pass
 
-        build_conffile = os.path.join(user_config['pyrex']['tempdir'], 'pyrex.ini')
+        build_conffile = os.path.join(user_config['config']['tempdir'], 'build.ini')
 
         with open(build_conffile, 'w') as f:
             build_config.write(f)
@@ -166,7 +186,7 @@ def main():
         config, build_config = load_configs(args.conffile)
 
         if use_docker(config):
-            docker_path = config['pyrex']['dockerpath']
+            docker_path = config['config']['dockerpath']
 
             # Check minimum docker version
             try:
@@ -205,13 +225,15 @@ def main():
                 '--build-arg', 'MY_GROUP=%s' % config['build']['groupname'],
                 '--build-arg', 'MY_UID=%d' % os.getuid(),
                 '--build-arg', 'MY_GID=%d' % os.getgid(),
-                '--build-arg', 'MY_HOME=%s' % config['pyrex']['home'],
-                '--build-arg', 'MY_REGISTRY=%s' % config['pyrex']['registry'],
-                '-t', config['pyrex']['tag'],
-                '-f', config['pyrex']['dockerfile'],
+                '--build-arg', 'MY_HOME=%s' % config['config']['home'],
+                '-t', config['config']['tag'],
+                '-f', config['config']['dockerfile'],
                 '--network=host',
                 os.path.join(config['build']['pyrexroot'], 'docker')
                 ]
+
+            if config['config']['registry']:
+                docker_args.extend(['--build-arg', 'MY_REGISTRY=%s/' % config['config']['registry']])
 
             for e in ('http_proxy', 'https_proxy'):
                 if e in os.environ:
@@ -236,7 +258,7 @@ def main():
         with open(args.conffile, 'w') as f:
             build_config.write(f)
 
-        shimdir = os.path.join(config['pyrex']['tempdir'], 'bin')
+        shimdir = os.path.join(config['config']['tempdir'], 'bin')
 
         try:
             shutil.rmtree(shimdir)
@@ -269,11 +291,11 @@ def main():
             f.write(textwrap.dedent('''\
                 #! /bin/sh
                 exec {runfile} {shell} "$@"
-                '''.format(runfile=runfile, shell=config['pyrex']['shell'])))
+                '''.format(runfile=runfile, shell=config['config']['shell'])))
         os.chmod(shellfile, stat.S_IRWXU)
 
 
-        for g in config['pyrex']['commands'].split():
+        for g in config['config']['commands'].split():
             if g:
                 for cmd in glob.iglob(g):
                     if os.path.isfile(cmd) and os.access(cmd, os.X_OK):
@@ -290,7 +312,7 @@ def main():
                 print("Docker was not enabled when the environment was setup. Cannot use it now!")
                 return 1
 
-            docker_path = config['pyrex']['dockerpath']
+            docker_path = config['config']['dockerpath']
 
             try:
                 buildid = get_tag_buildid(config)
@@ -300,9 +322,9 @@ def main():
 
             if buildid != config['build']['buildid']:
                 sys.stderr.write("WARNING: buildid for docker image %s has changed\n" %
-                        config['pyrex']['tag'])
+                        config['config']['tag'])
 
-            command_prefix = ['/usr/libexec/tini/wrapper.py'] + config['docker'].get('commandprefix', '').splitlines()
+            command_prefix = ['/usr/libexec/tini/wrapper.py'] + config['run'].get('commandprefix', '').splitlines()
 
             docker_args = [docker_path, 'run',
                     '--rm',
@@ -323,11 +345,11 @@ def main():
                 docker_args.extend(['-t', '-e', 'TERM=%s' % os.environ['TERM']])
 
             # Configure binds
-            for b in config['docker']['bind'].split():
+            for b in set(config['run']['bind'].split()):
                 docker_args.extend(['--mount', 'type=bind,src={b},dst={b}'.format(b=b)])
 
             # Pass environment variables
-            for e in config['docker']['envvars'].split():
+            for e in config['run']['envvars'].split():
                 docker_args.extend(['-e', e])
 
             # Special case: Make the user SSH authentication socket available in Docker
@@ -343,10 +365,10 @@ def main():
                 for e in os.environ['BB_ENV_EXTRAWHITE'].split():
                     docker_args.extend(['-e', e])
 
-            docker_args.extend(shlex.split(config['docker'].get('args', '')))
+            docker_args.extend(shlex.split(config['run'].get('args', '')))
 
             docker_args.append('--')
-            docker_args.append(config['pyrex']['tag'])
+            docker_args.append(config['config']['tag'])
             docker_args.extend(args.command)
 
             stop_coverage()
@@ -377,7 +399,7 @@ def main():
             os.write(args.fd, c.encode('utf-8'))
             os.write(args.fd, '\n'.encode('utf-8'))
 
-        write_cmd('PATH=%s:${PATH}' % os.path.join(config['pyrex']['tempdir'], 'bin'))
+        write_cmd('PATH=%s:${PATH}' % os.path.join(config['config']['tempdir'], 'bin'))
         write_cmd('cd "%s"' % config['build']['builddir'])
         return 0
 

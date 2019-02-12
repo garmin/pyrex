@@ -14,14 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import configparser
+import grp
 import os
+import pwd
 import shutil
+import stat
 import subprocess
-import unittest
-import threading
 import sys
+import tempfile
+import threading
+import unittest
 
 PYREX_ROOT = os.path.join(os.path.dirname(__file__), '..')
+sys.path.append(PYREX_ROOT)
+import pyrex
 
 class TestPyrex(unittest.TestCase):
     def setUp(self):
@@ -34,6 +41,11 @@ class TestPyrex(unittest.TestCase):
         cleanup_build()
         os.makedirs(self.build_dir)
         self.addCleanup(cleanup_build)
+
+        conf_dir = os.path.join(self.build_dir, 'conf')
+        os.makedirs(conf_dir)
+
+        self.pyrex_conf = os.path.join(conf_dir, 'pyrex.ini')
 
         def cleanup_env():
             os.environ = self.old_environ
@@ -49,6 +61,28 @@ class TestPyrex(unittest.TestCase):
 
         self.thread_dir = os.path.join(self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident()))
         os.makedirs(self.thread_dir)
+
+        self.test_image = os.environ.get('TEST_IMAGE')
+        if self.test_image:
+            conf = self.get_config()
+            conf['config']['pyreximage'] = self.test_image
+            conf.write_conf()
+
+    def get_config(self, defaults=False):
+        class Config(configparser.RawConfigParser):
+            def write_conf(self):
+                write_config_helper(self)
+
+        def write_config_helper(conf):
+            with open(self.pyrex_conf, 'w') as f:
+                conf.write(f)
+
+        config = Config()
+        if os.path.exists(self.pyrex_conf) and not defaults:
+            config.read(self.pyrex_conf)
+        else:
+            config.read_string(pyrex.read_default_config(True))
+        return config
 
     def assertSubprocess(self, *args, capture=False, returncode=0, **kwargs):
         if capture:
@@ -77,23 +111,32 @@ class TestPyrex(unittest.TestCase):
             self.assertEqual(ret, returncode, msg='%s failed')
             return None
 
-    def assertPyrexCommand(self, *args, **kwargs):
+    def assertPyrexHostCommand(self, *args, **kwargs):
         cmd_file = os.path.join(self.thread_dir, 'command')
         with open(cmd_file, 'w') as f:
             f.write(' && '.join(['. ./poky/pyrex-init-build-env'] + list(args)))
         return self.assertSubprocess(['/bin/bash', cmd_file], cwd=PYREX_ROOT, **kwargs)
 
+    def assertPyrexContainerShellCommand(self, *args, **kwargs):
+        cmd_file = os.path.join(self.thread_dir, 'container_command')
+        with open(cmd_file, 'w') as f:
+            f.write(' && '.join(args))
+        return self.assertPyrexHostCommand('pyrex-shell %s' % cmd_file, **kwargs)
+
+    def assertPyrexContainerCommand(self, cmd, **kwargs):
+        return self.assertPyrexHostCommand('pyrex-run %s' % cmd, **kwargs)
+
     def test_init(self):
-        self.assertPyrexCommand('true')
+        self.assertPyrexHostCommand('true')
 
     def test_bitbake_parse(self):
-        self.assertPyrexCommand('bitbake -p')
+        self.assertPyrexHostCommand('bitbake -p')
 
     def test_pyrex_shell(self):
-        self.assertPyrexCommand('pyrex-shell -c "exit 3"', returncode=3)
+        self.assertPyrexContainerShellCommand('exit 3', returncode=3)
 
     def test_pyrex_run(self):
-        self.assertPyrexCommand('pyrex-run /bin/false', returncode=1)
+        self.assertPyrexContainerCommand('/bin/false', returncode=1)
 
     def test_disable_pyrex(self):
         # Capture our cgroups
@@ -103,14 +146,14 @@ class TestPyrex(unittest.TestCase):
         pyrex_cgroup_file = os.path.join(self.thread_dir, 'pyrex_cgroup')
 
         # Capture cgroups when pyrex is enabled
-        self.assertPyrexCommand('pyrex-shell -c "cat /proc/self/cgroup > %s"' % pyrex_cgroup_file)
+        self.assertPyrexContainerShellCommand('cat /proc/self/cgroup > %s' % pyrex_cgroup_file)
         with open(pyrex_cgroup_file, 'r') as f:
             pyrex_cgroup = f.read()
         self.assertNotEqual(cgroup, pyrex_cgroup)
 
         env = os.environ.copy()
         env['PYREX_DOCKER'] = '0'
-        self.assertPyrexCommand('pyrex-shell -c "cat /proc/self/cgroup > %s"' % pyrex_cgroup_file, env=env)
+        self.assertPyrexContainerShellCommand('cat /proc/self/cgroup > %s' % pyrex_cgroup_file, env=env)
         with open(pyrex_cgroup_file, 'r') as f:
             pyrex_cgroup = f.read()
         self.assertEqual(cgroup, pyrex_cgroup)
@@ -118,7 +161,7 @@ class TestPyrex(unittest.TestCase):
     def test_quiet_build(self):
         env = os.environ.copy()
         env['PYREX_DOCKER_BUILD_QUIET'] = '1'
-        self.assertPyrexCommand('true', env=env)
+        self.assertPyrexHostCommand('true', env=env)
 
     def test_no_docker_build(self):
         # Prevent docker from working
@@ -127,10 +170,10 @@ class TestPyrex(unittest.TestCase):
         # Docker will fail if invoked here
         env = os.environ.copy()
         env['PYREX_DOCKER'] = '0'
-        self.assertPyrexCommand('true', env=env)
+        self.assertPyrexHostCommand('true', env=env)
 
         # Verify that pyrex won't allow you to try and use docker later
-        output = self.assertPyrexCommand('PYREX_DOCKER=1 bitbake', returncode=1, capture=True, env=env).decode('utf-8')
+        output = self.assertPyrexHostCommand('PYREX_DOCKER=1 bitbake', returncode=1, capture=True, env=env).decode('utf-8')
         self.assertIn('Docker was not enabled when the environment was setup', output)
 
     def test_bad_docker(self):
@@ -139,8 +182,109 @@ class TestPyrex(unittest.TestCase):
 
         # Verify that attempting to run build pyrex without docker shows the
         # installation instructions
-        output = self.assertPyrexCommand('true', returncode=1, capture=True).decode('utf-8')
+        output = self.assertPyrexHostCommand('true', returncode=1, capture=True).decode('utf-8')
         self.assertIn('Unable to run', output)
+
+    def test_ownership(self):
+        # Test that files created in docker are the same UID/GID as the user
+        # running outside
+
+        test_file = os.path.join(self.thread_dir, 'ownertest')
+        if os.path.exists(test_file):
+            os.unlink(test_file)
+
+        self.assertPyrexContainerShellCommand('echo "$(id -un):$(id -gn)" > %s' % test_file)
+
+        s = os.stat(test_file)
+
+        self.assertEqual(s.st_uid, os.getuid())
+        self.assertEqual(s.st_gid, os.getgid())
+
+        with open(test_file, 'r') as f:
+            (username, groupname) = f.read().rstrip().split(':')
+
+        self.assertEqual(username, pwd.getpwuid(os.getuid()).pw_name)
+        self.assertEqual(groupname, grp.getgrgid(os.getgid()).gr_name)
+
+    def test_duplicate_binds(self):
+        temp_dir = tempfile.mkdtemp('-pyrex')
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        conf = self.get_config()
+        conf['run']['bind'] += ' %s %s' % (temp_dir, temp_dir)
+        conf.write_conf()
+
+        self.assertPyrexContainerShellCommand('true')
+
+    def test_bad_confversion(self):
+        # Verify that a bad config is an error
+        conf = self.get_config()
+        conf['config']['confversion'] = '0'
+        conf.write_conf()
+
+        self.assertPyrexHostCommand('true', returncode=1)
+
+    def test_conftemplate_ignored(self):
+        # Write out a template with a bad version in an alternate location. It
+        # should be ignored
+        temp_dir = tempfile.mkdtemp('-pyrex')
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        conftemplate = os.path.join(temp_dir, 'pyrex.ini.sample')
+
+        conf = self.get_config(defaults=True)
+        conf['config']['confversion'] = '0'
+        with open(conftemplate, 'w') as f:
+            conf.write(f)
+
+        self.assertPyrexHostCommand('true')
+
+    def test_conf_upgrade(self):
+        conf = self.get_config()
+        del conf['config']['confversion']
+        conf.write_conf()
+
+        # Write out a template in an alternate location. It will be respected
+        temp_dir = tempfile.mkdtemp('-pyrex')
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        conftemplate = os.path.join(temp_dir, 'pyrex.ini.sample')
+
+        conf = self.get_config(defaults=True)
+        if self.test_image:
+            conf['config']['pyreximage'] = self.test_image
+        with open(conftemplate, 'w') as f:
+            conf.write(f)
+
+        env = os.environ.copy()
+        env['PYREXCONFTEMPLATE'] = conftemplate
+
+        self.assertPyrexHostCommand('true', env=env)
+
+    def test_bad_conf_upgrade(self):
+        # Write out a template in an alternate location, but it also fails to
+        # have a confversion
+        conf = self.get_config()
+        del conf['config']['confversion']
+        conf.write_conf()
+
+        # Write out a template in an alternate location. It will be respected
+        temp_dir = tempfile.mkdtemp('-pyrex')
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        conftemplate = os.path.join(temp_dir, 'pyrex.ini.sample')
+
+        conf = self.get_config(defaults=True)
+        if self.test_image:
+            conf['config']['pyreximage'] = self.test_image
+        del conf['config']['confversion']
+        with open(conftemplate, 'w') as f:
+            conf.write(f)
+
+        env = os.environ.copy()
+        env['PYREXCONFTEMPLATE'] = conftemplate
+
+        self.assertPyrexHostCommand('true', returncode=1, env=env)
 
 if __name__ == "__main__":
     unittest.main()
