@@ -91,14 +91,6 @@ RUN apt-get -y update && apt-get -y install \
     g++-multilib \
 # Screen to enable devshell
     screen \
-# Required to build tini from source
-    cmake \
-# Required to build icecream from source
-    autotools-dev \
-    autoconf \
-    libtool \
-    libcap-ng-dev \
-    liblzo2-dev \
 && rm -rf /var/lib/apt/lists/*
 
 RUN addgroup --gid $MY_GID $MY_GROUP && \
@@ -108,30 +100,9 @@ RUN addgroup --gid $MY_GID $MY_GROUP && \
 RUN echo "$MY_USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Use a recent version of Icecream, which has many bug fixes
-RUN mkdir -p /usr/src/icecream && \
-    cd /usr/src/icecream && \
-    ICECREAM_VER="1.2" && \
-    wget -O icecream.tar.gz https://github.com/icecc/icecream/archive/${ICECREAM_VER}.tar.gz && \
-    tar -xvzf icecream.tar.gz && \
-    cd icecream-${ICECREAM_VER} && \
-    wget -O recompile.patch https://github.com/icecc/icecream/commit/cd082c64adcd3c2a22dc0565f6e5b249a975694a.patch && \
-    patch -p1 < recompile.patch && \
-    cd .. && \
-    mkdir build && \
-    cd build && \
-    ../icecream-${ICECREAM_VER}/autogen.sh && \
-    ../icecream-${ICECREAM_VER}/configure \
-        --prefix=/usr \
-        --enable-gcc-color-diagnostics \
-        --enable-gcc-show-caret \
-        --disable-gcc-fdirectives-only \
-        --enable-clang-rewrite-includes \
-        --without-man \
-        && \
-    make && \
-    make install && \
-    cd / && \
-    rm -rf /usr/src/icecream
+RUN wget https://github.com/JoshuaWatt/pyrex-utilities/releases/download/2019.02.13/icecream.tar.gz && \
+    tar -xzf icecream.tar.gz -C / && \
+    rm -rf icecream.tar.gz
 
 # Setup Icecream distributed compiling client. The client tries several IPC
 # mechanisms to find the daemon, including connecting to a localhost TCP
@@ -141,7 +112,7 @@ RUN mkdir -p /usr/src/icecream && \
 RUN mkdir -p /usr/share/icecc/toolchain && \
     cd /usr/share/icecc/toolchain/ && \
     TC_NAME=$(mktemp) && \
-    /usr/libexec/icecc/icecc-create-env --gcc $(which gcc) $(which g++) 5> $TC_NAME && \
+    /usr/local/libexec/icecc/icecc-create-env --gcc $(which gcc) $(which g++) 5> $TC_NAME && \
     mv $(cat $TC_NAME) native-gcc.tar.gz && \
     rm $TC_NAME
 
@@ -158,18 +129,8 @@ ENV LC_ALL en_US.UTF-8
 RUN echo "defbce on" >> $MY_HOME/.screenrc
 
 # Download and install tini
-RUN mkdir -p /usr/src/tini && \
-    cd /usr/src/tini && \
-    TINI_SHA1=c3b92ce685d0387c5d508f1856aa6d4cae25db8d && \
-    wget -O tini.tar.gz https://github.com/JPEWdev/tini/archive/${TINI_SHA1}.tar.gz && \
-    tar -xvzf tini.tar.gz && \
-    mkdir build && \
-    cd build && \
-    cmake ../tini-${TINI_SHA1} && \
-    make && \
-    make install && \
-    cd / && \
-    rm -rf /usr/src/tini
+RUN wget -O /usr/local/bin/tini https://github.com/JoshuaWatt/pyrex-utilities/releases/download/2019.02.13/tini && \
+    chmod +x /usr/local/bin/tini
 
 # Add startup scripts
 COPY ./startup.sh /usr/libexec/tini/startup.sh

@@ -30,7 +30,7 @@ PYREX_ROOT = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(PYREX_ROOT)
 import pyrex
 
-class TestPyrex(unittest.TestCase):
+class PyrexTest(unittest.TestCase):
     def setUp(self):
         self.build_dir = os.path.abspath(os.path.join(PYREX_ROOT, 'build'))
 
@@ -126,6 +126,7 @@ class TestPyrex(unittest.TestCase):
     def assertPyrexContainerCommand(self, cmd, **kwargs):
         return self.assertPyrexHostCommand('pyrex-run %s' % cmd, **kwargs)
 
+class PyrexCore(PyrexTest):
     def test_init(self):
         self.assertPyrexHostCommand('true')
 
@@ -285,6 +286,13 @@ class TestPyrex(unittest.TestCase):
         env['PYREXCONFTEMPLATE'] = conftemplate
 
         self.assertPyrexHostCommand('true', returncode=1, env=env)
+
+class TestImage(PyrexTest):
+    def test_tini(self):
+        self.assertPyrexContainerCommand('tini --version')
+
+    def test_icecc(self):
+        self.assertPyrexContainerCommand('icecc --version')
 
 if __name__ == "__main__":
     unittest.main()
