@@ -162,8 +162,6 @@ def main():
         build_config['build']['pyrexroot'] = os.environ['PYREX_ROOT']
         build_config['build']['initcommand'] = ' '.join(shlex.quote(a) for a in [oeinit] + args.init)
         build_config['build']['userconfig'] = conffile
-        build_config['build']['username'] = pwd.getpwuid(os.getuid()).pw_name
-        build_config['build']['groupname'] = grp.getgrgid(os.getgid()).gr_name
 
         # Merge the build config into the user config (so that interpolation works)
         user_config.read_dict(build_config.getrawdict())
@@ -221,11 +219,6 @@ def main():
             print("Getting Docker image up to date...")
 
             docker_args = [docker_path, 'build',
-                '--build-arg', 'MY_USER=%s' % config['build']['username'],
-                '--build-arg', 'MY_GROUP=%s' % config['build']['groupname'],
-                '--build-arg', 'MY_UID=%d' % os.getuid(),
-                '--build-arg', 'MY_GID=%d' % os.getgid(),
-                '--build-arg', 'MY_HOME=%s' % config['config']['home'],
                 '-t', config['config']['tag'],
                 '-f', config['config']['dockerfile'],
                 '--network=host',
@@ -324,13 +317,27 @@ def main():
                 sys.stderr.write("WARNING: buildid for docker image %s has changed\n" %
                         config['config']['tag'])
 
+            # These are "hidden" keys in pyrex.ini that aren't publicized, and
+            # are primarily used for testing. Use they at your own risk, they
+            # may change
+            uid = int(config['run'].get('uid', os.getuid()))
+            gid = int(config['run'].get('gid', os.getgid()))
+            username = config['run'].get('username') or pwd.getpwuid(uid).pw_name
+            groupname = config['run'].get('groupname') or grp.getgrgid(gid).gr_name
+            init_command = config['run'].get('initcommand', config['build']['initcommand'])
+
             command_prefix = ['/usr/libexec/tini/wrapper.py'] + config['run'].get('commandprefix', '').splitlines()
 
             docker_args = [docker_path, 'run',
                     '--rm',
                     '-i',
                     '--net=host',
-                    '-e', 'PYREX_INIT_COMMAND=%s' % config['build']['initcommand'],
+                    '-e', 'PYREX_USER=%s' % username,
+                    '-e', 'PYREX_UID=%d' % uid,
+                    '-e', 'PYREX_GROUP=%s' % groupname,
+                    '-e', 'PYREX_GID=%d' % gid,
+                    '-e', 'PYREX_HOME=%s' % os.environ['HOME'],
+                    '-e', 'PYREX_INIT_COMMAND=%s' % init_command,
                     '-e', 'PYREX_OEROOT=%s' % config['build']['oeroot'],
                     '-e', 'PYREX_CLEANUP_EXIT_WAIT',
                     '-e', 'PYREX_CLEANUP_LOG_FILE',
@@ -355,8 +362,8 @@ def main():
             # Special case: Make the user SSH authentication socket available in Docker
             if 'SSH_AUTH_SOCK' in os.environ:
                 docker_args.extend([
-                    '--mount', 'type=bind,src=%s,dst=/tmp/%s-ssh-agent-sock' % (os.environ['SSH_AUTH_SOCK'], config['build']['username']),
-                    '-e', 'SSH_AUTH_SOCK=/tmp/%s-ssh-agent-sock' % config['build']['username'],
+                    '--mount', 'type=bind,src=%s,dst=/tmp/%s-ssh-agent-sock' % (os.environ['SSH_AUTH_SOCK'], username),
+                    '-e', 'SSH_AUTH_SOCK=/tmp/%s-ssh-agent-sock' % username,
                     ])
 
             # Pass along BB_ENV_EXTRAWHITE and anything it has whitelisted

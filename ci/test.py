@@ -207,6 +207,53 @@ class PyrexCore(PyrexTest):
         self.assertEqual(username, pwd.getpwuid(os.getuid()).pw_name)
         self.assertEqual(groupname, grp.getgrgid(os.getgid()).gr_name)
 
+    def test_owner_env(self):
+        # This test is primarily designed to ensure that everything is passed
+        # correctly through 'pyrex run'
+
+        conf = self.get_config()
+
+        # Note: These config variables are intended for testing use only
+        conf['run']['uid'] = '1337'
+        conf['run']['gid'] = '7331'
+        conf['run']['username'] = 'theuser'
+        conf['run']['groupname'] = 'thegroup'
+        conf['run']['initcommand'] = ''
+        conf.write_conf()
+
+        # Make a fifo that the container can write into. We can't just write a
+        # file because it won't be owned by running user and thus can't be
+        # cleaned up
+        old_umask = os.umask(0)
+        self.addCleanup(os.umask, old_umask)
+
+        fifo = os.path.join(self.thread_dir, 'fifo')
+        os.mkfifo(fifo)
+        self.addCleanup(os.remove, fifo)
+
+        os.umask(old_umask)
+
+        output = []
+
+        def read_fifo():
+            nonlocal output
+            with open(fifo, 'r') as f:
+                output = f.readline().rstrip().split(':')
+
+        thread = threading.Thread(target=read_fifo)
+        thread.start()
+        try:
+            self.assertPyrexContainerShellCommand('echo "$(id -u):$(id -g):$(id -un):$(id -gn):$USER:$GROUP" > %s' % fifo)
+        finally:
+            thread.join()
+
+        self.assertEqual(output[0], '1337')
+        self.assertEqual(output[1], '7331')
+        self.assertEqual(output[2], 'theuser')
+        self.assertEqual(output[3], 'thegroup')
+        self.assertEqual(output[4], 'theuser')
+        self.assertEqual(output[5], 'thegroup')
+
     def test_duplicate_binds(self):
         temp_dir = tempfile.mkdtemp('-pyrex')
         self.addCleanup(shutil.rmtree, temp_dir)

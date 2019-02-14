@@ -12,18 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# See below for why the MY_ prefix is used.
 ARG MY_REGISTRY=
 FROM ${MY_REGISTRY}ubuntu:trusty
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
-
-# USER and GROUP are reserved keywords in Dockerfile syntax, so put the goofy
-# MY_ prefix in front of these things.
-ARG MY_USER
-ARG MY_GROUP
-ARG MY_UID
-ARG MY_GID
-ARG MY_HOME
 
 # Install software required to add ppa's
 RUN apt-get -y update && apt-get -y install \
@@ -93,12 +84,6 @@ RUN apt-get -y update && apt-get -y install \
     screen \
 && rm -rf /var/lib/apt/lists/*
 
-RUN addgroup --gid $MY_GID $MY_GROUP && \
-    adduser --uid $MY_UID --gid $MY_GID --home $MY_HOME --shell /bin/sh --disabled-password --gecos "" $MY_USER
-
-# Allow user to run any command as root
-RUN echo "$MY_USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-
 # Use a recent version of Icecream, which has many bug fixes
 RUN wget https://github.com/JoshuaWatt/pyrex-utilities/releases/download/2019.02.13/icecream.tar.gz && \
     tar -xzf icecream.tar.gz -C / && \
@@ -117,31 +102,36 @@ RUN mkdir -p /usr/share/icecc/toolchain && \
     rm $TC_NAME
 
 ENV ICECC_VERSION=/usr/share/icecc/toolchain/native-gcc.tar.gz
-ENV INIT_DIR=$MY_HOME
 
 # Generate locales
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
-# Turn on background color erase. This fixes screen not correctly erasing when
-# it is nested in another terminal emulator
-RUN echo "defbce on" >> $MY_HOME/.screenrc
-
 # Download and install tini
 RUN wget -O /usr/local/bin/tini https://github.com/JoshuaWatt/pyrex-utilities/releases/download/2019.02.13/tini && \
     chmod +x /usr/local/bin/tini
 
+# Download and install setpriv
+RUN wget -O /usr/local/bin/setpriv https://github.com/JoshuaWatt/pyrex-utilities/releases/download/2019.02.13/setpriv && \
+    chmod +x /usr/local/bin/setpriv
+
 # Add startup scripts
 COPY ./startup.sh /usr/libexec/tini/startup.sh
+COPY ./entry.py /usr/libexec/tini/entry.py
 COPY ./wrapper.py /usr/libexec/tini/wrapper.py
 COPY ./cleanup.py /usr/libexec/tini/cleanup.py
-RUN chmod +x /usr/libexec/tini/cleanup.py /usr/libexec/tini/startup.sh /usr/libexec/tini/wrapper.py
+RUN chmod +x /usr/libexec/tini/cleanup.py \
+    /usr/libexec/tini/entry.py \
+    /usr/libexec/tini/startup.sh \
+    /usr/libexec/tini/wrapper.py
+
+# Precompile python files for improved startup time
+RUN python3 -m py_compile /usr/libexec/tini/*.py
 
 # Use tini as the init process and instruct it to invoke the cleanup script
 # once the primary command dies
-USER $MY_USER:$MY_GROUP
-ENTRYPOINT ["/usr/local/bin/tini", "-P", "/usr/libexec/tini/cleanup.py", "{}", ";", "--", "/bin/bash", "/usr/libexec/tini/startup.sh"]
+ENTRYPOINT ["/usr/local/bin/tini", "-P", "/usr/libexec/tini/cleanup.py", "{}", ";", "--", "/usr/libexec/tini/entry.py", "/usr/libexec/tini/startup.sh"]
 
 # The startup script is expected to chain along to some other
 # command. By default, we'll use an interactive shell.
