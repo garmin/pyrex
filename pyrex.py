@@ -326,7 +326,7 @@ def main():
             groupname = config['run'].get('groupname') or grp.getgrgid(gid).gr_name
             init_command = config['run'].get('initcommand', config['build']['initcommand'])
 
-            command_prefix = ['/usr/libexec/tini/wrapper.py'] + config['run'].get('commandprefix', '').splitlines()
+            command_prefix = config['run'].get('commandprefix', '').splitlines()
 
             docker_args = [docker_path, 'run',
                     '--rm',

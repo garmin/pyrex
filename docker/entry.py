@@ -18,6 +18,7 @@ import os
 import stat
 import sys
 import subprocess
+import signal
 
 def get_var(name):
     if name in os.environ:
@@ -31,6 +32,13 @@ def get_var(name):
     sys.exit(1)
 
 def main():
+    # Block the SIGTSTP signal. We haven't figured out how to do proper job
+    # control inside of docker yet, and if the user accidentally presses CTRL+Z
+    # is will freeze the console without actually stopping the build.  To
+    # prevent this, block SIGTSTP in all child processes. This results in
+    # CTRL+Z doing nothing.
+    signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGTSTP])
+
     uid = int(get_var('PYREX_UID'))
     gid = int(get_var('PYREX_GID'))
     user = get_var('PYREX_USER')

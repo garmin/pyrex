@@ -116,12 +116,10 @@ RUN wget -O /usr/local/bin/setpriv https://github.com/JoshuaWatt/pyrex-utilities
 # Add startup scripts
 COPY ./startup.sh /usr/libexec/tini/startup.sh
 COPY ./entry.py /usr/libexec/tini/entry.py
-COPY ./wrapper.py /usr/libexec/tini/wrapper.py
 COPY ./cleanup.py /usr/libexec/tini/cleanup.py
 RUN chmod +x /usr/libexec/tini/cleanup.py \
     /usr/libexec/tini/entry.py \
-    /usr/libexec/tini/startup.sh \
-    /usr/libexec/tini/wrapper.py
+    /usr/libexec/tini/startup.sh
 
 # Precompile python files for improved startup time
 RUN python3 -m py_compile /usr/libexec/tini/*.py
