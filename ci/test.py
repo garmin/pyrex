@@ -30,7 +30,7 @@ PYREX_ROOT = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(PYREX_ROOT)
 import pyrex
 
-class TestPyrex(unittest.TestCase):
+class PyrexTest(unittest.TestCase):
     def setUp(self):
         self.build_dir = os.path.abspath(os.path.join(PYREX_ROOT, 'build'))
 
@@ -126,6 +126,7 @@ class TestPyrex(unittest.TestCase):
     def assertPyrexContainerCommand(self, cmd, **kwargs):
         return self.assertPyrexHostCommand('pyrex-run %s' % cmd, **kwargs)
 
+class PyrexCore(PyrexTest):
     def test_init(self):
         self.assertPyrexHostCommand('true')
 
@@ -206,6 +207,53 @@ class TestPyrex(unittest.TestCase):
         self.assertEqual(username, pwd.getpwuid(os.getuid()).pw_name)
         self.assertEqual(groupname, grp.getgrgid(os.getgid()).gr_name)
 
+    def test_owner_env(self):
+        # This test is primarily designed to ensure that everything is passed
+        # correctly through 'pyrex run'
+
+        conf = self.get_config()
+
+        # Note: These config variables are intended for testing use only
+        conf['run']['uid'] = '1337'
+        conf['run']['gid'] = '7331'
+        conf['run']['username'] = 'theuser'
+        conf['run']['groupname'] = 'thegroup'
+        conf['run']['initcommand'] = ''
+        conf.write_conf()
+
+        # Make a fifo that the container can write into. We can't just write a
+        # file because it won't be owned by running user and thus can't be
+        # cleaned up
+        old_umask = os.umask(0)
+        self.addCleanup(os.umask, old_umask)
+
+        fifo = os.path.join(self.thread_dir, 'fifo')
+        os.mkfifo(fifo)
+        self.addCleanup(os.remove, fifo)
+
+        os.umask(old_umask)
+
+        output = []
+
+        def read_fifo():
+            nonlocal output
+            with open(fifo, 'r') as f:
+                output = f.readline().rstrip().split(':')
+
+        thread = threading.Thread(target=read_fifo)
+        thread.start()
+        try:
+            self.assertPyrexContainerShellCommand('echo "$(id -u):$(id -g):$(id -un):$(id -gn):$USER:$GROUP" > %s' % fifo)
+        finally:
+            thread.join()
+
+        self.assertEqual(output[0], '1337')
+        self.assertEqual(output[1], '7331')
+        self.assertEqual(output[2], 'theuser')
+        self.assertEqual(output[3], 'thegroup')
+        self.assertEqual(output[4], 'theuser')
+        self.assertEqual(output[5], 'thegroup')
+
     def test_duplicate_binds(self):
         temp_dir = tempfile.mkdtemp('-pyrex')
         self.addCleanup(shutil.rmtree, temp_dir)
@@ -285,6 +333,13 @@ class TestPyrex(unittest.TestCase):
         env['PYREXCONFTEMPLATE'] = conftemplate
 
         self.assertPyrexHostCommand('true', returncode=1, env=env)
+
+class TestImage(PyrexTest):
+    def test_tini(self):
+        self.assertPyrexContainerCommand('tini --version')
+
+    def test_icecc(self):
+        self.assertPyrexContainerCommand('icecc --version')
 
 if __name__ == "__main__":
     unittest.main()
