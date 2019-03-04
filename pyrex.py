@@ -287,14 +287,25 @@ def main():
                 '''.format(runfile=runfile, shell=config['config']['shell'])))
         os.chmod(shellfile, stat.S_IRWXU)
 
+        command_globs = [g for g in config['config']['commands'].split() if g]
+        nopyrex_globs = [g for g in config['config']['commands_nopyrex'].split() if g]
 
-        for g in config['config']['commands'].split():
-            if g:
+        commands = set()
+
+        def add_commands(globs, target):
+            nonlocal commands
+
+            for g in globs:
                 for cmd in glob.iglob(g):
-                    if os.path.isfile(cmd) and os.access(cmd, os.X_OK):
+                    norm_cmd = os.path.normpath(cmd)
+                    if norm_cmd not in commands and os.path.isfile(cmd) and os.access(cmd, os.X_OK):
+                        commands.add(norm_cmd)
                         name = os.path.basename(cmd)
-                        os.symlink('exec-shim-pyrex', os.path.join(shimdir, name))
 
+                        os.symlink(target.format(command=cmd), os.path.join(shimdir, name))
+
+        add_commands(nopyrex_globs, '{command}')
+        add_commands(command_globs, 'exec-shim-pyrex')
         return 0
 
     def run(args):
