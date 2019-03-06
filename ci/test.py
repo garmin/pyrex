@@ -120,7 +120,7 @@ class PyrexTest(unittest.TestCase):
 
                 ret = proc.poll()
 
-            self.assertEqual(ret, returncode, msg='%s failed')
+            self.assertEqual(ret, returncode, msg='%s failed' % ' '.join(*args))
             return None
 
     def assertPyrexHostCommand(self, *args, quiet_init=False, **kwargs):
