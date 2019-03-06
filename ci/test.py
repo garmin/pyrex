@@ -32,6 +32,14 @@ sys.path.append(PYREX_ROOT)
 import pyrex
 
 TEST_IMAGE_ENV_VAR = 'TEST_IMAGE'
+TEST_PREBUILT_TAG_ENV_VAR = 'TEST_PREBUILT_TAG'
+
+def skipIfPrebuilt(func):
+    def wrapper(self, *args, **kwargs):
+        if os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, ''):
+            self.skipTest('Test does not apply to prebuilt images')
+        return func(self, *args, **kwargs)
+    return wrapper
 
 class PyrexTest(unittest.TestCase):
     def setUp(self):
@@ -89,10 +97,15 @@ class PyrexTest(unittest.TestCase):
             if self.test_image:
                 config['config']['dockerimage'] = self.test_image
 
-            # Always build the latest image locally for testing. Use a tag that
-            # isn't present on docker hub so that any attempt to pull it fails
-            config['config']['pyrextag'] = 'ci-test'
-            config['config']['buildlocal'] = '1'
+            prebuilt_tag = os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, '')
+            if prebuilt_tag:
+                config['config']['pyrextag'] = prebuilt_tag
+                config['config']['buildlocal'] = '0'
+            else:
+                # Always build the latest image locally for testing. Use a tag that
+                # isn't present on docker hub so that any attempt to pull it fails
+                config['config']['pyrextag'] = 'ci-test'
+                config['config']['buildlocal'] = '1'
 
         return config
 
@@ -345,6 +358,7 @@ class PyrexCore(PyrexTest):
 
         self.assertPyrexHostCommand('true', returncode=1, env=env)
 
+    @skipIfPrebuilt
     def test_local_build(self):
         # Run any command to build the images locally
         self.assertPyrexHostCommand('true')
