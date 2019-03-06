@@ -18,6 +18,7 @@ import configparser
 import grp
 import os
 import pwd
+import re
 import shutil
 import stat
 import subprocess
@@ -29,6 +30,8 @@ import unittest
 PYREX_ROOT = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(PYREX_ROOT)
 import pyrex
+
+TEST_IMAGE_ENV_VAR = 'TEST_IMAGE'
 
 class PyrexTest(unittest.TestCase):
     def setUp(self):
@@ -62,10 +65,10 @@ class PyrexTest(unittest.TestCase):
         self.thread_dir = os.path.join(self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident()))
         os.makedirs(self.thread_dir)
 
-        self.test_image = os.environ.get('TEST_IMAGE')
+        self.test_image = os.environ.get(TEST_IMAGE_ENV_VAR)
         if self.test_image:
             conf = self.get_config()
-            conf['config']['pyreximage'] = self.test_image
+            conf['config']['dockerimage'] = self.test_image
             conf.write_conf()
 
     def get_config(self, defaults=False):
@@ -111,10 +114,13 @@ class PyrexTest(unittest.TestCase):
             self.assertEqual(ret, returncode, msg='%s failed')
             return None
 
-    def assertPyrexHostCommand(self, *args, **kwargs):
+    def assertPyrexHostCommand(self, *args, quiet_init=False, **kwargs):
         cmd_file = os.path.join(self.thread_dir, 'command')
+        commands = []
+        commands.append('. ./poky/pyrex-init-build-env%s' % ('', ' > /dev/null')[quiet_init])
+        commands.extend(list(args))
         with open(cmd_file, 'w') as f:
-            f.write(' && '.join(['. ./poky/pyrex-init-build-env'] + list(args)))
+            f.write(' && '.join(commands))
         return self.assertSubprocess(['/bin/bash', cmd_file], cwd=PYREX_ROOT, **kwargs)
 
     def assertPyrexContainerShellCommand(self, *args, **kwargs):
@@ -340,6 +346,18 @@ class TestImage(PyrexTest):
 
     def test_icecc(self):
         self.assertPyrexContainerCommand('icecc --version')
+
+    def test_guest_image(self):
+        # This test makes sure that the image being tested is the image we
+        # actually expect to be testing
+        if not self.test_image:
+            self.skipTest("%s not defined" % TEST_IMAGE_ENV_VAR)
+
+        dist_id_str = self.assertPyrexContainerCommand('lsb_release -i', quiet_init=True, capture=True).decode('utf-8').rstrip()
+        release_str = self.assertPyrexContainerCommand('lsb_release -r', quiet_init=True, capture=True).decode('utf-8').rstrip()
+
+        self.assertRegex(dist_id_str.lower(), r'^distributor id:\s+' + re.escape(self.test_image.split('-', 1)[0]))
+        self.assertRegex(release_str.lower(), r'^release:\s+' + re.escape(self.test_image.split('-', 1)[1]))
 
 if __name__ == "__main__":
     unittest.main()
