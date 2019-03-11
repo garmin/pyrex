@@ -79,7 +79,7 @@ RUN dpkg --add-architecture i386 && \
 ENV PYREX_UTILS_VERSION=2019.02.22
 
 # Use a recent version of Icecream, which has many bug fixes
-RUN wget https://github.com/JoshuaWatt/pyrex-utilities/releases/download/${PYREX_UTILS_VERSION}/icecream.tar.gz && \
+RUN wget --no-check-certificate https://github.com/JoshuaWatt/pyrex-utilities/releases/download/${PYREX_UTILS_VERSION}/icecream.tar.gz && \
     echo "b534eb98be51ae605bed79456e80e47636d9bf429797f3f446b4cfc62fac1e87 *icecream.tar.gz" | sha256sum -c - && \
     tar -xzf icecream.tar.gz -C / && \
     rm -rf icecream.tar.gz
@@ -104,12 +104,12 @@ ENV LANG en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
 # Download and install tini
-RUN wget -O /usr/local/bin/tini https://github.com/JoshuaWatt/pyrex-utilities/releases/download/${PYREX_UTILS_VERSION}/tini && \
+RUN wget --no-check-certificate -O /usr/local/bin/tini https://github.com/JoshuaWatt/pyrex-utilities/releases/download/${PYREX_UTILS_VERSION}/tini && \
     echo "118592085431040a9981ab64c180e6d1f04d49ea63557463e6458dfbcaa89f8f */usr/local/bin/tini" | sha256sum -c - && \
     chmod +x /usr/local/bin/tini
 
 # Download and install setpriv
-RUN wget -O /usr/local/bin/setpriv https://github.com/JoshuaWatt/pyrex-utilities/releases/download/${PYREX_UTILS_VERSION}/setpriv && \
+RUN wget --no-check-certificate -O /usr/local/bin/setpriv https://github.com/JoshuaWatt/pyrex-utilities/releases/download/${PYREX_UTILS_VERSION}/setpriv && \
     echo "001506e1eb52e93f34fa1677a1d52dda6c3e77e10308655d3d525392e01ab75f */usr/local/bin/setpriv" | sha256sum -c - && \
     chmod +x /usr/local/bin/setpriv
 
