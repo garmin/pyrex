@@ -1,0 +1,49 @@
+From cd082c64adcd3c2a22dc0565f6e5b249a975694a Mon Sep 17 00:00:00 2001
+From: Lucas Stach <l.stach@pengutronix.de>
+Date: Thu, 10 Jan 2019 11:46:05 +0100
+Subject: [PATCH] try local recompile when local cpp invocation fails
+
+When fdirectives-only is used the local cpp can fail on some macro constructs
+that are incompatible with this mode of preprocessing. Currently this fails
+the build, as it's not a remote error, which would get recovered by a local
+rebuild, but the local side failing.
+
+Instead of failing the build, trigger a local rebuild. The failure rate is
+so small that any more sophisticated recovery seems to be wasted effort. This
+leads to an additional local recompile in case of broken code, that fails in
+the cpp, but I don't think that matters, as performance of failing builds is
+probably not as important.
+---
+ client/local.cpp  | 5 +++++
+ client/remote.cpp | 2 +-
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/client/local.cpp b/client/local.cpp
+index 4fc6ecea..f37363a6 100644
+--- a/client/local.cpp
++++ b/client/local.cpp
+@@ -268,6 +268,11 @@ int build_local(CompileJob &job, MsgChannel *local_daemon, struct rusage *used)
+     string argstxt;
+ 
+     for (list<string>::const_iterator it = arguments.begin(); it != arguments.end(); ++it) {
++        // Filter out fdirectives-only, as this may be present when we fall back from a
++        // remote to a local compile, but this flag might be the reason we need to fall back.
++        if (it->compare("-fdirectives-only") == 0)
++            continue;
++
+         argv.push_back(strdup(it->c_str()));
+         argstxt += ' ';
+         argstxt += *it;
+diff --git a/client/remote.cpp b/client/remote.cpp
+index 5f224ba6..8b8af3e2 100644
+--- a/client/remote.cpp
++++ b/client/remote.cpp
+@@ -531,7 +531,7 @@ static int build_remote_int(CompileJob &job, UseCSMsg *usecs, MsgChannel *local_
+                 delete cserver;
+                 cserver = 0;
+                 log_warning() << "call_cpp process failed with exit status " << shell_exit_status(status) << endl;
+-                return shell_exit_status(status);
++                throw remote_error(103, "Error 103 - local cpp invocation failed, trying to recompile locally");
+             }
+         } else {
+             int cpp_fd = open(preproc_file, O_RDONLY);

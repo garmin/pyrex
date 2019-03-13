@@ -13,6 +13,87 @@
 # limitations under the License.
 
 ARG MY_REGISTRY=
+#
+# Generate prebuilt static binaries
+#
+FROM ${MY_REGISTRY}alpine:3.9 AS prebuilt
+
+RUN apk add --update \
+    alpine-sdk \
+    autoconf \
+    automake \
+    bash \
+    cmake \
+    file \
+    libcap-ng-dev \
+    libtool \
+    lzo-dev \
+    musl-utils \
+    wget \
+    xz \
+;
+
+RUN mkdir -p /dist
+RUN mkdir -p /usr/src
+
+COPY patches/icecream-recompile.patch /usr/src/
+
+# Use a recent version of Icecream, which has many bug fixes
+ENV ICECREAM_SHA1=e39103ff5fb6aa7e939b486df25d621696ba1d6f
+RUN mkdir -p /usr/src/icecream && \
+    cd /usr/src/icecream && \
+    wget -O icecream.tar.gz https://github.com/icecc/icecream/archive/${ICECREAM_SHA1}.tar.gz && \
+    tar -xvzf icecream.tar.gz && \
+    cd icecream-${ICECREAM_SHA1} && \
+    patch -p1 < /usr/src/icecream-recompile.patch && \
+    mkdir build && \
+    cd build && \
+    ../autogen.sh && \
+    ../configure --prefix=/usr/local/ \
+        --enable-gcc-color-diagnostics \
+        --enable-gcc-show-caret \
+        --enable-gcc-fdirectives-only \
+        --enable-clang-rewrite-includes \
+        --without-man \
+        LDFLAGS="-static" && \
+    make -j$(nproc) LDFLAGS="--static" && \
+    make install-strip DESTDIR=/dist
+
+# Build setpriv
+RUN mkdir -p /usr/src/util-linux && \
+    cd /usr/src/util-linux && \
+    wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.33/util-linux-2.33.1.tar.xz && \
+    tar -xvf util-linux-2.33.1.tar.xz && \
+    cd util-linux-2.33.1 && \
+    mkdir build && \
+    cd build && \
+    ../configure \
+        --disable-all-programs \
+        --enable-setpriv \
+        --disable-doc \
+        LDFLAGS="-static" \
+        --disable-nls \
+        --without-bashcompletion \
+        --prefix=/usr/local && \
+    make -j$(nproc) LDFLAGS="--static" && \
+    make install-strip DESTDIR=/dist
+
+# Build tini
+ENV TINI_SHA1=c3b92ce685d0387c5d508f1856aa6d4cae25db8d
+RUN mkdir -p /usr/src/tini && \
+    cd /usr/src/tini && \
+    wget -O tini.tar.gz https://github.com/JPEWdev/tini/archive/${TINI_SHA1}.tar.gz && \
+    tar -xvzf tini.tar.gz && \
+    mkdir build && \
+    cd build && \
+    cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr/local ../tini-${TINI_SHA1} && \
+    make && \
+    make install DESTDIR=/dist && \
+    mv /dist/usr/local/bin/tini-static /dist/usr/local/bin/tini
+
+#
+# Target image
+#
 FROM ${MY_REGISTRY}ubuntu:xenial
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -87,13 +168,8 @@ RUN dpkg --add-architecture i386 && \
     wine \
 && rm -rf /var/lib/apt/lists/*
 
-ENV PYREX_UTILS_VERSION=2019.02.22
-
-# Use a recent version of Icecream, which has many bug fixes
-RUN wget --no-check-certificate https://github.com/JoshuaWatt/pyrex-utilities/releases/download/${PYREX_UTILS_VERSION}/icecream.tar.gz && \
-    echo "b534eb98be51ae605bed79456e80e47636d9bf429797f3f446b4cfc62fac1e87 *icecream.tar.gz" | sha256sum -c - && \
-    tar -xzf icecream.tar.gz -C / && \
-    rm -rf icecream.tar.gz
+# Copy prebuilt items
+COPY --from=prebuilt /dist/ /
 
 # Setup Icecream distributed compiling client. The client tries several IPC
 # mechanisms to find the daemon, including connecting to a localhost TCP
@@ -113,16 +189,6 @@ ENV ICECC_VERSION=/usr/share/icecc/toolchain/native-gcc.tar.gz
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
-
-# Download and install tini
-RUN wget --no-check-certificate -O /usr/local/bin/tini https://github.com/JoshuaWatt/pyrex-utilities/releases/download/${PYREX_UTILS_VERSION}/tini && \
-    echo "118592085431040a9981ab64c180e6d1f04d49ea63557463e6458dfbcaa89f8f */usr/local/bin/tini" | sha256sum -c - && \
-    chmod +x /usr/local/bin/tini
-
-# Download and install setpriv
-RUN wget --no-check-certificate -O /usr/local/bin/setpriv https://github.com/JoshuaWatt/pyrex-utilities/releases/download/${PYREX_UTILS_VERSION}/setpriv && \
-    echo "001506e1eb52e93f34fa1677a1d52dda6c3e77e10308655d3d525392e01ab75f */usr/local/bin/setpriv" | sha256sum -c - && \
-    chmod +x /usr/local/bin/setpriv
 
 # Add startup scripts
 COPY ./startup.sh /usr/libexec/tini/startup.sh
