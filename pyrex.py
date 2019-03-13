@@ -247,6 +247,9 @@ def main():
                     if e in os.environ:
                         docker_args.extend(['--build-arg', '%s=%s' % (e, os.environ[e])])
 
+                if config['dockerbuild'].get('args', ''):
+                    docker_args.extend(shlex.split(config['dockerbuild']['args']))
+
                 try:
                     if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1':
                         docker_args.append('-q')

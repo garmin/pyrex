@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ARG PYREX_BASE=ubuntu-16.04
 ARG MY_REGISTRY=
 #
 # Generate prebuilt static binaries
@@ -57,7 +58,7 @@ RUN mkdir -p /usr/src/icecream && \
         --without-man \
         LDFLAGS="-static" && \
     make -j$(nproc) LDFLAGS="--static" && \
-    make install-strip DESTDIR=/dist
+    make install-strip DESTDIR=/dist/icecream
 
 # Build setpriv
 RUN mkdir -p /usr/src/util-linux && \
@@ -76,7 +77,7 @@ RUN mkdir -p /usr/src/util-linux && \
         --without-bashcompletion \
         --prefix=/usr/local && \
     make -j$(nproc) LDFLAGS="--static" && \
-    make install-strip DESTDIR=/dist
+    make install-strip DESTDIR=/dist/setpriv
 
 # Build tini
 ENV TINI_SHA1=c3b92ce685d0387c5d508f1856aa6d4cae25db8d
@@ -88,13 +89,92 @@ RUN mkdir -p /usr/src/tini && \
     cd build && \
     cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr/local ../tini-${TINI_SHA1} && \
     make && \
-    make install DESTDIR=/dist && \
-    mv /dist/usr/local/bin/tini-static /dist/usr/local/bin/tini
+    make install DESTDIR=/dist/tini && \
+    mv /dist/tini/usr/local/bin/tini-static /dist/tini/usr/local/bin/tini
 
 #
-# Target image
+# Ubuntu 14.04 base
 #
-FROM ${MY_REGISTRY}ubuntu:xenial
+FROM ${MY_REGISTRY}ubuntu:trusty as ubuntu-14.04
+LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
+
+# Install software required to add ppa's
+RUN apt-get -y update && apt-get -y install \
+    python-software-properties \
+    software-properties-common
+
+# Add a non-ancient version of git
+RUN add-apt-repository -y ppa:git-core/ppa
+
+RUN apt-get -y update && apt-get -y install \
+# Poky 2.0 build dependencies
+    gawk \
+    wget \
+    git-core \
+    diffstat \
+    unzip \
+    texinfo \
+    gcc-multilib \
+    build-essential \
+    chrpath \
+    socat \
+    libsdl1.2-dev \
+    xterm \
+# Poky 2.1 build dependencies
+    gawk \
+    wget \
+    git-core \
+    diffstat \
+    unzip \
+    texinfo \
+    gcc-multilib \
+    build-essential \
+    chrpath \
+    socat \
+# Poky 2.2 build dependencies
+    gawk \
+    wget \
+    git-core \
+    diffstat \
+    unzip \
+    texinfo \
+    gcc-multilib \
+    build-essential \
+    chrpath \
+    socat \
+# Not listed, but required dependencies (from ASSUME_PROVIDED)
+    bzip2 \
+    libbz2-dev \
+    sed \
+    findutils \
+# Required for some poorly written 3rd party recipes :(
+    python-crypto \
+    python-six \
+    python3-six \
+# Useful tools for debugging Pyrex images
+    sudo \
+    curl \
+    locales \
+# An updated version of Git (from the PPA source above)
+# that supports doing Yocto externalsrc recipes against free-
+# standing working copies that use Git worktrees.
+    git>=1:2.17.* \
+# Corollary to the core Yocto gcc-multilib package. Allows various
+# prebuilt native tools to work
+    g++-multilib \
+# Screen to enable devshell
+    screen \
+&& rm -rf /var/lib/apt/lists/*
+
+# Copy prebuilt items
+COPY --from=prebuilt /dist/icecream /
+COPY --from=prebuilt /dist/setpriv /
+COPY --from=prebuilt /dist/tini /
+
+#
+# Ubuntu 16.04 Base
+#
+FROM ${MY_REGISTRY}ubuntu:xenial as ubuntu-16.04
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to add ppa's
@@ -169,7 +249,14 @@ RUN dpkg --add-architecture i386 && \
 && rm -rf /var/lib/apt/lists/*
 
 # Copy prebuilt items
-COPY --from=prebuilt /dist/ /
+COPY --from=prebuilt /dist/icecream /
+COPY --from=prebuilt /dist/setpriv /
+COPY --from=prebuilt /dist/tini /
+
+# 
+# Target image
+#
+FROM ${PYREX_BASE}
 
 # Setup Icecream distributed compiling client. The client tries several IPC
 # mechanisms to find the daemon, including connecting to a localhost TCP

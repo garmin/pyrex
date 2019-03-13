@@ -43,7 +43,8 @@ def main():
 
     print("Building", name)
     try:
-        subprocess.check_call(['docker', 'build', '-t', name, '-f', '%s/%s/Dockerfile' % (docker_dir, image), '--', docker_dir])
+        subprocess.check_call(['docker', 'build', '-t', name, '-f', '%s/Dockerfile' % docker_dir,
+                               '--build-arg', 'PYREX_BASE=%s' % image, '--', docker_dir])
     except subprocess.CalledProcessError as e:
         print("Building failed!")
         return 1
