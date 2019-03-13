@@ -377,7 +377,7 @@ class PyrexCore(PyrexTest):
         self.assertPyrexHostCommand('true')
 
     def test_version(self):
-        self.assertRegex(pyrex.VERSION, r'^([0-9]+\.){2}[0-9]+(-.*)?$', msg="Version '%s' is invalid" % pyrex.VERSION)
+        self.assertRegex(pyrex.VERSION, pyrex.VERSION_REGEX, msg="Version '%s' is invalid" % pyrex.VERSION)
 
     def test_version_tag(self):
         tag = None
@@ -395,6 +395,21 @@ class PyrexCore(PyrexTest):
             self.skipTest('No tag found')
 
         self.assertEqual('v%s' % pyrex.VERSION, tag)
+        self.assertRegex(tag, pyrex.VERSION_TAG_REGEX, msg="Tag '%s' is invalid" % tag)
+
+    @skipIfPrebuilt
+    def test_tag_overwrite(self):
+        # Test that trying to build the image with a release-like tag fails
+        # (and doesn't build the image)
+        conf = self.get_config()
+        conf['config']['pyrextag'] = 'v1.2.3-ci-test'
+        conf.write_conf()
+
+        self.assertPyrexHostCommand('true', returncode=1)
+
+        output = self.assertSubprocess(['docker', 'images', '-q', conf['config']['tag']], capture=True).decode('utf-8').strip()
+        self.assertEqual(output, "", msg="Tagged image found!")
+
 
 class TestImage(PyrexTest):
     def test_tini(self):

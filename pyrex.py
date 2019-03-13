@@ -33,6 +33,9 @@ import stat
 
 VERSION = '0.0.1'
 
+VERSION_REGEX = re.compile(r'^([0-9]+\.){2}[0-9]+(-.*)?$')
+VERSION_TAG_REGEX = re.compile(r'^v([0-9]+\.){2}[0-9]+(-.*)?$')
+
 THIS_SCRIPT = os.path.basename(__file__)
 PYREX_CONFVERSION = '1'
 MINIMUM_DOCKER_VERSION = 17
@@ -222,6 +225,12 @@ def main():
                 return 1
 
             if config['config']['buildlocal'] == '1':
+                if VERSION_TAG_REGEX.match(config['config']['tag'].split(':')[-1]) is not None:
+                    sys.stderr.write("Image tag '%s' will overwrite release image tag, which is not what you want\n" %
+                            config['config']['tag'])
+                    sys.stderr.write("Try changing 'config:pyrextag' to a different value\n")
+                    return 1
+
                 print("Getting Docker image up to date...")
 
                 docker_args = [docker_path, 'build',
