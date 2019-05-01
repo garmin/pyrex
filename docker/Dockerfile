@@ -240,6 +240,9 @@ RUN apt-get -y update && apt-get -y install \
     tzdata \
 && rm -rf /var/lib/apt/lists/*
 
+# Python modules used by resulttool
+RUN python3 -m pip install jinja2
+
 # Install wine, needed to test meta-mingw SDKs
 RUN dpkg --add-architecture i386 && \
     apt-get -y update && \
