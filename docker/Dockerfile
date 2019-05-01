@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG PYREX_BASE=ubuntu-16.04
+ARG PYREX_BASE=ubuntu-18.04
 ARG MY_REGISTRY=
 #
 # Generate prebuilt static binaries
@@ -254,6 +254,78 @@ RUN dpkg --add-architecture i386 && \
 # Copy prebuilt items
 COPY --from=prebuilt /dist/icecream /
 COPY --from=prebuilt /dist/setpriv /
+COPY --from=prebuilt /dist/tini /
+
+#
+# Ubuntu 18.04 Base
+#
+FROM ${MY_REGISTRY}ubuntu:bionic as ubuntu-18.04
+LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
+
+RUN apt-get -y update && apt-get -y install \
+# Poky 2.7 build dependencies
+    gawk \
+    wget \
+    git-core \
+    diffstat \
+    unzip \
+    texinfo \
+    gcc-multilib \
+    build-essential \
+    chrpath \
+    socat \
+    cpio \
+    python \
+    python3 \
+    python3-pip \
+    python3-pexpect \
+    xz-utils \
+    debianutils \
+    iputils-ping \
+    python3-git \
+    python3-jinja2 \
+    libegl1-mesa \
+    libsdl1.2-dev \
+    xterm \
+# Testing dependencies
+    iproute2 \
+    sysstat \
+# Dependencies for "bitbake -c menuconfig"
+    libncurses5-dev \
+    libtinfo-dev \
+# Not listed, but required dependencies (from ASSUME_PROVIDED)
+    bzip2 \
+    libbz2-dev \
+    sed \
+    findutils \
+# Required for some poorly written 3rd party recipes :(
+    python-crypto \
+    python-six \
+    python3-six \
+# Useful tools for debugging Pyrex images
+    sudo \
+    curl \
+    locales \
+# Corollary to the core Yocto gcc-multilib package. Allows various
+# prebuilt native tools to work
+    g++-multilib \
+# Screen to enable devshell
+    screen \
+# Tools used by Pyrex
+    lsb-release \
+    setpriv \
+&& rm -rf /var/lib/apt/lists/*
+
+# Install wine, needed to test meta-mingw SDKs
+RUN dpkg --add-architecture i386 && \
+    apt-get -y update && \
+    (echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections) && \
+    apt-get -y install \
+    wine-stable \
+&& rm -rf /var/lib/apt/lists/*
+
+# Copy prebuilt items
+COPY --from=prebuilt /dist/icecream /
 COPY --from=prebuilt /dist/tini /
 
 # 
