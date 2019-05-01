@@ -107,8 +107,8 @@ def stop_coverage():
     except:
         pass
 
-def get_tag_buildid(config):
-    docker_args = [config['config']['dockerpath'], 'image', 'inspect', config['config']['tag'], '--format={{ .Id }}']
+def get_image_id(config, image):
+    docker_args = [config['config']['dockerpath'], 'image', 'inspect', image, '--format={{ .Id }}']
     return subprocess.check_output(docker_args).decode('utf-8').rstrip()
 
 def use_docker(config):
@@ -224,17 +224,19 @@ def main():
                 sys.stderr.write("Docker version is too old (have %s), need >= %d\n" % (version, MINIMUM_DOCKER_VERSION))
                 return 1
 
+            tag = config['config']['tag']
+
             if config['config']['buildlocal'] == '1':
-                if VERSION_TAG_REGEX.match(config['config']['tag'].split(':')[-1]) is not None:
+                if VERSION_TAG_REGEX.match(tag.split(':')[-1]) is not None:
                     sys.stderr.write("Image tag '%s' will overwrite release image tag, which is not what you want\n" %
-                            config['config']['tag'])
+                            tag)
                     sys.stderr.write("Try changing 'config:pyrextag' to a different value\n")
                     return 1
 
                 print("Getting Docker image up to date...")
 
                 docker_args = [docker_path, 'build',
-                    '-t', config['config']['tag'],
+                    '-t', tag,
                     '-f', config['dockerbuild']['dockerfile'],
                     '--network=host',
                     os.path.join(config['build']['pyrexroot'], 'docker')
@@ -256,7 +258,9 @@ def main():
                         build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
                     else:
                         subprocess.check_call(docker_args)
-                        build_config['build']['buildid'] = get_tag_buildid(config)
+                        build_config['build']['buildid'] = get_image_id(config, tag)
+
+                    build_config['build']['runid'] = build_config['build']['buildid']
 
                 except subprocess.CalledProcessError:
                     return 1
@@ -264,20 +268,23 @@ def main():
                 try:
                     # Try to get the image This will fail if the image doesn't
                     # exist locally
-                    build_config['build']['buildid'] = get_tag_buildid(config)
+                    build_config['build']['buildid'] = get_image_id(config, tag)
                 except subprocess.CalledProcessError:
                     try:
-                        docker_args = [docker_path, 'pull', config['config']['tag']]
+                        docker_args = [docker_path, 'pull', tag]
                         subprocess.check_call(docker_args)
 
-                        build_config['build']['buildid'] = get_tag_buildid(config)
+                        build_config['build']['buildid'] = get_image_id(config, tag)
                     except subprocess.CalledProcessError:
                         return 1
+
+                build_config['build']['runid'] = tag
         else:
             print(textwrap.fill("Running outside of Docker. No guarantees are made about your Linux " +
                                 "distribution's compatibility with Yocto."))
             print()
             build_config['build']['buildid'] = ''
+            build_config['build']['runid'] = ''
 
         with open(args.conffile, 'w') as f:
             build_config.write(f)
@@ -342,22 +349,23 @@ def main():
     def run(args):
         config, _ = load_configs(args.conffile)
 
+        runid = config['build']['runid']
+
         if use_docker(config):
-            if not config['build']['buildid']:
+            if not runid:
                 print("Docker was not enabled when the environment was setup. Cannot use it now!")
                 return 1
 
             docker_path = config['config']['dockerpath']
 
             try:
-                buildid = get_tag_buildid(config)
+                buildid = get_image_id(config, runid)
             except subprocess.CalledProcessError as e:
                 print("Cannot verify docker image: %s\n" % e.output)
                 return 1
 
             if buildid != config['build']['buildid']:
-                sys.stderr.write("WARNING: buildid for docker image %s has changed\n" %
-                        config['config']['tag'])
+                sys.stderr.write("WARNING: buildid for docker image %s has changed\n" % runid)
 
             # These are "hidden" keys in pyrex.ini that aren't publicized, and
             # are primarily used for testing. Use they at your own risk, they
@@ -417,7 +425,7 @@ def main():
             docker_args.extend(shlex.split(config['run'].get('args', '')))
 
             docker_args.append('--')
-            docker_args.append(config['config']['tag'])
+            docker_args.append(runid)
             docker_args.extend(args.command)
 
             stop_coverage()
