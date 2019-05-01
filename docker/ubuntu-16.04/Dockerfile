@@ -25,7 +25,7 @@ RUN apt-get -y update && apt-get -y install \
 RUN add-apt-repository -y ppa:git-core/ppa
 
 RUN apt-get -y update && apt-get -y install \
-# Poky 2.5 build dependencies
+# Poky 2.7 build dependencies
     gawk \
     wget \
     git-core \
@@ -44,6 +44,14 @@ RUN apt-get -y update && apt-get -y install \
     xz-utils \
     debianutils \
     iputils-ping \
+    python3-git \
+    python3-jinja2 \
+    libegl1-mesa \
+    libsdl1.2-dev \
+    xterm \
+# Dependencies for "bitbake -c menuconfig"
+    libncurses5-dev \
+    libtinfo-dev \
 # Not listed, but required dependencies (from ASSUME_PROVIDED)
     bzip2 \
     libbz2-dev \
