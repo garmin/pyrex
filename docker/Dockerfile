@@ -147,6 +147,9 @@ RUN apt-get -y update && apt-get -y install \
     libbz2-dev \
     sed \
     findutils \
+# Dependencies for "bitbake -c menuconfig"
+    libncurses5-dev \
+    libtinfo-dev \
 # Required for some poorly written 3rd party recipes :(
     python-crypto \
     python-six \
@@ -218,6 +221,9 @@ RUN apt-get -y update && apt-get -y install \
     libbz2-dev \
     sed \
     findutils \
+# Dependencies for "bitbake -c menuconfig"
+    libncurses5-dev \
+    libtinfo-dev \
 # Required for some poorly written 3rd party recipes :(
     python-crypto \
     python-six \
