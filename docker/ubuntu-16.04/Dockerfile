@@ -74,6 +74,9 @@ RUN apt-get -y update && apt-get -y install \
     g++-multilib \
 # Screen to enable devshell
     screen \
+# Base OS stuff that reasonable workstations have, but which the minimal
+# Docker registry image doesn't.
+    tzdata \
 && rm -rf /var/lib/apt/lists/*
 
 # Install wine, needed to test meta-mingw SDKs
