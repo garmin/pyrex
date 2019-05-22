@@ -106,7 +106,7 @@ RUN apt-get -y update && apt-get -y install \
 # Add a non-ancient version of git
 RUN add-apt-repository -y ppa:git-core/ppa
 
-RUN apt-get -y update && apt-get -y install \
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
 # Poky 2.0 build dependencies
     gawk \
     wget \
@@ -167,6 +167,9 @@ RUN apt-get -y update && apt-get -y install \
     g++-multilib \
 # Screen to enable devshell
     screen \
+# Base OS stuff that reasonable workstations have, but which the Docker
+# registry image doesn't
+    tzdata \
 && rm -rf /var/lib/apt/lists/*
 
 # Copy prebuilt items
@@ -188,7 +191,7 @@ RUN apt-get -y update && apt-get -y install \
 # Add a non-ancient version of git
 RUN add-apt-repository -y ppa:git-core/ppa
 
-RUN apt-get -y update && apt-get -y install \
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
 # Poky 2.7 build dependencies
     gawk \
     wget \
@@ -241,8 +244,8 @@ RUN apt-get -y update && apt-get -y install \
     g++-multilib \
 # Screen to enable devshell
     screen \
-# Base OS stuff that reasonable workstations have, but which the minimal
-# Docker registry image doesn't.
+# Base OS stuff that reasonable workstations have, but which the Docker
+# registry image doesn't
     tzdata \
 && rm -rf /var/lib/apt/lists/*
 
@@ -268,7 +271,7 @@ COPY --from=prebuilt /dist/tini /
 FROM ${MY_REGISTRY}ubuntu:bionic as ubuntu-18.04
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
-RUN apt-get -y update && apt-get -y install \
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
 # Poky 2.7 build dependencies
     gawk \
     wget \
@@ -320,6 +323,9 @@ RUN apt-get -y update && apt-get -y install \
 # Tools used by Pyrex
     lsb-release \
     setpriv \
+# Base OS stuff that reasonable workstations have, but which the Docker
+# registry image doesn't
+    tzdata \
 && rm -rf /var/lib/apt/lists/*
 
 # Install wine, needed to test meta-mingw SDKs
