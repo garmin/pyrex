@@ -1,3 +1,4 @@
+dist: xenial
 language: python
 python:
 - '3.4'
@@ -8,10 +9,16 @@ env:
   - TEST_IMAGE=ubuntu-18.04
   global:
     secure: rQjtyqgj25+q8f+WVl8kDaeaXhJStuWvxQCpAJs/GYhRbBVhNDjLzjcCx+VHadjKkPGNwO8ecgJZbA3jIFEsNXjXFmoDjX7ozuzas55WUVB80uHfxbzyVfoHjy75M4FPzGHQD9ljoYhmJ5UERnDmhvd0ttk3X8Jffv2EX0WvX/ekpvLr1AX+DXhP/1l80AsN00wdRFs8IA9Ajf3JZ2/tE+V3nMUJQqzJzdXZTksB4+mbzlNdk4mCj/LNJbQaEs8mTSamIfy48k6pY9LOwKgWIDykhbA0l0tr6/OjYT26lZvgXrH86D3r4/1PJXwU4KNFvyBXwyyRFayL5STDddcazyfnihIrXxj7qKJxatmhJYlZnO9iH0KFLEkWlaGi5QMnN7nxfUy7Leeo2yNiKsI8Z2l1RTVlFUw2mm5cz115p1m7gZsmJxhY3Ucd7vPS2yBwBUqOKgJWKOTly12srmYSvlO4dVRvauoP21seuhEgP3uaB4QZAZRDBlEwIvQ32NfKkHTjxqSFGA8gjqcH3StpvXF1O5QZzn/u5Xs2c6E9Tx2ro4wQhLJsxa3dSKqsVB6s6KIvaf+PMnrFV3vqnDL0CMp6pemTLmjLu7oJH7MQtrK8z++IRvS8HvAC4ChTPTqGxiIWiiUImtSbCnTsf3e+Y4uYXj2XG6G0Rz7ewcI/K3U=
-services:
-- docker
 before_install:
 - "./ci/prepare.sh"
+- 'echo ''{ "features": { "buildkit": true } }'' | sudo tee /etc/docker/daemon.json
+
+'
+- curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+- sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu
+  $(lsb_release -cs) stable"
+- sudo apt-get update
+- sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
 install:
 - pip3 install coverage
 - pip3 install coveralls
@@ -21,7 +28,7 @@ before_script:
 - printf '\nimport coverage\ncoverage.current_coverage = coverage.process_startup()\n'
   >> "/home/travis/virtualenv/python${TRAVIS_PYTHON_VERSION}/lib/python${TRAVIS_PYTHON_VERSION}/sitecustomize.py"
 - rm -f .coverage-report.*
-script: COVERAGE_PROCESS_START=${TRAVIS_BUILD_DIR}/.coveragerc ci/test.py -v
+script: COVERAGE_PROCESS_START=${TRAVIS_BUILD_DIR}/.coveragerc ci/test.py -vb
 after_success:
 - coverage3 combine
 - coveralls
