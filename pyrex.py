@@ -252,12 +252,17 @@ def main():
                 if config['dockerbuild'].get('args', ''):
                     docker_args.extend(shlex.split(config['dockerbuild']['args']))
 
+                env = os.environ.copy()
+                for e in shlex.split(config['dockerbuild']['env']):
+                    name, val = e.split('=', 1)
+                    env[name] = val
+
                 try:
                     if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1':
                         docker_args.append('-q')
-                        build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
+                        build_config['build']['buildid'] = subprocess.check_output(docker_args, env=env).decode('utf-8').rstrip()
                     else:
-                        subprocess.check_call(docker_args)
+                        subprocess.check_call(docker_args, env=env)
                         build_config['build']['buildid'] = get_image_id(config, tag)
 
                     build_config['build']['runid'] = build_config['build']['buildid']

@@ -194,6 +194,9 @@ locally when the environment is sources. To do this, set `${config:buildlocal}`
 to `1` and `${dockerbuild:dockerfile}` to the Dockerfile that describes what
 you want built.
 
+*Note:* If you are building your own docker images locally, it is *highly*
+recommended that you enable [BuildKit in Docker][] to minimize build times.
+
 While you *can* instruct Pyrex to pull the `latest` tag from dockehub for a
 given image instead of a versioned release tag, this is highly discouraged, as
 it will most certainly cause problems. In these cases, you probably want to
@@ -278,4 +281,4 @@ The following items are either known to not work, or haven't been fully tested:
 [TEMPLATECONF]: https://www.yoctoproject.org/docs/latest/mega-manual/mega-manual.html#creating-a-custom-template-configuration-directory
 [poky]: https://git.yoctoproject.org/cgit/cgit.cgi/poky/
 [Sanity Tested Distros]: https://www.yoctoproject.org/docs/current/mega-manual/mega-manual.html#var-SANITY_TESTED_DISTROS
-
+[BuildKit in Docker]: https://docs.docker.com/develop/develop-images/build_enhancements/
