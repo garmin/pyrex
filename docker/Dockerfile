@@ -15,9 +15,9 @@
 ARG PYREX_BASE=ubuntu-18.04
 ARG MY_REGISTRY=
 #
-# Generate prebuilt static binaries
+# Base image for prebuilt static binaries
 #
-FROM ${MY_REGISTRY}alpine:3.9 AS prebuilt
+FROM ${MY_REGISTRY}alpine:3.9 AS prebuilt-base
 
 RUN apk add --update \
     alpine-sdk \
@@ -37,6 +37,10 @@ RUN apk add --update \
 RUN mkdir -p /dist
 RUN mkdir -p /usr/src
 
+#
+# Prebuilt static icecream
+#
+FROM prebuilt-base AS prebuilt-icecream
 COPY patches/icecream-recompile.patch /usr/src/
 
 # Use a recent version of Icecream, which has many bug fixes
@@ -60,7 +64,10 @@ RUN mkdir -p /usr/src/icecream && \
     make -j$(nproc) LDFLAGS="--static" && \
     make install-strip DESTDIR=/dist/icecream
 
-# Build setpriv
+#
+# Prebuilt static setpriv
+#
+FROM prebuilt-base AS prebuilt-setpriv
 RUN mkdir -p /usr/src/util-linux && \
     cd /usr/src/util-linux && \
     wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.33/util-linux-2.33.1.tar.xz && \
@@ -79,7 +86,10 @@ RUN mkdir -p /usr/src/util-linux && \
     make -j$(nproc) LDFLAGS="--static" && \
     make install-strip DESTDIR=/dist/setpriv
 
-# Build tini
+#
+# Prebuilt static tini
+#
+FROM prebuilt-base as prebuilt-tini
 ENV TINI_SHA1=c3b92ce685d0387c5d508f1856aa6d4cae25db8d
 RUN mkdir -p /usr/src/tini && \
     cd /usr/src/tini && \
@@ -173,9 +183,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
 && rm -rf /var/lib/apt/lists/*
 
 # Copy prebuilt items
-COPY --from=prebuilt /dist/icecream /
-COPY --from=prebuilt /dist/setpriv /
-COPY --from=prebuilt /dist/tini /
+COPY --from=prebuilt-icecream /dist/icecream /
+COPY --from=prebuilt-setpriv /dist/setpriv /
+COPY --from=prebuilt-tini /dist/tini /
 
 #
 # Ubuntu 16.04 Base
@@ -261,9 +271,9 @@ RUN dpkg --add-architecture i386 && \
 && rm -rf /var/lib/apt/lists/*
 
 # Copy prebuilt items
-COPY --from=prebuilt /dist/icecream /
-COPY --from=prebuilt /dist/setpriv /
-COPY --from=prebuilt /dist/tini /
+COPY --from=prebuilt-icecream /dist/icecream /
+COPY --from=prebuilt-setpriv /dist/setpriv /
+COPY --from=prebuilt-tini /dist/tini /
 
 #
 # Ubuntu 18.04 Base
@@ -337,8 +347,8 @@ RUN dpkg --add-architecture i386 && \
 && rm -rf /var/lib/apt/lists/*
 
 # Copy prebuilt items
-COPY --from=prebuilt /dist/icecream /
-COPY --from=prebuilt /dist/tini /
+COPY --from=prebuilt-icecream /dist/icecream /
+COPY --from=prebuilt-tini /dist/tini /
 
 # 
 # Target image
