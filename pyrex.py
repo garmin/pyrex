@@ -30,6 +30,7 @@ import shlex
 import glob
 import textwrap
 import stat
+import hashlib
 
 VERSION = '0.0.1'
 
@@ -129,6 +130,35 @@ def check_confversion(user_config):
         sys.stderr.write("Bad pyrex conf version '%s'\n" % user_config['config']['confversion'])
         return False
     return True
+
+def get_build_hash(config):
+    # Docker doesn't currently have any sort of "dry-run" mechanism that could
+    # be used to determine if the dockerfile has changed and needs a rebuild.
+    # (See https://github.com/moby/moby/issues/38101).
+    #
+    # Until one is added, we use a simple hash of the files in the pyrex
+    # "docker" folder to determine when it is out of date.
+
+    h = hashlib.sha256()
+    for (root, dirs, files) in os.walk(os.path.join(config['build']['pyrexroot'], 'docker')):
+        # Process files and directories in alphabetical order so that hashing
+        # is consistent
+        dirs.sort()
+        files.sort()
+
+        for f in files:
+            # Skip files that aren't interesting. This way any temporary editor
+            # files are ignored
+            if not (f.endswith('.py') or f.endswith('.sh') or f.endswith('.patch') or f == 'Dockerfile'):
+                continue
+
+            with open(os.path.join(root, f), 'rb') as f:
+                b = f.read(4096)
+                while b:
+                    h.update(b)
+                    b = f.read(4096)
+
+    return h.hexdigest()
 
 def main():
     def capture(args):
@@ -269,6 +299,8 @@ def main():
 
                 except subprocess.CalledProcessError:
                     return 1
+
+                build_config['build']['buildhash'] = get_build_hash(build_config)
             else:
                 try:
                     # Try to get the image This will fail if the image doesn't
@@ -330,6 +362,16 @@ def main():
                 '''.format(runfile=runfile, shell=config['config']['shell'])))
         os.chmod(shellfile, stat.S_IRWXU)
 
+        # Write out image rebuild command
+        rebuildfile = os.path.join(shimdir, 'pyrex-rebuild')
+        with open(rebuildfile, 'w') as f:
+            f.write(textwrap.dedent('''\
+                #! /bin/sh
+                exec {pyrexroot}/{this_script} build {conffile}
+                '''.format(pyrexroot=config['build']['pyrexroot'], conffile=args.conffile,
+                    this_script=THIS_SCRIPT)))
+        os.chmod(rebuildfile, stat.S_IRWXU)
+
         command_globs = [g for g in config['config']['commands'].split() if g]
         nopyrex_globs = [g for g in config['config']['commands_nopyrex'].split() if g]
 
@@ -371,6 +413,10 @@ def main():
 
             if buildid != config['build']['buildid']:
                 sys.stderr.write("WARNING: buildid for docker image %s has changed\n" % runid)
+
+            if config['config']['buildlocal'] == '1' and config['build']['buildhash'] != get_build_hash(config):
+                sys.stderr.write("WARNING: The docker image source has changed and should be rebuilt.\n"
+                                 "Try running: 'pyrex-rebuild'\n")
 
             # These are "hidden" keys in pyrex.ini that aren't publicized, and
             # are primarily used for testing. Use they at your own risk, they
