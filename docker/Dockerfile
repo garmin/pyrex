@@ -306,6 +306,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
     libegl1-mesa \
     libsdl1.2-dev \
     xterm \
+    coreutils \
 # Testing dependencies
     iproute2 \
     sysstat \
