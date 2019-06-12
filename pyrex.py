@@ -258,7 +258,7 @@ def main():
                     env[name] = val
 
                 try:
-                    if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1':
+                    if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1' and config['dockerbuild'].getboolean('quiet'):
                         docker_args.append('-q')
                         build_config['build']['buildid'] = subprocess.check_output(docker_args, env=env).decode('utf-8').rstrip()
                     else:
