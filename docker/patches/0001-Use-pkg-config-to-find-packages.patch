@@ -1,0 +1,163 @@
+From d4e1454b4c97c5bf17542a7ab63294d3c7df386a Mon Sep 17 00:00:00 2001
+From: Joshua Watt <JPEWhacker@gmail.com>
+Date: Fri, 14 Jun 2019 10:31:17 -0500
+Subject: [PATCH] Use pkg-config to find packages
+
+Package config should be used to find packages instead of manually
+searching for headers. This makes cross-compiling easier, as well as
+makes it possible to build a static binary (in particular, libarchive is
+annoying to link statically without using pkg-config)
+---
+ configure.ac         | 13 +++++-------
+ daemon/Makefile.am   |  4 ++--
+ m4/cap-ng.m4         | 48 --------------------------------------------
+ services/Makefile.am |  4 ++--
+ services/icecc.pc.in |  2 +-
+ 5 files changed, 10 insertions(+), 61 deletions(-)
+ delete mode 100644 m4/cap-ng.m4
+
+diff --git a/configure.ac b/configure.ac
+index f5f71a6..2c5148e 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -64,12 +64,14 @@ fi
+ 
+ AC_PROG_MAKE_SET
+ AC_PROG_INSTALL
++PKG_PROG_PKG_CONFIG
+ AC_C_INLINE
+ AC_DISABLE_SHARED
+ AC_ENABLE_STATIC
+ AC_PROG_LIBTOOL
+ 
+-ICECC_LIBCAP_NG_PATH
++AS_CASE([$host], [*linux*], [LIBCAP_NG_DEFAULT=yes], [LIBCAP_NG_DEFAULT=auto])
++PKG_HAVE_DEFINE_WITH_MODULES([LIBCAP_NG], [libcap-ng], , $LIBCAP_NG_DEFAULT)
+ 
+ # =============
+ # Documentation
+@@ -122,7 +124,6 @@ AC_CHECK_HEADERS([netinet/tcp_var.h], [], [],
+ ])
+ 
+ AC_CHECK_HEADERS([sys/user.h])
+-AC_CHECK_HEADERS([archive.h, archive_entry.h])
+ 
+ ######################################################################
+ dnl Checks for types
+@@ -189,16 +190,12 @@ AC_CHECK_LIB(lzo2, lzo1x_1_compress, LZO_LDADD=-llzo2,
+ 	AC_MSG_ERROR([Could not find lzo2 library - please install lzo-devel]))
+ AC_SUBST(LZO_LDADD)
+ 
+-AC_CHECK_LIB(zstd, ZSTD_compress, ZSTD_LDADD=-lzstd,
+-        AC_MSG_ERROR([Could not find zstd library - please install libzstd-devel]))
+-AC_SUBST(ZSTD_LDADD)
++PKG_CHECK_MODULES([LIBZSTD], [libzstd])
+ 
+ AC_CHECK_LIB([dl], [dlsym], [DL_LDADD=-ldl])
+ AC_SUBST([DL_LDADD])
+ 
+-AC_CHECK_LIB(archive, archive_read_data_block, ARCHIVE_LDADD=-larchive,
+-    AC_MSG_ERROR([Could not find libarchive library - please install libarchive-devel]))
+-AC_SUBST(ARCHIVE_LDADD)
++PKG_CHECK_MODULES([LIBARCHIVE], [libarchive])
+ 
+ # In DragonFlyBSD daemon needs to be linked against libkinfo.
+ case $host_os in
+diff --git a/daemon/Makefile.am b/daemon/Makefile.am
+index 064e373..41ba690 100644
+--- a/daemon/Makefile.am
++++ b/daemon/Makefile.am
+@@ -12,8 +12,8 @@ iceccd_SOURCES = \
+ iceccd_LDADD = \
+ 	../services/libicecc.la \
+ 	$(LIB_KINFO) \
+-	$(CAPNG_LDADD) \
+-	$(ARCHIVE_LDADD)
++	$(LIBCAP_NG_LIBS) \
++	$(LIBARCHIVE_LIBS)
+ 
+ AM_CPPFLAGS = \
+ 	-I$(top_srcdir)/services
+diff --git a/m4/cap-ng.m4 b/m4/cap-ng.m4
+deleted file mode 100644
+index 5a1e265..0000000
+--- a/m4/cap-ng.m4
++++ /dev/null
+@@ -1,48 +0,0 @@
+-# libcap-ng.m4 - Checks for the libcap-ng support
+-# 	Copyright (c) 2009 Steve Grubb sgrubb@redhat.com
+-#
+-AC_DEFUN([ICECC_LIBCAP_NG_PATH],
+-[
+-  case $host in
+-    *linux*) capng_auto=no ;;
+-    *) capng_auto=yes ;;
+-  esac
+-
+-  AC_ARG_WITH(libcap-ng,
+-    [  --with-libcap-ng=[auto/yes/no]  Add Libcap-ng support],,
+-    with_libcap_ng=auto)
+-
+-  # Check for Libcap-ng API
+-  #
+-  # libcap-ng detection
+-
+-  if test x$with_libcap_ng = xno ; then
+-      have_libcap_ng=no;
+-  else
+-      # Start by checking for header file
+-      AC_CHECK_HEADER(cap-ng.h, capng_headers=yes, capng_headers=no)
+-
+-      # See if we have libcap-ng library
+-      AC_CHECK_LIB(cap-ng, capng_clear,
+-	         CAPNG_LDADD=-lcap-ng,)
+-
+-      # Check results are usable
+-      if test x$with_libcap_ng = xyes -a x$CAPNG_LDADD = x ; then
+-         AC_MSG_ERROR(libcap-ng support was requested and the library was not found)
+-      fi
+-      if test x$capng_auto = xno -a x$CAPNG_LDADD = x ; then
+-         AC_MSG_ERROR(libcap-ng library was not found)
+-      fi
+-      if test x$CAPNG_LDADD != x -a $capng_headers = no ; then
+-         AC_MSG_ERROR(libcap-ng libraries found but headers are missing)
+-      fi
+-  fi
+-  AC_SUBST(CAPNG_LDADD)
+-  AC_MSG_CHECKING(whether to use libcap-ng)
+-  if test x$CAPNG_LDADD != x ; then
+-      AC_DEFINE(HAVE_LIBCAP_NG,1,[libcap-ng support])
+-      AC_MSG_RESULT(yes)
+-  else
+-      AC_MSG_RESULT(no)
+-  fi
+-])
+diff --git a/services/Makefile.am b/services/Makefile.am
+index bc98f45..c7f226e 100644
+--- a/services/Makefile.am
++++ b/services/Makefile.am
+@@ -2,8 +2,8 @@ lib_LTLIBRARIES = libicecc.la
+ libicecc_la_SOURCES = job.cpp comm.cpp exitcode.cpp getifaddrs.cpp logging.cpp tempfile.c platform.cpp gcc.cpp
+ libicecc_la_LIBADD = \
+ 	$(LZO_LDADD) \
+-	$(ZSTD_LDADD) \
+-	$(CAPNG_LDADD) \
++	$(LIBZSTD_LIBS) \
++	$(LIBCAP_NG_LIBS) \
+ 	$(DL_LDADD)
+ 
+ libicecc_la_CFLAGS = -fPIC -DPIC
+diff --git a/services/icecc.pc.in b/services/icecc.pc.in
+index 6f15638..d0c7682 100644
+--- a/services/icecc.pc.in
++++ b/services/icecc.pc.in
+@@ -11,5 +11,5 @@ Version: @VERSION@
+ Requires:
+ Conflicts:
+ Libs: -L${libdir} -licecc
+-Libs.private: @CAPNG_LDADD@ -llzo2
++Libs.private: @LIBCAP_NG_LIBS@ -llzo2
+ Cflags: -I${includedir}
+-- 
+2.21.0
+

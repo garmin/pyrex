@@ -20,37 +20,47 @@ ARG MY_REGISTRY=
 FROM ${MY_REGISTRY}alpine:3.9 AS prebuilt-base
 
 RUN apk add --update \
+    acl-dev \
     alpine-sdk \
     autoconf \
     automake \
     bash \
+    bzip2-dev \
     cmake \
+    expat-dev \
     file \
+    libarchive-dev \
     libcap-ng-dev \
     libtool \
+    lz4-dev \
     lzo-dev \
     musl-utils \
+    openssl-dev \
     wget \
     xz \
+    xz-dev \
+    zlib-dev \
+    zstd-dev \
+    zstd-static \
 ;
 
 RUN mkdir -p /dist
 RUN mkdir -p /usr/src
+COPY patches/0001-Use-pkg-config-to-find-packages.patch /usr/src/
 
 #
 # Prebuilt static icecream
 #
 FROM prebuilt-base AS prebuilt-icecream
-COPY patches/icecream-recompile.patch /usr/src/
 
 # Use a recent version of Icecream, which has many bug fixes
-ENV ICECREAM_SHA1=e39103ff5fb6aa7e939b486df25d621696ba1d6f
+ENV ICECREAM_SHA1=1aa08857cb9c2639dbde1c2f6a05212c842581f1
 RUN mkdir -p /usr/src/icecream && \
     cd /usr/src/icecream && \
     wget -O icecream.tar.gz https://github.com/icecc/icecream/archive/${ICECREAM_SHA1}.tar.gz && \
     tar -xvzf icecream.tar.gz && \
     cd icecream-${ICECREAM_SHA1} && \
-    patch -p1 < /usr/src/icecream-recompile.patch && \
+    patch -p1 < /usr/src/0001-Use-pkg-config-to-find-packages.patch && \
     mkdir build && \
     cd build && \
     ../autogen.sh && \
@@ -60,7 +70,10 @@ RUN mkdir -p /usr/src/icecream && \
         --enable-gcc-fdirectives-only \
         --enable-clang-rewrite-includes \
         --without-man \
-        LDFLAGS="-static" && \
+        --enable-static \
+        --disable-shared \
+        LDFLAGS="-static" \
+        PKG_CONFIG="pkg-config --static" && \
     make -j$(nproc) LDFLAGS="--static" && \
     make install-strip DESTDIR=/dist/icecream
 
