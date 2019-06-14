@@ -275,14 +275,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
 # Python modules used by resulttool
 RUN python3 -m pip install jinja2
 
-# Install wine, needed to test meta-mingw SDKs
-RUN dpkg --add-architecture i386 && \
-    apt-get -y update && \
-    (echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections) && \
-    apt-get -y install \
-    wine \
-&& rm -rf /var/lib/apt/lists/*
-
 # Copy prebuilt items
 COPY --from=prebuilt-icecream /dist/icecream /
 COPY --from=prebuilt-setpriv /dist/setpriv /
@@ -350,14 +342,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
 # Base OS stuff that reasonable workstations have, but which the Docker
 # registry image doesn't
     tzdata \
-&& rm -rf /var/lib/apt/lists/*
-
-# Install wine, needed to test meta-mingw SDKs
-RUN dpkg --add-architecture i386 && \
-    apt-get -y update && \
-    (echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true | debconf-set-selections) && \
-    apt-get -y install \
-    wine-stable \
 && rm -rf /var/lib/apt/lists/*
 
 # Copy prebuilt items
