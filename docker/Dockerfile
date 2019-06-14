@@ -273,7 +273,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
 && rm -rf /var/lib/apt/lists/*
 
 # Python modules used by resulttool
-RUN python3 -m pip install jinja2
+RUN python3 -m pip install jinja2 iterfzf
 
 # Copy prebuilt items
 COPY --from=prebuilt-icecream /dist/icecream /
@@ -343,6 +343,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
 # registry image doesn't
     tzdata \
 && rm -rf /var/lib/apt/lists/*
+
+# Python modules used by resulttool
+RUN python3 -m pip install iterfzf
 
 # Copy prebuilt items
 COPY --from=prebuilt-icecream /dist/icecream /
