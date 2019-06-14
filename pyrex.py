@@ -197,6 +197,14 @@ def main():
                 print("  https://docs.docker.com/install/linux/docker-ce/ubuntu/")
                 print("  https://docs.docker.com/install/linux/docker-ce/fedora/")
                 print()
+                print(textwrap.fill("After installing docker, give your login account permission to " +
+                                     "docker commands by running:"))
+                print()
+                print("  sudo usermod -aG docker $USER")
+                print()
+                print(textwrap.fill("After adding your user to the 'docker' group, log out and back in " +
+                                    "so that the new group membership takes effect."))
+                print()
                 print(textwrap.fill("To attempt running the build on your native operating system's set " +
                                     "of packages, use:"))
                 print()
