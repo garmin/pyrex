@@ -170,10 +170,6 @@ convenience, the proxy user created in the Docker image by default has the same
 $HOME as the user who created the container, so these types of bind can be done
 by simply adding `${env:HOME}/.ssh` to `run:bind`
 
-#### Specifying an alternate Docker image
-An alternate Dockerfile can be specified by setting the
-`dockerbuild:dockerfile` attribute.
-
 #### Debugging the container
 In the event that you need to get a shell into the container to run some
 commands, Pyrex creates a command called `pyrex-shell`. Executing this command
@@ -184,23 +180,6 @@ containers.
 You can also run arbitrary commands in the container with the `pyrex-run`
 command. Be aware that any changes made to the container are not persistent,
 and will be discarded when `pyrex-run` exits.
-
-#### Pulling the image
-By default, Pyrex will pull a docker image from dockerhub that matches the
-version of Pyrex you are running. In most cases this is probably what you want.
-However, if you are doing active Pyrex development or don't want to pull from a
-registry for some other reason, Pyrex can be configured to build the image
-locally when the environment is sources. To do this, set `${config:buildlocal}`
-to `1` and `${dockerbuild:dockerfile}` to the Dockerfile that describes what
-you want built.
-
-*Note:* If you are building your own docker images locally, it is *highly*
-recommended that you enable [BuildKit in Docker][] to minimize build times.
-
-While you *can* instruct Pyrex to pull the `latest` tag from dockehub for a
-given image instead of a versioned release tag, this is highly discouraged, as
-it will most certainly cause problems. In these cases, you probably want to
-build the image locally instead.
 
 ### Running Pyrex
 Once Pyrex is configured, using it is very straight forward. First, source the
@@ -243,9 +222,14 @@ The following items are either known to not work, or haven't been fully tested:
   job control.
 
 ## Developing on Pyrex
-
  If you are doing development on Pyrex itself, please read the [Developer
- Documentation](./DEVELOPING.md)
+ Documentation][]
+
+## Using the latest image
+While you *can* instruct Pyrex to pull the `latest` tag from dockerhub for a
+given image instead of a versioned release tag, this is highly discouraged, as
+it will most certainly cause problems. In these cases, you probably want to
+build the image locally instead. See the [Developer Documentation][].
 
 ## FAQ
 * *Why use a Ubuntu image as the default?* The default Docker image that Pyrex
@@ -282,3 +266,4 @@ The following items are either known to not work, or haven't been fully tested:
 [poky]: https://git.yoctoproject.org/cgit/cgit.cgi/poky/
 [Sanity Tested Distros]: https://www.yoctoproject.org/docs/current/mega-manual/mega-manual.html#var-SANITY_TESTED_DISTROS
 [BuildKit in Docker]: https://docs.docker.com/develop/develop-images/build_enhancements/
+[Developer Documentation]: ./DEVELOPING.md

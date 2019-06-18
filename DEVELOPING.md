@@ -1,6 +1,27 @@
 # Developer Guide
 Pyrex development information and processes
 
+## Building images locally
+Pyrex pulls prebuilt Docker containers from DockerHub by default, which should
+be sufficient for most users. However, users that are active developing on
+Pyrex or wish to build images locally instead of using published images can do
+so by making the following changes to `pyrex.ini`:
+
+1. Set `config:buildlocal` to `1`
+2. Change `config:tag` to an alternate tag suffix instead of
+   `:${config:pyrextag}`. While not strictly necessary, this step will help
+   prevent confusion if you want to switch back to prebuilt images. If you
+   choose not to change this, realize that your locally built images will
+   overwrite your local docker cache tags for the prebuilt images. As an
+   example, you might add the following to `pyrex.ini`:
+
+    [config]
+    tag = ${config:dockerimage}:my-image
+
+3. Set `config:dockerfile` to the path where the Dockerfile you wish to build
+   is located. Alternatively, you can leave it as the default to build the
+   standard Pyrex images locally.
+
 ## Making a release
 To make a release of Pyrex:
 
