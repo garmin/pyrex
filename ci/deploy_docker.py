@@ -26,6 +26,8 @@ def main():
     repo = 'garminpyrex/%s' % image
     name = '%s:%s' % (repo, tag)
 
+    print("Deploying %s..." % name)
+
     # Get a login token for the docker registry and download the manifest
     token = requests.get("https://auth.docker.io/token?service=registry.docker.io&scope=repository:%s:pull" % repo, json=True).json()["token"]
     manifest = requests.get(
