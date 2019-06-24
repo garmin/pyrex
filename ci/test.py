@@ -32,6 +32,14 @@ sys.path.append(PYREX_ROOT)
 import pyrex
 
 TEST_IMAGE_ENV_VAR = 'TEST_IMAGE'
+TEST_PREBUILT_TAG_ENV_VAR = 'TEST_PREBUILT_TAG'
+
+def skipIfPrebuilt(func):
+    def wrapper(self, *args, **kwargs):
+        if os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, ''):
+            self.skipTest('Test does not apply to prebuilt images')
+        return func(self, *args, **kwargs)
+    return wrapper
 
 class PyrexTest(unittest.TestCase):
     def setUp(self):
@@ -65,11 +73,9 @@ class PyrexTest(unittest.TestCase):
         self.thread_dir = os.path.join(self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident()))
         os.makedirs(self.thread_dir)
 
-        self.test_image = os.environ.get(TEST_IMAGE_ENV_VAR)
-        if self.test_image:
-            conf = self.get_config()
-            conf['config']['dockerimage'] = self.test_image
-            conf.write_conf()
+        # Write out the default test config
+        conf = self.get_config()
+        conf.write_conf()
 
     def get_config(self, defaults=False):
         class Config(configparser.RawConfigParser):
@@ -85,6 +91,22 @@ class PyrexTest(unittest.TestCase):
             config.read(self.pyrex_conf)
         else:
             config.read_string(pyrex.read_default_config(True))
+
+            # Setup the config suitable for testing
+            self.test_image = os.environ.get(TEST_IMAGE_ENV_VAR)
+            if self.test_image:
+                config['config']['dockerimage'] = self.test_image
+
+            prebuilt_tag = os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, '')
+            if prebuilt_tag:
+                config['config']['pyrextag'] = prebuilt_tag
+                config['config']['buildlocal'] = '0'
+            else:
+                # Always build the latest image locally for testing. Use a tag that
+                # isn't present on docker hub so that any attempt to pull it fails
+                config['config']['pyrextag'] = 'ci-test'
+                config['config']['buildlocal'] = '1'
+
         return config
 
     def assertSubprocess(self, *args, capture=False, returncode=0, **kwargs):
@@ -111,7 +133,7 @@ class PyrexTest(unittest.TestCase):
 
                 ret = proc.poll()
 
-            self.assertEqual(ret, returncode, msg='%s failed')
+            self.assertEqual(ret, returncode, msg='%s failed' % ' '.join(*args))
             return None
 
     def assertPyrexHostCommand(self, *args, quiet_init=False, **kwargs):
@@ -305,8 +327,6 @@ class PyrexCore(PyrexTest):
         conftemplate = os.path.join(temp_dir, 'pyrex.ini.sample')
 
         conf = self.get_config(defaults=True)
-        if self.test_image:
-            conf['config']['pyreximage'] = self.test_image
         with open(conftemplate, 'w') as f:
             conf.write(f)
 
@@ -329,8 +349,6 @@ class PyrexCore(PyrexTest):
         conftemplate = os.path.join(temp_dir, 'pyrex.ini.sample')
 
         conf = self.get_config(defaults=True)
-        if self.test_image:
-            conf['config']['pyreximage'] = self.test_image
         del conf['config']['confversion']
         with open(conftemplate, 'w') as f:
             conf.write(f)
@@ -339,6 +357,59 @@ class PyrexCore(PyrexTest):
         env['PYREXCONFTEMPLATE'] = conftemplate
 
         self.assertPyrexHostCommand('true', returncode=1, env=env)
+
+    @skipIfPrebuilt
+    def test_local_build(self):
+        # Run any command to build the images locally
+        self.assertPyrexHostCommand('true')
+
+        conf = self.get_config()
+
+        # Trying to build with an invalid registry should fail
+        conf['config']['registry'] = 'does.not.exist.invalid'
+        conf.write_conf()
+        self.assertPyrexHostCommand('true', returncode=1)
+
+        # Disable building locally any try again (from the previously cached build)
+        conf['config']['buildlocal'] = '0'
+        conf.write_conf()
+
+        self.assertPyrexHostCommand('true')
+
+    def test_version(self):
+        self.assertRegex(pyrex.VERSION, pyrex.VERSION_REGEX, msg="Version '%s' is invalid" % pyrex.VERSION)
+
+    def test_version_tag(self):
+        tag = None
+        if os.environ.get('TRAVIS_TAG'):
+            tag = os.environ['TRAVIS_TAG']
+        else:
+            try:
+                tags = subprocess.check_output(['git', '-C', PYREX_ROOT, 'tag', '-l', '--points-at', 'HEAD']).decode('utf-8').splitlines()
+                if tags:
+                    tag = tags[0]
+            except subprocess.CalledProcessError:
+                pass
+
+        if not tag:
+            self.skipTest('No tag found')
+
+        self.assertEqual('v%s' % pyrex.VERSION, tag)
+        self.assertRegex(tag, pyrex.VERSION_TAG_REGEX, msg="Tag '%s' is invalid" % tag)
+
+    @skipIfPrebuilt
+    def test_tag_overwrite(self):
+        # Test that trying to build the image with a release-like tag fails
+        # (and doesn't build the image)
+        conf = self.get_config()
+        conf['config']['pyrextag'] = 'v1.2.3-ci-test'
+        conf.write_conf()
+
+        self.assertPyrexHostCommand('true', returncode=1)
+
+        output = self.assertSubprocess(['docker', 'images', '-q', conf['config']['tag']], capture=True).decode('utf-8').strip()
+        self.assertEqual(output, "", msg="Tagged image found!")
+
 
 class TestImage(PyrexTest):
     def test_tini(self):

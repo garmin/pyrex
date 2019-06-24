@@ -170,10 +170,6 @@ convenience, the proxy user created in the Docker image by default has the same
 $HOME as the user who created the container, so these types of bind can be done
 by simply adding `${env:HOME}/.ssh` to `run:bind`
 
-#### Specifying an alternate Docker image
-An alternate Dockerfile can be specified by setting the `config:dockerfile`
-attribute.
-
 #### Debugging the container
 In the event that you need to get a shell into the container to run some
 commands, Pyrex creates a command called `pyrex-shell`. Executing this command
@@ -184,17 +180,6 @@ containers.
 You can also run arbitrary commands in the container with the `pyrex-run`
 command. Be aware that any changes made to the container are not persistent,
 and will be discarded when `pyrex-run` exits.
-
-#### Managing multiple Docker images
-It may occasionally be necessary to maintain multiple different Docker images
-simultaneously. Pyrex can handle this without any problems, however it should
-be noted that each different image should be given a unique tag using the
-`${config:tag}` variable. This variable specifies the name of the tag that
-Pyrex will attach to the image when it is built to prevent Docker from thinking
-the image is unused and removing it. Each image should have unique tag assigned
-to it. In addition, it is highly recommended that the tag include the variables
-`${build:username}` and `${build:groupname}` to ensure that multiple users
-sharing a computer do not overwrite each others tags.
 
 ### Running Pyrex
 Once Pyrex is configured, using it is very straight forward. First, source the
@@ -236,21 +221,22 @@ The following items are either known to not work, or haven't been fully tested:
   the `docker pause` command, but this doesn't integrate with the parent shells
   job control.
 
+## Developing on Pyrex
+ If you are doing development on Pyrex itself, please read the [Developer
+ Documentation][]
+
+## Using the latest image
+While you *can* instruct Pyrex to pull the `latest` tag from dockerhub for a
+given image instead of a versioned release tag, this is highly discouraged, as
+it will most certainly cause problems. In these cases, you probably want to
+build the image locally instead. See the [Developer Documentation][].
+
 ## FAQ
 * *Why use a Ubuntu image as the default?* The default Docker image that Pyrex
   creates is based on Ubuntu. Yes, it is known that there are other images out
   there that are lighter weight (e.g. Alpine Linux), but Ubuntu was chosen
   because it is one of the [Sanity Tested Distros][] that Yocto supports. Pyrex
   aims to support a vanilla Yocto setup with minimal manual configuration.
-* *Why are the Docker images built on the fly?/Why aren't the Pyrex Docker
-  images published on Dockerhub?* The main reason that the Pyrex docker image
-  is built on the fly is to accommodate making the user that runs commands
-  inside the Docker container be equivalent to the user running the commands on
-  the outside. Each container is built with the owning user encoded into it and
-  thus can't be shared with any other users. This may not be ideal, but was the
-  best solution we have so far come up, even after evaluating some alternatives
-  like [fixuid](https://github.com/boxboat/fixuid). If you have better
-  alternatives, please feel free to propose them!
 * *What's with [cleanup.py](./docker/cleanup.py)?* When a Docker container's
   main process exits, any remaining process appears to be sent a `SIGKILL`.
   This can cause a significant problem with many of the child processes that
@@ -279,4 +265,5 @@ The following items are either known to not work, or haven't been fully tested:
 [TEMPLATECONF]: https://www.yoctoproject.org/docs/latest/mega-manual/mega-manual.html#creating-a-custom-template-configuration-directory
 [poky]: https://git.yoctoproject.org/cgit/cgit.cgi/poky/
 [Sanity Tested Distros]: https://www.yoctoproject.org/docs/current/mega-manual/mega-manual.html#var-SANITY_TESTED_DISTROS
-
+[BuildKit in Docker]: https://docs.docker.com/develop/develop-images/build_enhancements/
+[Developer Documentation]: ./DEVELOPING.md

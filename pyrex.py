@@ -30,6 +30,12 @@ import shlex
 import glob
 import textwrap
 import stat
+import hashlib
+
+VERSION = '0.0.1'
+
+VERSION_REGEX = re.compile(r'^([0-9]+\.){2}[0-9]+(-.*)?$')
+VERSION_TAG_REGEX = re.compile(r'^v([0-9]+\.){2}[0-9]+(-.*)?$')
 
 THIS_SCRIPT = os.path.basename(__file__)
 PYREX_CONFVERSION = '1'
@@ -84,6 +90,9 @@ def load_configs(conffile):
         if env in os.environ:
             user_config['env'][env] = os.environ[env]
 
+    user_config.add_section('pyrex')
+    user_config['pyrex']['version'] = VERSION
+
     return user_config, build_config
 
 def stop_coverage():
@@ -99,8 +108,8 @@ def stop_coverage():
     except:
         pass
 
-def get_tag_buildid(config):
-    docker_args = [config['config']['dockerpath'], 'image', 'inspect', config['config']['tag'], '--format={{ .Id }}']
+def get_image_id(config, image):
+    docker_args = [config['config']['dockerpath'], 'image', 'inspect', image, '--format={{ .Id }}']
     return subprocess.check_output(docker_args).decode('utf-8').rstrip()
 
 def use_docker(config):
@@ -121,6 +130,35 @@ def check_confversion(user_config):
         sys.stderr.write("Bad pyrex conf version '%s'\n" % user_config['config']['confversion'])
         return False
     return True
+
+def get_build_hash(config):
+    # Docker doesn't currently have any sort of "dry-run" mechanism that could
+    # be used to determine if the dockerfile has changed and needs a rebuild.
+    # (See https://github.com/moby/moby/issues/38101).
+    #
+    # Until one is added, we use a simple hash of the files in the pyrex
+    # "docker" folder to determine when it is out of date.
+
+    h = hashlib.sha256()
+    for (root, dirs, files) in os.walk(os.path.join(config['build']['pyrexroot'], 'docker')):
+        # Process files and directories in alphabetical order so that hashing
+        # is consistent
+        dirs.sort()
+        files.sort()
+
+        for f in files:
+            # Skip files that aren't interesting. This way any temporary editor
+            # files are ignored
+            if not (f.endswith('.py') or f.endswith('.sh') or f.endswith('.patch') or f == 'Dockerfile'):
+                continue
+
+            with open(os.path.join(root, f), 'rb') as f:
+                b = f.read(4096)
+                while b:
+                    h.update(b)
+                    b = f.read(4096)
+
+    return h.hexdigest()
 
 def main():
     def capture(args):
@@ -224,37 +262,74 @@ def main():
                 sys.stderr.write("Docker version is too old (have %s), need >= %d\n" % (version, MINIMUM_DOCKER_VERSION))
                 return 1
 
-            print("Getting Docker image up to date...")
+            tag = config['config']['tag']
 
-            docker_args = [docker_path, 'build',
-                '-t', config['config']['tag'],
-                '-f', config['config']['dockerfile'],
-                '--network=host',
-                os.path.join(config['build']['pyrexroot'], 'docker')
-                ]
+            if config['config']['buildlocal'] == '1':
+                if VERSION_TAG_REGEX.match(tag.split(':')[-1]) is not None:
+                    sys.stderr.write("Image tag '%s' will overwrite release image tag, which is not what you want\n" %
+                            tag)
+                    sys.stderr.write("Try changing 'config:pyrextag' to a different value\n")
+                    return 1
 
-            if config['config']['registry']:
-                docker_args.extend(['--build-arg', 'MY_REGISTRY=%s/' % config['config']['registry']])
+                print("Getting Docker image up to date...")
 
-            for e in ('http_proxy', 'https_proxy'):
-                if e in os.environ:
-                    docker_args.extend(['--build-arg', '%s=%s' % (e, os.environ[e])])
+                docker_args = [docker_path, 'build',
+                    '-t', tag,
+                    '-f', config['dockerbuild']['dockerfile'],
+                    '--network=host',
+                    os.path.join(config['build']['pyrexroot'], 'docker')
+                    ]
 
-            try:
-                if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1':
-                    docker_args.append('-q')
-                    build_config['build']['buildid'] = subprocess.check_output(docker_args).decode('utf-8').rstrip()
-                else:
-                    subprocess.check_call(docker_args)
-                    build_config['build']['buildid'] = get_tag_buildid(config)
+                if config['config']['registry']:
+                    docker_args.extend(['--build-arg', 'MY_REGISTRY=%s/' % config['config']['registry']])
 
-            except subprocess.CalledProcessError:
-                return 1
+                for e in ('http_proxy', 'https_proxy'):
+                    if e in os.environ:
+                        docker_args.extend(['--build-arg', '%s=%s' % (e, os.environ[e])])
+
+                if config['dockerbuild'].get('args', ''):
+                    docker_args.extend(shlex.split(config['dockerbuild']['args']))
+
+                env = os.environ.copy()
+                for e in shlex.split(config['dockerbuild']['env']):
+                    name, val = e.split('=', 1)
+                    env[name] = val
+
+                try:
+                    if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1' and config['dockerbuild'].getboolean('quiet'):
+                        docker_args.append('-q')
+                        build_config['build']['buildid'] = subprocess.check_output(docker_args, env=env).decode('utf-8').rstrip()
+                    else:
+                        subprocess.check_call(docker_args, env=env)
+                        build_config['build']['buildid'] = get_image_id(config, tag)
+
+                    build_config['build']['runid'] = build_config['build']['buildid']
+
+                except subprocess.CalledProcessError:
+                    return 1
+
+                build_config['build']['buildhash'] = get_build_hash(build_config)
+            else:
+                try:
+                    # Try to get the image This will fail if the image doesn't
+                    # exist locally
+                    build_config['build']['buildid'] = get_image_id(config, tag)
+                except subprocess.CalledProcessError:
+                    try:
+                        docker_args = [docker_path, 'pull', tag]
+                        subprocess.check_call(docker_args)
+
+                        build_config['build']['buildid'] = get_image_id(config, tag)
+                    except subprocess.CalledProcessError:
+                        return 1
+
+                build_config['build']['runid'] = tag
         else:
             print(textwrap.fill("Running outside of Docker. No guarantees are made about your Linux " +
                                 "distribution's compatibility with Yocto."))
             print()
             build_config['build']['buildid'] = ''
+            build_config['build']['runid'] = ''
 
         with open(args.conffile, 'w') as f:
             build_config.write(f)
@@ -295,6 +370,16 @@ def main():
                 '''.format(runfile=runfile, shell=config['config']['shell'])))
         os.chmod(shellfile, stat.S_IRWXU)
 
+        # Write out image rebuild command
+        rebuildfile = os.path.join(shimdir, 'pyrex-rebuild')
+        with open(rebuildfile, 'w') as f:
+            f.write(textwrap.dedent('''\
+                #! /bin/sh
+                exec {pyrexroot}/{this_script} build {conffile}
+                '''.format(pyrexroot=config['build']['pyrexroot'], conffile=args.conffile,
+                    this_script=THIS_SCRIPT)))
+        os.chmod(rebuildfile, stat.S_IRWXU)
+
         command_globs = [g for g in config['config']['commands'].split() if g]
         nopyrex_globs = [g for g in config['config']['commands_nopyrex'].split() if g]
 
@@ -319,22 +404,27 @@ def main():
     def run(args):
         config, _ = load_configs(args.conffile)
 
+        runid = config['build']['runid']
+
         if use_docker(config):
-            if not config['build']['buildid']:
+            if not runid:
                 print("Docker was not enabled when the environment was setup. Cannot use it now!")
                 return 1
 
             docker_path = config['config']['dockerpath']
 
             try:
-                buildid = get_tag_buildid(config)
+                buildid = get_image_id(config, runid)
             except subprocess.CalledProcessError as e:
                 print("Cannot verify docker image: %s\n" % e.output)
                 return 1
 
             if buildid != config['build']['buildid']:
-                sys.stderr.write("WARNING: buildid for docker image %s has changed\n" %
-                        config['config']['tag'])
+                sys.stderr.write("WARNING: buildid for docker image %s has changed\n" % runid)
+
+            if config['config']['buildlocal'] == '1' and config['build']['buildhash'] != get_build_hash(config):
+                sys.stderr.write("WARNING: The docker image source has changed and should be rebuilt.\n"
+                                 "Try running: 'pyrex-rebuild'\n")
 
             # These are "hidden" keys in pyrex.ini that aren't publicized, and
             # are primarily used for testing. Use they at your own risk, they
@@ -394,7 +484,7 @@ def main():
             docker_args.extend(shlex.split(config['run'].get('args', '')))
 
             docker_args.append('--')
-            docker_args.append(config['config']['tag'])
+            docker_args.append(runid)
             docker_args.extend(args.command)
 
             stop_coverage()

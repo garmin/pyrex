@@ -20,7 +20,8 @@ TOP_DIR=$(readlink -f $(dirname $0)/../)
 
 rm -rf $TOP_DIR/poky
 mkdir $TOP_DIR/poky
-wget -O $TOP_DIR/poky/poky.tar.bz2 "https://downloads.yoctoproject.org/releases/yocto/yocto-2.6/poky-thud-20.0.0.tar.bz2"
+wget --no-check-certificate -O $TOP_DIR/poky/poky.tar.bz2 "https://downloads.yoctoproject.org/releases/yocto/yocto-2.6/poky-thud-20.0.0.tar.bz2"
+echo 'ef3d4305054282938bfe70dc5a08eba8a701a22b49795b1c2d8ed5aed90d0581 *poky/poky.tar.bz2' | sha256sum -c
 echo "Extracting..."
 tar -xf $TOP_DIR/poky/poky.tar.bz2 -C $TOP_DIR/poky --strip-components=1
 ln -s ../pyrex-init-build-env $TOP_DIR/poky/
