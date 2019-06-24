@@ -19,7 +19,7 @@ def main():
     if ':' in image:
         image, tag = image.split(':', 1)
     elif 'TRAVIS_TAG' in os.environ:
-        tag = os.environ['TRAVIS_TAG']
+        tag = os.environ['TRAVIS_TAG'] or 'latest'
     else:
         tag = 'latest'
 
