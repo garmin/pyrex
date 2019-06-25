@@ -110,7 +110,7 @@ def stop_coverage():
 
 def get_image_id(config, image):
     docker_args = [config['config']['dockerpath'], 'image', 'inspect', image, '--format={{ .Id }}']
-    return subprocess.check_output(docker_args).decode('utf-8').rstrip()
+    return subprocess.check_output(docker_args, stderr=subprocess.DEVNULL).decode('utf-8').rstrip()
 
 def use_docker(config):
     return os.environ.get('PYREX_DOCKER', config['run']['enable']) == '1'
