@@ -24,11 +24,11 @@ def get_var(name):
     if name in os.environ:
         val = os.environ[name]
         if not val:
-            sys.stderr.write('"%s" is empty')
+            sys.stderr.write('"%s" is empty\n' % name)
             sys.exit(1)
         return val
 
-    sys.stderr.write('"%s" is missing from the environment')
+    sys.stderr.write('"%s" is missing from the environment\n' % name)
     sys.exit(1)
 
 def main():
