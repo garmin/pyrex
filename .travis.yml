@@ -24,7 +24,6 @@ install:
 - pip3 install coveralls
 - pip3 install requests
 before_script:
-- echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 - printf '\nimport coverage\ncoverage.current_coverage = coverage.process_startup()\n'
   >> "/home/travis/virtualenv/python${TRAVIS_PYTHON_VERSION}/lib/python${TRAVIS_PYTHON_VERSION}/sitecustomize.py"
 - rm -f .coverage-report.*
@@ -35,13 +34,13 @@ after_success:
 deploy:
 - provider: script
   skip_cleanup: true
-  script: "./ci/deploy_docker.py $TEST_IMAGE"
+  script: "./ci/deploy_docker.py --login $TEST_IMAGE"
   on:
     all_branches: true
     condition: "$TRAVIS_PULL_REQUEST == false && ($TRAVIS_BRANCH == master || $TRAVIS_TAG
       =~ ^v[0-9].*$)"
 - provider: script
   skip_cleanup: true
-  script: "./ci/deploy_docker.py $TEST_IMAGE:next"
+  script: "./ci/deploy_docker.py --login $TEST_IMAGE:next"
   on:
     branch: next
