@@ -122,11 +122,13 @@ LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to run init scripts.
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
-    sudo \
-    locales \
-    lsb-release \
-    python \
-    python3 && \
+        locales \
+        lsb-release \
+        ncurses-term \
+        python \
+        python3 \
+        sudo \
+    && \
 # Clean up apt-cache
     rm -rf /var/lib/apt/lists/* &&\
 # generate utf8 locale
@@ -144,11 +146,13 @@ LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to run init scripts.
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
-    locales \
-    lsb-release \
-    sudo \
-    python \
-    python3 && \
+        locales \
+        lsb-release \
+        ncurses-term \
+        python \
+        python3 \
+        sudo \
+    && \
 # Clean up apt-cache
     rm -rf /var/lib/apt/lists/* &&\
 # generate utf8 locale
@@ -166,13 +170,15 @@ LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to run init scripts.
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
-    python \
-    python3 \
-# Tools used by Pyrex
-    lsb-release \
-    setpriv \
-    sudo \
-    locales &&\
+        locales \
+        lsb-release \
+        ncurses-term \
+        python \
+        python3 \
+        setpriv \
+        sudo \
+    && \
+# Clean up apt-cache
     rm -rf /var/lib/apt/lists/* && \
 # generate utf8 locale
     locale-gen en_US.UTF-8

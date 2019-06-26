@@ -26,6 +26,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import pty
 
 PYREX_ROOT = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(PYREX_ROOT)
@@ -167,23 +168,59 @@ class PyrexTest(unittest.TestCase):
             self.assertEqual(ret, returncode, msg='%s failed' % ' '.join(*args))
             return None
 
-    def assertPyrexHostCommand(self, *args, quiet_init=False, **kwargs):
+    def _write_host_command(self, args, quiet_init=False):
         cmd_file = os.path.join(self.thread_dir, 'command')
-        commands = []
-        commands.append('. ./poky/pyrex-init-build-env%s' % ('', ' > /dev/null')[quiet_init])
-        commands.extend(list(args))
         with open(cmd_file, 'w') as f:
-            f.write(' && '.join(commands))
-        return self.assertSubprocess(['/bin/bash', cmd_file], cwd=PYREX_ROOT, **kwargs)
+            f.write('. ./poky/pyrex-init-build-env%s && ' % ('', ' > /dev/null')[quiet_init])
+            f.write(' && '.join(list(args)))
+        return cmd_file
 
-    def assertPyrexContainerShellCommand(self, *args, **kwargs):
+    def _write_container_command(self, args):
         cmd_file = os.path.join(self.thread_dir, 'container_command')
         with open(cmd_file, 'w') as f:
             f.write(' && '.join(args))
+        return cmd_file
+
+    def assertPyrexHostCommand(self, *args, quiet_init=False, **kwargs):
+        cmd_file = self._write_host_command(args, quiet_init)
+        return self.assertSubprocess(['/bin/bash', cmd_file], cwd=PYREX_ROOT, **kwargs)
+
+    def assertPyrexContainerShellCommand(self, *args, **kwargs):
+        cmd_file = self._write_container_command(args)
         return self.assertPyrexHostCommand('pyrex-shell %s' % cmd_file, **kwargs)
 
     def assertPyrexContainerCommand(self, cmd, **kwargs):
         return self.assertPyrexHostCommand('pyrex-run %s' % cmd, **kwargs)
+
+    def assertPyrexContainerShellPTY(self, *args, returncode=0, env=None, quiet_init=False):
+        container_cmd_file = self._write_container_command(args)
+        host_cmd_file = self._write_host_command(['pyrex-shell %s' % container_cmd_file], quiet_init)
+        stdout = []
+        def master_read(fd):
+            while True:
+                data = os.read(fd, 1024)
+                if not data:
+                    return data
+
+                stdout.append(data)
+
+        old_env = None
+        try:
+            if env:
+                old_env = os.environ.copy()
+                os.environ.clear()
+                os.environ.update(env)
+
+            status = pty.spawn(['/bin/bash', host_cmd_file], master_read)
+        finally:
+            if old_env is not None:
+                os.environ.clear()
+                os.environ.update(old_env)
+
+        self.assertFalse(os.WIFSIGNALED(status), msg='%s died from a signal: %s' % (' '.join(args), os.WTERMSIG(status)))
+        self.assertTrue(os.WIFEXITED(status), msg='%s exited abnormally' % ' '.join(args))
+        self.assertEqual(os.WEXITSTATUS(status), returncode, msg='%s failed' % ' '.join(args))
+        return b''.join(stdout)
 
 class PyrexCore(PyrexTest):
     def test_init(self):
@@ -442,6 +479,37 @@ class PyrexCore(PyrexTest):
         output = self.assertSubprocess(['docker', 'images', '-q', conf['config']['tag']], capture=True).decode('utf-8').strip()
         self.assertEqual(output, "", msg="Tagged image found!")
 
+    def test_pty(self):
+        self.assertPyrexContainerShellPTY('true')
+        self.assertPyrexContainerShellPTY('false', returncode=1)
+
+    def test_invalid_term(self):
+        # Tests that an invalid terminal is correctly detected.
+        bad_term = 'this-is-not-a-valid-term'
+        env = os.environ.copy()
+        env['TERM'] = bad_term
+        output = self.assertPyrexContainerShellPTY('true', env=env).decode('utf-8').strip()
+        self.assertIn('$TERM has an unrecognized value of "%s"' % bad_term, output)
+        self.assertPyrexContainerShellPTY('/usr/bin/infocmp %s > /dev/null' % bad_term, env=env, returncode=1, quiet_init=True)
+
+    def test_required_terms(self):
+        # Tests that a minimum set of terminals are supported
+        REQUIRED_TERMS = (
+                'dumb',
+                'vt100',
+                'xterm',
+                'xterm-256color'
+                )
+
+        env = os.environ.copy()
+        for t in REQUIRED_TERMS:
+            with self.subTest(term=t):
+                env['TERM'] = t
+                output = self.assertPyrexContainerShellPTY('echo $TERM', env=env, quiet_init=True).decode('utf-8').strip()
+                self.assertEqual(output, t, msg='Bad $TERM found in container!')
+
+                output = self.assertPyrexContainerShellPTY('/usr/bin/infocmp %s > /dev/null' % t, env=env).decode('utf-8').strip()
+                self.assertNotIn('$TERM has an unrecognized value', output)
 
 class TestImage(PyrexTest):
     def test_tini(self):

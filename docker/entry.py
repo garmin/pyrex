@@ -39,6 +39,12 @@ def main():
     # CTRL+Z doing nothing.
     signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGTSTP])
 
+    # Check TERM
+    if 'TERM' in os.environ:
+        r = subprocess.call(['/usr/bin/infocmp', os.environ['TERM']], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        if r != 0:
+            sys.stderr.write('$TERM has an unrecognized value of "%s". The interactive terminal may not behave appropriately\n' % os.environ['TERM'])
+
     uid = int(get_var('PYREX_UID'))
     gid = int(get_var('PYREX_GID'))
     user = get_var('PYREX_USER')
