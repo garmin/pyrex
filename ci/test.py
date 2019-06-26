@@ -89,7 +89,8 @@ class PyrexTest(unittest.TestCase):
         self.pyrex_conf = os.path.join(conf_dir, 'pyrex.ini')
 
         def cleanup_env():
-            os.environ = self.old_environ
+            os.environ.clear()
+            os.environ.update(self.old_environ)
 
         # OE requires that "python" be python2, not python3
         self.bin_dir = os.path.join(self.build_dir, 'bin')
