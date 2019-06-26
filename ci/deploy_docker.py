@@ -8,6 +8,7 @@ import sys
 
 def main():
     parser = argparse.ArgumentParser(description='Deploy docker images')
+    parser.add_argument('--login', action='store_true', help='Login to Dockerhub using the environment variables $DOCKER_USERNAME and $DOCKER_PASSWORD')
     parser.add_argument('image', metavar='IMAGE[:TAG]', help='The image to build and push')
 
     args = parser.parse_args()
@@ -25,6 +26,25 @@ def main():
 
     repo = 'garminpyrex/%s' % image
     name = '%s:%s' % (repo, tag)
+
+    if args.login:
+        print("Logging in...")
+        for v in ('DOCKER_USERNAME', 'DOCKER_PASSWORD'):
+            if v not in os.environ:
+                print("$%s is missing from the environment. Images will not be deployed" % v)
+                return 0
+
+        with subprocess.Popen(['docker', 'login', '--username', os.environ['DOCKER_USERNAME'], '--password-stdin'], stdin=subprocess.PIPE) as p:
+            try:
+                p.communicate(os.environ['DOCKER_PASSWORD'].encode('utf-8'), timeout=60)
+            except subprocess.TimeoutExpired:
+                print("Docker login timed out")
+                p.kill()
+                p.communicate()
+
+            if p.returncode != 0:
+                print("Docker login failed. Images will not be deployed")
+                return 0
 
     print("Deploying %s..." % name)
 
