@@ -173,6 +173,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
 # Dependencies for "bitbake -c menuconfig"
     libncurses5-dev \
     libtinfo-dev \
+    ncurses-term \
 # Required for some poorly written 3rd party recipes :(
     python-crypto \
     python-six \
@@ -242,6 +243,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
 # Dependencies for "bitbake -c menuconfig"
     libncurses5-dev \
     libtinfo-dev \
+    ncurses-term \
 # Not listed, but required dependencies (from ASSUME_PROVIDED)
     bzip2 \
     libbz2-dev \
@@ -318,6 +320,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
 # Dependencies for "bitbake -c menuconfig"
     libncurses5-dev \
     libtinfo-dev \
+    ncurses-term \
 # Not listed, but required dependencies (from ASSUME_PROVIDED)
     bzip2 \
     libbz2-dev \
