@@ -277,7 +277,9 @@ def main():
                     '-t', tag,
                     '-f', config['dockerbuild']['dockerfile'],
                     '--network=host',
-                    os.path.join(config['build']['pyrexroot'], 'docker')
+                    os.path.join(config['build']['pyrexroot'], 'docker'),
+                    '--target', 'pyrex-%s' % config['config']['dockerimage'].rsplit('-', 1)[-1]
+
                     ]
 
                 if config['config']['registry']:

@@ -4,9 +4,13 @@ python:
 - '3.4'
 env:
   matrix:
-  - TEST_IMAGE=ubuntu-14.04
-  - TEST_IMAGE=ubuntu-16.04
-  - TEST_IMAGE=ubuntu-18.04
+  - TEST_IMAGE=ubuntu-14.04-base
+  - TEST_IMAGE=ubuntu-16.04-base
+  - TEST_IMAGE=ubuntu-18.04-base
+  - TEST_IMAGE=centos-7-base
+  - TEST_IMAGE=ubuntu-14.04-oe
+  - TEST_IMAGE=ubuntu-16.04-oe
+  - TEST_IMAGE=ubuntu-18.04-oe
   global:
     secure: rQjtyqgj25+q8f+WVl8kDaeaXhJStuWvxQCpAJs/GYhRbBVhNDjLzjcCx+VHadjKkPGNwO8ecgJZbA3jIFEsNXjXFmoDjX7ozuzas55WUVB80uHfxbzyVfoHjy75M4FPzGHQD9ljoYhmJ5UERnDmhvd0ttk3X8Jffv2EX0WvX/ekpvLr1AX+DXhP/1l80AsN00wdRFs8IA9Ajf3JZ2/tE+V3nMUJQqzJzdXZTksB4+mbzlNdk4mCj/LNJbQaEs8mTSamIfy48k6pY9LOwKgWIDykhbA0l0tr6/OjYT26lZvgXrH86D3r4/1PJXwU4KNFvyBXwyyRFayL5STDddcazyfnihIrXxj7qKJxatmhJYlZnO9iH0KFLEkWlaGi5QMnN7nxfUy7Leeo2yNiKsI8Z2l1RTVlFUw2mm5cz115p1m7gZsmJxhY3Ucd7vPS2yBwBUqOKgJWKOTly12srmYSvlO4dVRvauoP21seuhEgP3uaB4QZAZRDBlEwIvQ32NfKkHTjxqSFGA8gjqcH3StpvXF1O5QZzn/u5Xs2c6E9Tx2ro4wQhLJsxa3dSKqsVB6s6KIvaf+PMnrFV3vqnDL0CMp6pemTLmjLu7oJH7MQtrK8z++IRvS8HvAC4ChTPTqGxiIWiiUImtSbCnTsf3e+Y4uYXj2XG6G0Rz7ewcI/K3U=
 before_install:
