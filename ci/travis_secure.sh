@@ -30,6 +30,8 @@ echo
 
 travis encrypt --add env.global <<HEREDOC
 DOCKER_USERNAME=$(read -e -p "Dockerhub Username (NOT email address): " && printf "%q" "$REPLY")
+HEREDOC
+travis encrypt --add env.global <<HEREDOC
 DOCKER_PASSWORD=$(read -e -p "Dockerhub Password: " -s && printf "%q" "$REPLY")
 HEREDOC
 
