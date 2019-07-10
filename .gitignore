@@ -2,6 +2,9 @@
 *.bak
 *.pyc
 
+# intermediate test files.
+/build/
+
 /poky/
 
 .coverage
