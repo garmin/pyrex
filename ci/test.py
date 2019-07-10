@@ -41,6 +41,36 @@ def skipIfPrebuilt(func):
         return func(self, *args, **kwargs)
     return wrapper
 
+def skipIfImageType(img_type='base', reason=None):
+    '''
+    Skip tests with optional reason.
+
+    Either:
+    @skipIfImageType('base') or
+    @skipIfImageType('base', 'reason')
+    '''
+
+    if not reason:
+        reason = 'functionality not supported on %s images' % img_type
+
+    def wrap(func):
+        '''
+        Internal decorator
+        '''
+        def wrapped_func(self, *args, **kwargs):
+            '''
+            Wrapped function.
+            '''
+            if not self.test_image:
+                self.skipTest("%s not defined" % TEST_IMAGE_ENV_VAR)
+            if self.test_image.rsplit('-', 1)[-1] == img_type:
+                self.skipTest(reason)
+            return func(self, *args, **kwargs)
+
+        return wrapped_func
+
+    return wrap
+
 class PyrexTest(unittest.TestCase):
     def setUp(self):
         self.build_dir = os.path.abspath(os.path.join(PYREX_ROOT, 'build'))
@@ -158,6 +188,7 @@ class PyrexCore(PyrexTest):
     def test_init(self):
         self.assertPyrexHostCommand('true')
 
+    @skipIfImageType('base','bitbake not supported on base images')
     def test_bitbake_parse(self):
         self.assertPyrexHostCommand('bitbake -p')
 
@@ -415,6 +446,7 @@ class TestImage(PyrexTest):
     def test_tini(self):
         self.assertPyrexContainerCommand('tini --version')
 
+    @skipIfImageType('base', 'icecc not installed on base images.')
     def test_icecc(self):
         self.assertPyrexContainerCommand('icecc --version')
 
@@ -424,11 +456,23 @@ class TestImage(PyrexTest):
         if not self.test_image:
             self.skipTest("%s not defined" % TEST_IMAGE_ENV_VAR)
 
+        # Get the test image name (strip out the flavor identifier) identifier.
+        image_name = self.test_image.rsplit('-', 1)[0]
+
+        expected_dist_id = image_name.split('-', 1)[0]
+        expected_release_str = image_name.split('-', 1)[1]
+
+        # Capture the LSB release information.
         dist_id_str = self.assertPyrexContainerCommand('lsb_release -i', quiet_init=True, capture=True).decode('utf-8').rstrip()
         release_str = self.assertPyrexContainerCommand('lsb_release -r', quiet_init=True, capture=True).decode('utf-8').rstrip()
 
-        self.assertRegex(dist_id_str.lower(), r'^distributor id:\s+' + re.escape(self.test_image.split('-', 1)[0]))
-        self.assertRegex(release_str.lower(), r'^release:\s+' + re.escape(self.test_image.split('-', 1)[1]))
+        self.assertRegex(dist_id_str.lower(), r'^distributor id:\s+' + re.escape(expected_dist_id))
+        self.assertRegex(
+            release_str.lower(),
+            # We only care if our image name (without the -oe/-base ending) is
+            # the middle part of the release field.
+            r'^release:\s+' + re.escape(expected_release_str) + r'(\.|$)'
+        )
 
 if __name__ == "__main__":
     unittest.main()

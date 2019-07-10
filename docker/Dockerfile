@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG PYREX_BASE=ubuntu-18.04
+ARG PYREX_BASE=ubuntu-18.04-oe
 ARG MY_REGISTRY=
 #
 # Base image for prebuilt static binaries
@@ -114,22 +114,105 @@ RUN mkdir -p /usr/src/tini && \
     make && \
     make install DESTDIR=/dist/tini && \
     mv /dist/tini/usr/local/bin/tini-static /dist/tini/usr/local/bin/tini
-
 #
 # Ubuntu 14.04 base
 #
-FROM ${MY_REGISTRY}ubuntu:trusty as ubuntu-14.04
+FROM ${MY_REGISTRY}ubuntu:trusty as ubuntu-14.04-base
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
-# Install software required to add ppa's
-RUN apt-get -y update && apt-get -y install \
-    python-software-properties \
-    software-properties-common
+# Install software required to run init scripts.
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+    sudo \
+    locales \
+    lsb-release \
+    python \
+    python3 && \
+# Clean up apt-cache
+    rm -rf /var/lib/apt/lists/* &&\
+# generate utf8 locale
+    locale-gen en_US.UTF-8
 
+# Copy prebuilt items
+COPY --from=prebuilt-setpriv /dist/setpriv /
+COPY --from=prebuilt-tini /dist/tini /
+
+#
+# Ubuntu 16.04 Base
+
+FROM ${MY_REGISTRY}ubuntu:xenial as ubuntu-16.04-base
+LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
+
+# Install software required to run init scripts.
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+    locales \
+    lsb-release \
+    sudo \
+    python \
+    python3 && \
+# Clean up apt-cache
+    rm -rf /var/lib/apt/lists/* &&\
+# generate utf8 locale
+    locale-gen en_US.UTF-8
+
+# Copy prebuilt items
+COPY --from=prebuilt-setpriv /dist/setpriv /
+COPY --from=prebuilt-tini /dist/tini /
+
+#
+# Ubuntu 18.04 Base
+#
+FROM ${MY_REGISTRY}ubuntu:bionic as ubuntu-18.04-base
+LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
+
+# Install software required to run init scripts.
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+    python \
+    python3 \
+# Tools used by Pyrex
+    lsb-release \
+    setpriv \
+    sudo \
+    locales &&\
+    rm -rf /var/lib/apt/lists/* && \
+# generate utf8 locale
+    locale-gen en_US.UTF-8
+
+# Copy prebuilt items
+COPY --from=prebuilt-tini /dist/tini /
+
+#
+# Centos 7
+#
+FROM ${MY_REGISTRY}centos:7 as centos-7-base
+LABEL maintainer="James Harris <james.harris@garmin.com>"
+RUN set -x && \
+      #Install default components
+      yum install -y yum-utils \
+          which \
+          sudo \
+          redhat-lsb-core \
+          &&\
+      yum install -y https://centos7.iuscommunity.org/ius-release.rpm &&\
+      yum install -y python36u &&\
+      yum clean all &&\
+      ln -s /usr/bin/python3.6 /usr/bin/python3 &&\
+      localedef -c -f UTF-8 -i en_US en_US.UTF-8
+
+# Copy prebuilt items
+COPY --from=prebuilt-setpriv /dist/setpriv /
+COPY --from=prebuilt-tini /dist/tini /
+
+#
+# Ubuntu 14.04 Yocto Base
+#
+FROM ubuntu-14.04-base as ubuntu-14.04-oe
+LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
+
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
 # Add a non-ancient version of git
-RUN add-apt-repository -y ppa:git-core/ppa
-
-RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+    apt-get -y update && apt-get -y install software-properties-common && \
+    add-apt-repository -y ppa:git-core/ppa && \
+    apt-get -y update && apt-get -y install \
 # Poky 2.0 build dependencies
     gawk \
     wget \
@@ -178,9 +261,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
     python-six \
     python3-six \
 # Useful tools for debugging Pyrex images
-    sudo \
     curl \
-    locales \
 # An updated version of Git (from the PPA source above)
 # that supports doing Yocto externalsrc recipes against free-
 # standing working copies that use Git worktrees.
@@ -197,24 +278,18 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
 
 # Copy prebuilt items
 COPY --from=prebuilt-icecream /dist/icecream /
-COPY --from=prebuilt-setpriv /dist/setpriv /
-COPY --from=prebuilt-tini /dist/tini /
 
 #
-# Ubuntu 16.04 Base
+# Ubuntu 16.04 Yocto Base
 #
-FROM ${MY_REGISTRY}ubuntu:xenial as ubuntu-16.04
+FROM ubuntu-16.04-base as ubuntu-16.04-oe
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
-# Install software required to add ppa's
-RUN apt-get -y update && apt-get -y install \
-    python-software-properties \
-    software-properties-common
-
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
 # Add a non-ancient version of git
-RUN add-apt-repository -y ppa:git-core/ppa
-
-RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+    apt-get -y update && apt-get -y install software-properties-common && \
+    add-apt-repository -y ppa:git-core/ppa && \
+    apt-get -y update && apt-get -y install \
 # Poky 2.7 build dependencies
     gawk \
     wget \
@@ -255,9 +330,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
     python-six \
     python3-six \
 # Useful tools for debugging Pyrex images
-    sudo \
     curl \
-    locales \
 # An updated version of Git (from the PPA source above)
 # that supports doing Yocto externalsrc recipes against free-
 # standing working copies that use Git worktrees.
@@ -277,16 +350,14 @@ RUN python3 -m pip install jinja2 iterfzf
 
 # Copy prebuilt items
 COPY --from=prebuilt-icecream /dist/icecream /
-COPY --from=prebuilt-setpriv /dist/setpriv /
-COPY --from=prebuilt-tini /dist/tini /
 
 #
 # Ubuntu 18.04 Base
 #
-FROM ${MY_REGISTRY}ubuntu:bionic as ubuntu-18.04
+FROM ubuntu-18.04-base as ubuntu-18.04-oe
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
-RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
 # Poky 2.7 build dependencies
     gawk \
     wget \
@@ -328,17 +399,12 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y ins
     python-six \
     python3-six \
 # Useful tools for debugging Pyrex images
-    sudo \
     curl \
-    locales \
 # Corollary to the core Yocto gcc-multilib package. Allows various
 # prebuilt native tools to work
     g++-multilib \
 # Screen to enable devshell
     screen \
-# Tools used by Pyrex
-    lsb-release \
-    setpriv \
 # Base OS stuff that reasonable workstations have, but which the Docker
 # registry image doesn't
     tzdata \
@@ -349,29 +415,16 @@ RUN python3 -m pip install iterfzf
 
 # Copy prebuilt items
 COPY --from=prebuilt-icecream /dist/icecream /
-COPY --from=prebuilt-tini /dist/tini /
 
-# 
-# Target image
 #
-FROM ${PYREX_BASE}
+# Base image target.
+#
+# This stage sets up the minimal image startup and entry points. It also
+# ensures that the en_US.UTF-8 locale is installed and set correctly.
+#
+FROM ${PYREX_BASE} as pyrex-base
 
-# Setup Icecream distributed compiling client. The client tries several IPC
-# mechanisms to find the daemon, including connecting to a localhost TCP
-# socket. Since the local Icecream daemon (iceccd) is not started when the
-# docker container starts, the client will not find it and instead connect to
-# the host Icecream daemon (as long as the container is run with --net=host).
-RUN mkdir -p /usr/share/icecc/toolchain && \
-    cd /usr/share/icecc/toolchain/ && \
-    TC_NAME=$(mktemp) && \
-    /usr/local/libexec/icecc/icecc-create-env --gcc $(which gcc) $(which g++) 5> $TC_NAME && \
-    mv $(cat $TC_NAME) native-gcc.tar.gz && \
-    rm $TC_NAME
-
-ENV ICECC_VERSION=/usr/share/icecc/toolchain/native-gcc.tar.gz
-
-# Generate locales
-RUN locale-gen en_US.UTF-8
+# Set Locales
 ENV LANG en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
@@ -393,3 +446,27 @@ ENTRYPOINT ["/usr/local/bin/tini", "-P", "/usr/libexec/tini/cleanup.py", "{}", "
 # The startup script is expected to chain along to some other
 # command. By default, we'll use an interactive shell.
 CMD ["/bin/bash"]
+
+#
+# Yocto compatible target image.
+#
+# The final image is the yocto compatible target image. This image has the
+# Icecream destributed target setup correctly and install all of the desired
+# yocto dependencies.
+#
+FROM pyrex-base as pyrex-oe
+
+# Setup Icecream distributed compiling client. The client tries several IPC
+# mechanisms to find the daemon, including connecting to a localhost TCP
+# socket. Since the local Icecream daemon (iceccd) is not started when the
+# docker container starts, the client will not find it and instead connect to
+# the host Icecream daemon (as long as the container is run with --net=host).
+RUN mkdir -p /usr/share/icecc/toolchain && \
+    cd /usr/share/icecc/toolchain/ && \
+    TC_NAME=$(mktemp) && \
+    /usr/local/libexec/icecc/icecc-create-env --gcc $(which gcc) $(which g++) 5> $TC_NAME && \
+    mv $(cat $TC_NAME) native-gcc.tar.gz && \
+    rm $TC_NAME
+
+ENV ICECC_VERSION=/usr/share/icecc/toolchain/native-gcc.tar.gz
+
