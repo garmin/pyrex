@@ -42,7 +42,7 @@ def skipIfPrebuilt(func):
         return func(self, *args, **kwargs)
     return wrapper
 
-def skipIfImageType(img_type='base', reason=None):
+def skipIfImageType(check_type='base', reason=None):
     '''
     Skip tests with optional reason.
 
@@ -64,7 +64,8 @@ def skipIfImageType(img_type='base', reason=None):
             '''
             if not self.test_image:
                 self.skipTest("%s not defined" % TEST_IMAGE_ENV_VAR)
-            if self.test_image.rsplit('-', 1)[-1] == img_type:
+            (_, _, image_type) = self.test_image.split('-')
+            if image_type == check_type:
                 self.skipTest(reason)
             return func(self, *args, **kwargs)
 
@@ -525,23 +526,15 @@ class TestImage(PyrexTest):
         if not self.test_image:
             self.skipTest("%s not defined" % TEST_IMAGE_ENV_VAR)
 
-        # Get the test image name (strip out the flavor identifier) identifier.
-        image_name = self.test_image.rsplit('-', 1)[0]
-
-        expected_dist_id = image_name.split('-', 1)[0]
-        expected_release_str = image_name.split('-', 1)[1]
+        # Split out the image name, version, and type
+        (image_name, image_version, _) = self.test_image.split('-')
 
         # Capture the LSB release information.
         dist_id_str = self.assertPyrexContainerCommand('lsb_release -i', quiet_init=True, capture=True).decode('utf-8').rstrip()
         release_str = self.assertPyrexContainerCommand('lsb_release -r', quiet_init=True, capture=True).decode('utf-8').rstrip()
 
-        self.assertRegex(dist_id_str.lower(), r'^distributor id:\s+' + re.escape(expected_dist_id))
-        self.assertRegex(
-            release_str.lower(),
-            # We only care if our image name (without the -oe/-base ending) is
-            # the middle part of the release field.
-            r'^release:\s+' + re.escape(expected_release_str) + r'(\.|$)'
-        )
+        self.assertRegex(dist_id_str.lower(), r'^distributor id:\s+' + re.escape(image_name))
+        self.assertRegex(release_str.lower(), r'^release:\s+' + re.escape(image_version) + r'(\.|$)')
 
 if __name__ == "__main__":
     unittest.main()

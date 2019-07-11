@@ -273,13 +273,14 @@ def main():
 
                 print("Getting Docker image up to date...")
 
+                (_, _, image_type) = config['config']['dockerimage'].split('-')
+
                 docker_args = [docker_path, 'build',
                     '-t', tag,
                     '-f', config['dockerbuild']['dockerfile'],
                     '--network=host',
                     os.path.join(config['build']['pyrexroot'], 'docker'),
-                    '--target', 'pyrex-%s' % config['config']['dockerimage'].rsplit('-', 1)[-1]
-
+                    '--target', 'pyrex-%s' % image_type
                     ]
 
                 if config['config']['registry']:

@@ -25,6 +25,8 @@ def main():
     else:
         tag = 'latest'
 
+    (_, _, image_type) = image.split('-')
+
     repo = 'garminpyrex/%s' % image
     name = '%s:%s' % (repo, tag)
 
@@ -70,7 +72,7 @@ def main():
         '-t', name,
         '-f', '%s/Dockerfile' % docker_dir,
         '--build-arg', 'PYREX_BASE=%s' % image,
-        '--target', 'pyrex-%s' % image.rsplit('-', 1)[-1]
+        '--target', 'pyrex-%s' % image_type
     ]
 
     # Add the build context directory to our arguments.
