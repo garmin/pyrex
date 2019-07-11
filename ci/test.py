@@ -32,7 +32,6 @@ PYREX_ROOT = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(PYREX_ROOT)
 import pyrex
 
-TEST_IMAGE_ENV_VAR = 'TEST_IMAGE'
 TEST_PREBUILT_TAG_ENV_VAR = 'TEST_PREBUILT_TAG'
 
 def skipIfPrebuilt(func):
@@ -42,38 +41,7 @@ def skipIfPrebuilt(func):
         return func(self, *args, **kwargs)
     return wrapper
 
-def skipIfImageType(check_type='base', reason=None):
-    '''
-    Skip tests with optional reason.
-
-    Either:
-    @skipIfImageType('base') or
-    @skipIfImageType('base', 'reason')
-    '''
-
-    if not reason:
-        reason = 'functionality not supported on %s images' % img_type
-
-    def wrap(func):
-        '''
-        Internal decorator
-        '''
-        def wrapped_func(self, *args, **kwargs):
-            '''
-            Wrapped function.
-            '''
-            if not self.test_image:
-                self.skipTest("%s not defined" % TEST_IMAGE_ENV_VAR)
-            (_, _, image_type) = self.test_image.split('-')
-            if image_type == check_type:
-                self.skipTest(reason)
-            return func(self, *args, **kwargs)
-
-        return wrapped_func
-
-    return wrap
-
-class PyrexTest(unittest.TestCase):
+class PyrexTest(object):
     def setUp(self):
         self.build_dir = os.path.abspath(os.path.join(PYREX_ROOT, 'build'))
 
@@ -126,9 +94,7 @@ class PyrexTest(unittest.TestCase):
             config.read_string(pyrex.read_default_config(True))
 
             # Setup the config suitable for testing
-            self.test_image = os.environ.get(TEST_IMAGE_ENV_VAR)
-            if self.test_image:
-                config['config']['dockerimage'] = self.test_image
+            config['config']['dockerimage'] = self.test_image
 
             prebuilt_tag = os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, '')
             if prebuilt_tag:
@@ -223,13 +189,13 @@ class PyrexTest(unittest.TestCase):
         self.assertEqual(os.WEXITSTATUS(status), returncode, msg='%s failed' % ' '.join(args))
         return b''.join(stdout)
 
-class PyrexCore(PyrexTest):
+class PyrexImageType_base(PyrexTest):
+    """
+    Base image tests. All images that derive from a -base image should derive
+    from this class
+    """
     def test_init(self):
         self.assertPyrexHostCommand('true')
-
-    @skipIfImageType('base','bitbake not supported on base images')
-    def test_bitbake_parse(self):
-        self.assertPyrexHostCommand('bitbake -p')
 
     def test_pyrex_shell(self):
         self.assertPyrexContainerShellCommand('exit 3', returncode=3)
@@ -512,19 +478,12 @@ class PyrexCore(PyrexTest):
                 output = self.assertPyrexContainerShellPTY('/usr/bin/infocmp %s > /dev/null' % t, env=env).decode('utf-8').strip()
                 self.assertNotIn('$TERM has an unrecognized value', output)
 
-class TestImage(PyrexTest):
     def test_tini(self):
         self.assertPyrexContainerCommand('tini --version')
-
-    @skipIfImageType('base', 'icecc not installed on base images.')
-    def test_icecc(self):
-        self.assertPyrexContainerCommand('icecc --version')
 
     def test_guest_image(self):
         # This test makes sure that the image being tested is the image we
         # actually expect to be testing
-        if not self.test_image:
-            self.skipTest("%s not defined" % TEST_IMAGE_ENV_VAR)
 
         # Split out the image name, version, and type
         (image_name, image_version, _) = self.test_image.split('-')
@@ -535,6 +494,32 @@ class TestImage(PyrexTest):
 
         self.assertRegex(dist_id_str.lower(), r'^distributor id:\s+' + re.escape(image_name))
         self.assertRegex(release_str.lower(), r'^release:\s+' + re.escape(image_version) + r'(\.|$)')
+
+class PyrexImageType_oe(PyrexImageType_base):
+    """
+    Tests images designed for building OpenEmbedded
+    """
+    def test_bitbake_parse(self):
+        self.assertPyrexHostCommand('bitbake -p')
+
+    def test_icecc(self):
+        self.assertPyrexContainerCommand('icecc --version')
+
+
+TEST_IMAGES = ('ubuntu-14.04-base', 'ubuntu-16.04-base', 'ubuntu-18.04-base', 'centos-7-base',
+               'ubuntu-14.04-oe', 'ubuntu-16.04-oe', 'ubuntu-18.04-oe')
+
+def add_image_tests():
+    for image in TEST_IMAGES:
+        (_, _, image_type) = image.split('-')
+        self = sys.modules[__name__]
+
+        parent = getattr(self, 'PyrexImageType_' + image_type)
+
+        name = 'PyrexImage_' + re.sub(r'\W', '_', image)
+        setattr(self, name, type(name, (parent, unittest.TestCase), {'test_image': image}))
+
+add_image_tests()
 
 if __name__ == "__main__":
     unittest.main()

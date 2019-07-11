@@ -87,10 +87,10 @@ def main():
     print("Testing", name)
     try:
         env = os.environ.copy()
-        env['TEST_IMAGE'] = image
         env['TEST_PREBUILT_TAG'] = tag
+        test_name = 'PyrexImage_' + re.sub(r'\W', '_', image)
 
-        subprocess.check_call(['%s/test.py' % this_dir, '-vbf'], env=env, cwd=os.path.join(this_dir, '..'))
+        subprocess.check_call(['%s/test.py' % this_dir, '-vbf', test_name], env=env, cwd=os.path.join(this_dir, '..'))
     except subprocess.CalledProcessError as e:
         print("Testing failed!")
         return 1

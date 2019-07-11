@@ -1,6 +1,36 @@
 # Developer Guide
 Pyrex development information and processes
 
+## Testing
+Pyrex has a comprehensive test suite that can be used to test all generated
+Docker images. Some external test data is required to perform the test. To
+download this data and prepare your sandbox for testing, run:
+
+```shell
+./ci/prepare.sh
+```
+
+Once this is complete, the automated testing suite can be invoked with the
+command:
+
+```shell
+./ci/test.py -vb
+```
+
+The test suite uses Python unittest, so additional [command line options][] are
+available.
+
+The test suite will build all Pyrex image locally and run a set of tests
+against them. If you would like to limit which images are tested, additional
+arguments can be passed to filter the tests. Each image is tested using a test
+class named `PyrexImage_IMAGE` where `IMAGE` is the test image name will all
+non-word characters replaced by `_`.  For example, to test only the
+`ubuntu-18.04-oe` image, run:
+
+```shell
+./ci/test.py -vb PyrexImage_ubuntu_18_04_oe
+```
+
 ## Building images locally
 Pyrex pulls prebuilt Docker containers from DockerHub by default, which should
 be sufficient for most users. However, users that are active developing on
@@ -49,3 +79,4 @@ Dockerfile image files. This ensure that users who are tracking the master
 branch of Pyrex (as opposed to sticking to a released tag) get the new docker
 images.
 
+[command line options]: https://docs.python.org/3/library/unittest.html#command-line-options
