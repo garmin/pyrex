@@ -495,6 +495,13 @@ class PyrexImageType_base(PyrexTest):
         self.assertRegex(dist_id_str.lower(), r'^distributor id:\s+' + re.escape(image_name))
         self.assertRegex(release_str.lower(), r'^release:\s+' + re.escape(image_version) + r'(\.|$)')
 
+    def test_default_ini_image(self):
+        # Tests that the default image specified in pyrex.ini is valid
+        config = configparser.RawConfigParser()
+        config.read_string(pyrex.read_default_config(True))
+
+        self.assertIn(config['config']['dockerimage'], TEST_IMAGES)
+
 class PyrexImageType_oe(PyrexImageType_base):
     """
     Tests images designed for building OpenEmbedded
