@@ -528,6 +528,64 @@ class PyrexImageType_oe(PyrexImageType_base):
     def test_icecc(self):
         self.assertPyrexContainerCommand('icecc --version')
 
+    def test_templateconf_abs(self):
+        template_dir = os.path.join(self.thread_dir, 'template')
+        os.makedirs(template_dir)
+
+        self.assertTrue(os.path.isabs(template_dir))
+
+        shutil.copyfile(os.path.join(PYREX_ROOT, 'poky/meta-poky/conf/local.conf.sample'), os.path.join(template_dir, 'local.conf.sample'))
+        shutil.copyfile(os.path.join(PYREX_ROOT, 'poky/meta-poky/conf/bblayers.conf.sample'), os.path.join(template_dir, 'bblayers.conf.sample'))
+
+        test_string = 'set_by_test.%d' % threading.get_ident()
+
+        # Write out a config template that passes along the TEST_ENV variable.
+        # The variable will only have the correct value in the container if
+        # the template is used
+        conf = self.get_config()
+        conf['run']['envvars'] += ' TEST_ENV'
+        with open(os.path.join(template_dir, 'pyrex.ini.sample'), 'w') as f:
+            conf.write(f)
+        # Delete the normal pyrex conf file so a new one will be pulled from
+        # TEMPLATECONF
+        os.unlink(self.pyrex_conf)
+
+        env = os.environ.copy()
+        env['TEMPLATECONF'] = template_dir
+        env['TEST_ENV'] = test_string
+
+        s = self.assertPyrexContainerShellCommand('echo $TEST_ENV', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
+        self.assertEqual(s, test_string)
+
+    def test_templateconf_rel(self):
+        template_dir = os.path.join(self.thread_dir, 'template')
+        os.makedirs(template_dir)
+
+        self.assertTrue(os.path.isabs(template_dir))
+
+        shutil.copyfile(os.path.join(PYREX_ROOT, 'poky/meta-poky/conf/local.conf.sample'), os.path.join(template_dir, 'local.conf.sample'))
+        shutil.copyfile(os.path.join(PYREX_ROOT, 'poky/meta-poky/conf/bblayers.conf.sample'), os.path.join(template_dir, 'bblayers.conf.sample'))
+
+        test_string = 'set_by_test.%d' % threading.get_ident()
+
+        # Write out a config template that passes along the TEST_ENV variable.
+        # The variable will only have the correct value in the container if
+        # the template is used
+        conf = self.get_config()
+        conf['run']['envvars'] += ' TEST_ENV'
+        with open(os.path.join(template_dir, 'pyrex.ini.sample'), 'w') as f:
+            conf.write(f)
+        # Delete the normal pyrex conf file so a new one will be pulled from
+        # TEMPLATECONF
+        os.unlink(self.pyrex_conf)
+
+        env = os.environ.copy()
+        env['TEMPLATECONF'] = os.path.relpath(template_dir, os.path.join(PYREX_ROOT, 'poky'))
+        env['TEST_ENV'] = test_string
+
+        s = self.assertPyrexContainerShellCommand('echo $TEST_ENV', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
+        self.assertEqual(s, test_string)
+
 
 TEST_IMAGES = ('ubuntu-14.04-base', 'ubuntu-16.04-base', 'ubuntu-18.04-base', 'centos-7-base',
                'ubuntu-14.04-oe', 'ubuntu-16.04-oe', 'ubuntu-18.04-oe')
