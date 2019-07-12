@@ -502,6 +502,22 @@ class PyrexImageType_base(PyrexTest):
 
         self.assertIn(config['config']['dockerimage'], TEST_IMAGES)
 
+    def test_envvars(self):
+        conf = self.get_config()
+        conf['run']['envvars'] += ' TEST_ENV'
+        conf.write_conf()
+
+        test_string = 'set_by_test.%d' % threading.get_ident()
+
+        env = os.environ.copy()
+        env['TEST_ENV'] = test_string
+
+        s = self.assertPyrexContainerShellCommand('echo $TEST_ENV', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
+        self.assertEqual(s, test_string)
+
+        s = self.assertPyrexContainerShellCommand('echo $TEST_ENV2', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
+        self.assertEqual(s, '')
+
 class PyrexImageType_oe(PyrexImageType_base):
     """
     Tests images designed for building OpenEmbedded
