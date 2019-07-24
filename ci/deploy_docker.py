@@ -92,7 +92,7 @@ def main():
     try:
         env = os.environ.copy()
         env['TEST_PREBUILT_TAG'] = tag
-        test_name = 'PyrexImage_' + re.sub(r'\W', '_', image)
+        test_name = 'PyrexImage_docker_' + re.sub(r'\W', '_', image)
 
         subprocess.check_call(['%s/test.py' % this_dir, '-vbf', test_name], env=env, cwd=os.path.join(this_dir, '..'))
     except subprocess.CalledProcessError:

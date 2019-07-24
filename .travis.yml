@@ -4,26 +4,31 @@ python:
 - '3.4'
 env:
   matrix:
-  - TEST_IMAGE=centos-7-base
-  - TEST_IMAGE=ubuntu-14.04-base
-  - TEST_IMAGE=ubuntu-14.04-oe
-  - TEST_IMAGE=ubuntu-16.04-base
-  - TEST_IMAGE=ubuntu-16.04-oe
-  - TEST_IMAGE=ubuntu-18.04-base
-  - TEST_IMAGE=ubuntu-18.04-oe
+  # podman builds are longer. Start them first
+  - TEST_IMAGE=ubuntu-18.04-oe      DOCKER_PROVIDER=podman
+  - TEST_IMAGE=centos-7-base        DOCKER_PROVIDER=docker
+  - TEST_IMAGE=ubuntu-14.04-base    DOCKER_PROVIDER=docker
+  - TEST_IMAGE=ubuntu-14.04-oe      DOCKER_PROVIDER=docker
+  - TEST_IMAGE=ubuntu-16.04-base    DOCKER_PROVIDER=docker
+  - TEST_IMAGE=ubuntu-16.04-oe      DOCKER_PROVIDER=docker
+  - TEST_IMAGE=ubuntu-18.04-base    DOCKER_PROVIDER=docker
+  - TEST_IMAGE=ubuntu-18.04-oe      DOCKER_PROVIDER=docker
   global:
   - secure: Lr+dsOabZwFuCQbOHL0px61zYRjiUTFkBTxGB5g4OfCUxMq4nA87naRQjSUARR5aZo55pli+ceKVcmIt568L3Z7x5ByHZoCUriwgb+ud2ks6nuWBWpAGleQHzHGbQ0QlQwm1k8IVY4OAiUJz2+yfpcOY3Y89bc/oJJEaonI/a7Qh7PJJ8Hch4P2st6+Pwi49T9WN+SUN1sh76fhzqoD/8M6B5pC7QEbYEnPI4tWS3Q0Tf8m64NEwTIgtKXbpyHObpGh+bth4O2ZmOZK4bZ4AAZAfTGLqBqNmwJ329aZzVpJs6DzpkojFCi0QFYKRgrPIPL0mTNdxogMs5Q8ULSflXkMUnmZSzkqNgaH6OTLbkvuQjbxw6BMNn2VLvQ6ri6iaAoSwgyD0XYvEDGujYW6ZP0sKgAC4JV1Ij71C/p9iiJUVYHEqYTTLSrd413kJQiEaO2F81CPWwOirxsBiknTWjyvRcH/FBiHLcrBG6ToOxm7ELfQ7JD+Ag/Hlbh9jAHk3kkT9WVwcrfeWfd4ulMkXaL2w3UvPkNCB3nmmcqtcFcojs4lrPDPO+lJ+zTBjupty/TwmzbUrza15jzjkFQ1xfMT0yS0Dr8zOH39dYHUw0TmEx0h85JH9FHaOQo4u8J7TeQyK+6OaHuj927bNTSBk23FB0OAOzbaqdTOlM3hgby8=
   - secure: olbIFIge5rHlzcsh4AlvQmStOfHkl5YUal5SC/7TMmgG0w6NXTwUl16fIVwV0rLCmJRbceB1XbsoUlETN2whgMBoFzChHtVBVGDgNYuE31zIKTznvEef+HYG6z/bzx+96icf5EsqBsac7qXh8BUcKFuwA7tPSnaK7Wds2i1qDfj2Itrn3d3MlZU/MIeowpVqIP3+p16vPLv4+PZde4gh2pSq4c4QkfQC8c7IDFtIXzB3j75mRumwT2rokEMH/vuP/nX/TUPYYGpRFYTiRXBWcSs70Jd0jg664eQyJRnugIyeSW26h2pxqlp4G6bV96Vl+vzZOVaJo6p1sjzznteo+Rg7U0HZHpfZI1Q21jkPrdqevaGQ/nVGbi/sUkWgSQYIo2zIjxzgbd2PoeFBJ3vm5qg5m1HNXOdVhzwEjhvqX6lsHyMscY5NRdrWfjJrzRpqsPUv6v4Xj/ll4KleylqTubHT5cgsm4B0/fER9B0im5gw5jseh4IeHXT1djeB3ffIjTIywrYt+bgzrkzI4aD0LOLIoN2kFtxIXTM7oem+wKxSwSU/LBI+Jmw2lKXz2r5EkUpCjYUUftPjcT7q8qTpE5hcOvLOUoG4od9JKr5N1Hy4gsGLoYfK5RU19TSduZvQsCOya2G4m8JCGiYNuA14/VbCEzx0z3JCrO79wiUFRYU=
 before_install:
 - "./ci/prepare.sh"
-- 'echo ''{ "features": { "buildkit": true } }'' | sudo tee /etc/docker/daemon.json
-
-'
-- curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-- sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu
-  $(lsb_release -cs) stable"
-- sudo apt-get update
-- sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
+- |
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  sudo add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  sudo add-apt-repository -y ppa:projectatomic/ppa
+  sudo apt-get update
+  sudo mkdir -p /etc/containers/
+  echo -e "[registries.search]\nregistries = ['docker.io']\n" | sudo tee /etc/containers/registries.conf
+  echo '{ "features": { "buildkit": true } }' | sudo tee /etc/docker/daemon.json
+  sudo apt-get -y -o Dpkg::Options::=--force-confnew -o Dpkg::Options::=--force-overwrite install docker-ce podman buildah
+- docker info
+- podman info
 install:
 - pip3 install coverage
 - pip3 install coveralls
@@ -33,9 +38,11 @@ before_script:
 - printf '\nimport coverage\ncoverage.current_coverage = coverage.process_startup()\n'
   >> "/home/travis/virtualenv/python${TRAVIS_PYTHON_VERSION}/lib/python${TRAVIS_PYTHON_VERSION}/sitecustomize.py"
 - rm -f .coverage-report.*
-script:
+# Pre build the image. This prevents long delays with no output in test cases
+- ./ci/build_image.py $TEST_IMAGE --provider=$DOCKER_PROVIDER
+script: 
 - flake8 $(git ls-files '*.py')
-- COVERAGE_PROCESS_START=${TRAVIS_BUILD_DIR}/.coveragerc ci/test.py -vb PyrexImage_$(echo $TEST_IMAGE | sed 's/\W/_/g')
+- COVERAGE_PROCESS_START=${TRAVIS_BUILD_DIR}/.coveragerc ci/test.py -vb PyrexImage_${DOCKER_PROVIDER}_$(echo $TEST_IMAGE | sed 's/\W/_/g')
 after_success:
 - coverage3 combine
 - coveralls
@@ -45,10 +52,10 @@ deploy:
   script: "./ci/deploy_docker.py --login $TEST_IMAGE"
   on:
     all_branches: true
-    condition: "$TRAVIS_PULL_REQUEST == false && ($TRAVIS_BRANCH == master || $TRAVIS_TAG
-      =~ ^v[0-9].*$)"
+    condition: "$DOCKER_PROVIDER == docker && $TRAVIS_PULL_REQUEST == false && ($TRAVIS_BRANCH == master || $TRAVIS_TAG =~ ^v[0-9].*$)"
 - provider: script
   skip_cleanup: true
   script: "./ci/deploy_docker.py --login $TEST_IMAGE:next"
   on:
     branch: next
+    condition: "$DOCKER_PROVIDER == docker"

@@ -59,7 +59,7 @@ so by making the following changes to `pyrex.ini`:
    `:${config:pyrextag}`. While not strictly necessary, this step will help
    prevent confusion if you want to switch back to prebuilt images. If you
    choose not to change this, realize that your locally built images will
-   overwrite your local docker cache tags for the prebuilt images. As an
+   overwrite your local container cache tags for the prebuilt images. As an
    example, you might add the following to `pyrex.ini`:
 
     ```
@@ -86,16 +86,16 @@ To make a release of Pyrex:
    release must be tagged with the version in `pyrex.py`, prefixed with `v`.
    For example, the `1.0.0` release would be tagged `v1.0.0`
 4. Tagging the repository will trigger a new Travis CI build. This build will
-   automatically push the docker images to
+   automatically push the container images to
    [dockerhub](https://cloud.docker.com/u/garminpyrex/repository/list) using
    the same tag that was created for the release. Verify that the CI build
-   passes and the docker images are pushed. In the unlikely event this fails,
-   delete the release, fix the issue, and try again.
+   passes and the container images are pushed. In the unlikely event this
+   fails, delete the release, fix the issue, and try again.
 
 ## When to release
 At a minimum, releases should be made whenever changes are made to one of the
 Dockerfile image files. This ensure that users who are tracking the master
-branch of Pyrex (as opposed to sticking to a released tag) get the new docker
-images.
+branch of Pyrex (as opposed to sticking to a released tag) get the new
+container images.
 
 [command line options]: https://docs.python.org/3/library/unittest.html#command-line-options

@@ -112,7 +112,7 @@ def stop_coverage():
 
 
 def get_image_id(config, image):
-    docker_args = [config['config']['dockerpath'], 'image', 'inspect', image, '--format={{ .Id }}']
+    docker_args = [config['config']['dockerpath'], 'image', 'inspect', image, '--format={{.Id}}']
     return subprocess.check_output(docker_args, stderr=subprocess.DEVNULL).decode('utf-8').rstrip()
 
 
@@ -172,6 +172,24 @@ def get_build_hash(config):
                     b = f.read(4096)
 
     return h.hexdigest()
+
+
+def get_docker_info(config):
+    docker_path = config['config']['dockerpath']
+    output = subprocess.check_output([docker_path, '--version']).decode('utf-8')
+    m = re.match(r'(?P<provider>\S+) +version +(?P<version>[^\s,]+)', output)
+    if m is not None:
+        return (m.group('provider').lower(), m.group('version'))
+    return (None, None)
+
+
+def get_subid_length(filename, name):
+    with open(filename, 'r') as f:
+        for l in f:
+            (ident, _, id_length) = l.rstrip().split(':')
+            if ident == name:
+                return int(id_length)
+    return 0
 
 
 def main():
@@ -241,7 +259,7 @@ def main():
 
             # Check minimum docker version
             try:
-                output = subprocess.check_output([docker_path, '--version']).decode('utf-8')
+                (provider, version) = get_docker_info(config)
             except (subprocess.CalledProcessError, FileNotFoundError):
                 print(textwrap.fill(("Unable to run '%s' as docker. Please make sure you have it installed." +
                                      "For installation instructions, see the docker website. Commonly, " +
@@ -266,17 +284,16 @@ def main():
                 print()
                 return 1
 
-            m = re.match(r'.*version +([^\s,]+)', output)
-            if m is None:
+            if provider is None:
                 sys.stderr.write('Could not get docker version!\n')
                 return 1
 
-            version = m.group(1)
-
-            if int(version.split('.')[0]) < MINIMUM_DOCKER_VERSION:
+            if provider == 'docker' and int(version.split('.')[0]) < MINIMUM_DOCKER_VERSION:
                 sys.stderr.write("Docker version is too old (have %s), need >= %d\n" %
                                  (version, MINIMUM_DOCKER_VERSION))
                 return 1
+
+            build_config['build']['docker_provider'] = provider
 
             tag = config['config']['tag']
 
@@ -287,7 +304,7 @@ def main():
                     sys.stderr.write("Try changing 'config:pyrextag' to a different value\n")
                     return 1
 
-                print("Getting Docker image up to date...")
+                print("Getting container image up to date...")
 
                 (_, _, image_type) = config['config']['dockerimage'].split('-')
 
@@ -346,7 +363,7 @@ def main():
 
                 build_config['build']['runid'] = tag
         else:
-            print(textwrap.fill("Running outside of Docker. No guarantees are made about your Linux " +
+            print(textwrap.fill("Running outside of container. No guarantees are made about your Linux " +
                                 "distribution's compatibility with Yocto."))
             print()
             build_config['build']['buildid'] = ''
@@ -439,7 +456,7 @@ def main():
 
         if use_docker(config):
             if not runid:
-                print("Docker was not enabled when the environment was setup. Cannot use it now!")
+                print("Container was not enabled when the environment was setup. Cannot use it now!")
                 return 1
 
             docker_path = config['config']['dockerpath']
@@ -480,13 +497,55 @@ def main():
                            '-e', 'PYREX_HOME=%s' % os.environ['HOME'],
                            '-e', 'PYREX_INIT_COMMAND=%s' % init_command,
                            '-e', 'PYREX_INIT_DIR=%s' % init_dir,
-                           '-e', 'PYREX_CLEANUP_EXIT_WAIT',
-                           '-e', 'PYREX_CLEANUP_LOG_FILE',
-                           '-e', 'PYREX_CLEANUP_LOG_LEVEL',
                            '-e', 'PYREX_COMMAND_PREFIX=%s' % ' '.join(command_prefix),
-                           '-e', 'TINI_VERBOSITY',
                            '--workdir', os.getcwd(),
                            ]
+
+            docker_envvars = [
+                'PYREX_CLEANUP_EXIT_WAIT',
+                'PYREX_CLEANUP_LOG_FILE',
+                'PYREX_CLEANUP_LOG_LEVEL',
+                'TINI_VERBOSITY'
+            ]
+
+            if config['build']['docker_provider'] == 'podman':
+                uid_length = get_subid_length('/etc/subuid', username)
+                if uid_length < 1:
+                    sys.stderr.write('subuid name space is too small\n')
+                    sys.exit(1)
+
+                gid_length = get_subid_length('/etc/subgid', groupname)
+                if uid_length < 1:
+                    sys.stderr.write('subgid name space is too small\n')
+                    sys.exit(1)
+
+                docker_args.extend([
+                    '--security-opt', 'label=disable',
+                    # Fix up the UID/GID mapping so that the actual UID/GID
+                    # inside the container maps to their actual UID/GID
+                    # outside the container. Note that all offsets outside
+                    # the container are relative to the start of the users
+                    # subuid/subgid range.
+
+                    # Map UID 0 up the actual user ID inside the container
+                    # to the users subuid
+                    '--uidmap', '0:1:%d' % uid,
+
+                    # Map the users actual UID inside the container to 0 in
+                    # the users subuid namespace. The "root" user in the
+                    # subuid namespace is special and maps to the users
+                    # actual UID outside the namespace
+                    '--uidmap', '%d:0:1' % uid,
+
+                    # Map the remaining UIDs after the actual user ID to
+                    # continue using the users subuid range
+                    '--uidmap', '%d:%d:%d' % (uid + 1, uid + 1, uid_length - uid),
+
+                    # Do the same for the GID
+                    '--gidmap', '0:1:%d' % gid,
+                    '--gidmap', '%d:0:1' % gid,
+                    '--gidmap', '%d:%d:%d' % (gid + 1, gid + 1, gid_length - gid),
+                ])
 
             # Run the docker image with a TTY if this script was run in a tty
             if os.isatty(1):
@@ -499,11 +558,9 @@ def main():
                     continue
                 docker_args.extend(['--mount', 'type=bind,src={b},dst={b}'.format(b=b)])
 
-            # Pass environment variables
-            for e in config['run']['envvars'].split():
-                docker_args.extend(['-e', e])
+            docker_envvars.extend(config['run']['envvars'].split())
 
-            # Special case: Make the user SSH authentication socket available in Docker
+            # Special case: Make the user SSH authentication socket available in container
             if 'SSH_AUTH_SOCK' in os.environ:
                 socket = os.path.realpath(os.environ['SSH_AUTH_SOCK'])
                 if not os.path.exists(socket):
@@ -517,7 +574,15 @@ def main():
             # Pass along BB_ENV_EXTRAWHITE and anything it has whitelisted
             if 'BB_ENV_EXTRAWHITE' in os.environ:
                 docker_args.extend(['-e', 'BB_ENV_EXTRAWHITE'])
-                for e in os.environ['BB_ENV_EXTRAWHITE'].split():
+                docker_envvars.extend(os.environ['BB_ENV_EXTRAWHITE'].split())
+
+            # Pass environment variables. If a variable passed with an argument
+            # "-e VAR" is not set in the parent environment, podman passes an
+            # empty value, where as docker doesn't pass it at all. For
+            # consistency, manually check if the variables exist before passing
+            # them.
+            for e in docker_envvars:
+                if e in os.environ:
                     docker_args.extend(['-e', e])
 
             docker_args.extend(shlex.split(config['run'].get('args', '')))

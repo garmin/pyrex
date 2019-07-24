@@ -12,10 +12,9 @@ doesn't aim to be a full development environment, see below), and as such makes
 some different design decisions than other containerized solutions like
 [CROPS][].
 
-Pyrex works by setting up a Docker image in which to run commands, then
+Pyrex works by setting up a container image in which to run commands, then
 "trapping" the commands such that when the user executes the command in their
-shell, it is (hopefully) transparently executed inside the Docker container
-instead.
+shell, it is (hopefully) transparently executed inside the container instead.
 
 ## What *isn't* Pyrex?
 Pyrex isn't designed to be a complete Yocto IDE. The intention of Pyrex is not
@@ -159,23 +158,23 @@ the following notes:
 For more information about specific configuration values, see the default
 [pyrex.ini](./pyrex.ini)
 
-#### Binding directories into Docker
-In order for bitbake running in Docker to be able to build, it must have access
-to the data and config files from the host system. To make this easy, a
+#### Binding directories into the container
+In order for bitbake running in the container to be able to build, it must have
+access to the data and config files from the host system. To make this easy, a
 variable called `run:bind` is specified in the config file. Any directory that
-appears in this variable will be bound into the docker image at the same path
-(e.g. `/foo/bar` in the host will be bound to `/foo/bar` in Docker. By default,
-only the Openembedded root directory (a.k.a. `$PYREX_OEROOT`,
-`${build:oeroot}`) is bound. This is the minimum that can be bound, and is
-generally sufficient for most use cases. If additional directories need to be
-accessed by the Docker image, they can be added to this list by the user.
-Common reasons for adding new paths include:
+appears in this variable will be bound into the container image at the same
+path (e.g. `/foo/bar` in the host will be bound to `/foo/bar` in the container
+engine. By default, only the Openembedded root directory (a.k.a.
+`$PYREX_OEROOT`, `${build:oeroot}`) is bound. This is the minimum that can be
+bound, and is generally sufficient for most use cases. If additional
+directories need to be accessed by the container image, they can be added to
+this list by the user. Common reasons for adding new paths include:
 * Alternate (out of tree) locations for sstate and download caches
 * Alternate (out of tree) build directories
 * Additional layers that are not under the OEROOT directory
 
 It is recommended to use this variable and bind directories in a 1-to-1 fashion
-rather than try to remap them to different paths inside the Docker image.
+rather than try to remap them to different paths inside the container image.
 Bitbake tends to encode file paths into some of its internal state (*Note*
 **Not** sstate, which should always be position independent), and remapping the
 paths might make it difficult to do builds outside of Pyrex if necessary.
@@ -184,14 +183,14 @@ You should **never** map directories like `/usr/bin`, `/etc/`, `/` as these
 will probably just break the container. It is probably also unwise to map your
 entire home directory; although in some cases may be necessary to map
 $HOME/.ssh or other directories to access SSH keys and the like. For user
-convenience, the proxy user created in the Docker image by default has the same
-$HOME as the user who created the container, so these types of bind can be done
-by simply adding `${env:HOME}/.ssh` to `run:bind`
+convenience, the proxy user created in the container image by default has the
+same $HOME as the user who created the container, so these types of bind can be
+done by simply adding `${env:HOME}/.ssh` to `run:bind`
 
 #### Debugging the container
 In the event that you need to get a shell into the container to run some
 commands, Pyrex creates a command called `pyrex-shell`. Executing this command
-in a Pyrex environment will run a shell in the Docker image, allowing
+in a Pyrex environment will run a shell in the container image, allowing
 interactive commands to be run. This can be very useful for debugging Pyrex
 containers.
 
@@ -207,31 +206,30 @@ done, you can simply run those commands and they will be executed in Pyrex.
 
 ### Bypassing Pyrex
 In some cases, it may be desirable to bypass Pyrex and run the commands it
-wraps locally instead of in the docker container. This can be done in one of
-two ways:
+wraps locally instead of in the container. This can be done in one of two ways:
 
-1. Set `${run:enable}` to `0` in `pyrex.ini` which will disable using Docker
-   for all commands
+1. Set `${run:enable}` to `0` in `pyrex.ini` which will disable using the
+   container engine for all commands
 2. Set the environment variable `PYREX_DOCKER` to `0`. Any Pyrex commands run
-   with this variable will not be run in the Docker container.
+   with this variable will not be run in the container.
 
 ## What doesn't work?
 The following items are either known to not work, or haven't been fully tested:
-* **Bitbake Server** Since the Docker container starts and stops each time a
-  command is run, it is currently not possible to use the bitbake server that
-  runs persistently in the background. I believe it *might* be possible to do
-  this using persistent Docker images and `docker exec`, but it hasn't been
+* **Bitbake Server** Since the container starts and stops each time a command
+  is run, it is currently not possible to use the bitbake server that runs
+  persistently in the background. I believe it *might* be possible to do this
+  using persistent container images and `docker exec`, but it hasn't been
   thoroughly investigated.
 * **devtool** This may or may not work, and it might not take too much to get
   it working, but it hasn't been tested.
 * **GUI terminals** It is unlikely that you will be able to set
   [OE_TERMINAL][] to use a GUI shell (e.g. `rvxt`) for use with
   `devshell`, `pydevshell`, `menuconfig`, etc. There currently isn't a
-  mechanism for running GUI programs inside of the Docker container and having
-  them draw in the parent windowing system (although I suspect this isn't
+  mechanism for running GUI programs inside of the container and having them
+  draw in the parent windowing system (although I suspect this isn't
   impossible).  The only terminal for that is known to work inside the
-  container `screen`. Thankfully, the default value for `OE_TERMINAL` of
-  `auto` chooses this by default with the default Pyrex Docker image.
+  container `screen`. Thankfully, the default value for `OE_TERMINAL` of `auto`
+  chooses this by default with the default Pyrex container image.
 * **Shell job control** Currently, using `CTRL+Z` to background the container
   doesn't work. It might be possible to get it to work one day, but until then
   the `SIGTSTP` signal is ignored by all child processes in Pyrex to prevent it
@@ -250,16 +248,17 @@ it will most certainly cause problems. In these cases, you probably want to
 build the image locally instead. See the [Developer Documentation][].
 
 ## FAQ
-* *Why use a Ubuntu image as the default?* The default Docker image that Pyrex
-  creates is based on Ubuntu. Yes, it is known that there are other images out
-  there that are lighter weight (e.g. Alpine Linux), but Ubuntu was chosen
-  because it is one of the [Sanity Tested Distros][] that Yocto supports. Pyrex
-  aims to support a vanilla Yocto setup with minimal manual configuration.
-* *What's with [cleanup.py](./docker/cleanup.py)?* When a Docker container's
-  main process exits, any remaining process appears to be sent a `SIGKILL`.
-  This can cause a significant problem with many of the child processes that
-  bitbake spawns, since unceremoniously killing them might result in lost data.
-  The cleanup script is attached to a modified version of
+* *Why use a Ubuntu image as the default?* The default container image that
+  Pyrex creates is based on Ubuntu. Yes, it is known that there are other
+  images out there that are lighter weight (e.g. Alpine Linux), but Ubuntu was
+  chosen because it is one of the [Sanity Tested Distros][] that Yocto
+  supports. Pyrex aims to support a vanilla Yocto setup with minimal manual
+  configuration.
+* *What's with [cleanup.py](./docker/cleanup.py)?* When a container's main
+  process exits, any remaining process appears to be sent a `SIGKILL`.  This
+  can cause a significant problem with many of the child processes that bitbake
+  spawns, since unceremoniously killing them might result in lost data.  The
+  cleanup script is attached to a modified version of
   [tini](https://github.com/krallin/tini/pull/129), and prevents tini from
   exiting until all child processes have exited (it sends them `SIGTERM` if
   they are being tardy). One of the particularly bad culprits is pseudo, which
@@ -283,5 +282,4 @@ build the image locally instead. See the [Developer Documentation][].
 [TEMPLATECONF]: https://www.yoctoproject.org/docs/latest/mega-manual/mega-manual.html#creating-a-custom-template-configuration-directory
 [poky]: https://git.yoctoproject.org/cgit/cgit.cgi/poky/
 [Sanity Tested Distros]: https://www.yoctoproject.org/docs/current/mega-manual/mega-manual.html#var-SANITY_TESTED_DISTROS
-[BuildKit in Docker]: https://docs.docker.com/develop/develop-images/build_enhancements/
 [Developer Documentation]: ./DEVELOPING.md
