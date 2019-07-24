@@ -138,7 +138,10 @@ class PyrexTest(object):
     def _write_host_command(self, args, quiet_init=False):
         cmd_file = os.path.join(self.thread_dir, 'command')
         with open(cmd_file, 'w') as f:
-            f.write('. ./poky/pyrex-init-build-env%s && ' % ('', ' > /dev/null')[quiet_init])
+            f.write('. ./poky/pyrex-init-build-env ')
+            if quiet_init:
+                f.write('> /dev/null 2>&1 ')
+            f.write('&& ')
             f.write(' && '.join(list(args)))
         return cmd_file
 
