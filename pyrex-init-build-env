@@ -57,7 +57,11 @@ pyrex_cleanup() {
 	fi
 
 	if [ -z "${PYREXCONFTEMPLATE}" ]; then
-		PYREXCONFTEMPLATE="$PYREX_OEROOT/$(cat "$BUILDDIR/conf/templateconf.cfg")/pyrex.ini.sample"
+		PYREXCONFTEMPLATE="$(cat "$BUILDDIR/conf/templateconf.cfg")/pyrex.ini.sample"
+		case $PYREXCONFTEMPLATE in
+			"/"*) ;;
+			*) PYREXCONFTEMPLATE="$PYREX_OEROOT/$PYREXCONFTEMPLATE"
+		esac
 	fi
 
 	export PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREXCONFTEMPLATE

@@ -24,11 +24,11 @@ def get_var(name):
     if name in os.environ:
         val = os.environ[name]
         if not val:
-            sys.stderr.write('"%s" is empty')
+            sys.stderr.write('"%s" is empty\n' % name)
             sys.exit(1)
         return val
 
-    sys.stderr.write('"%s" is missing from the environment')
+    sys.stderr.write('"%s" is missing from the environment\n' % name)
     sys.exit(1)
 
 def main():
@@ -38,6 +38,12 @@ def main():
     # prevent this, block SIGTSTP in all child processes. This results in
     # CTRL+Z doing nothing.
     signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGTSTP])
+
+    # Check TERM
+    if 'TERM' in os.environ:
+        r = subprocess.call(['/usr/bin/infocmp', os.environ['TERM']], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        if r != 0:
+            sys.stderr.write('$TERM has an unrecognized value of "%s". The interactive terminal may not behave appropriately\n' % os.environ['TERM'])
 
     uid = int(get_var('PYREX_UID'))
     gid = int(get_var('PYREX_GID'))

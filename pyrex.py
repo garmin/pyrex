@@ -32,7 +32,7 @@ import textwrap
 import stat
 import hashlib
 
-VERSION = '0.0.1'
+VERSION = '0.0.1-next1'
 
 VERSION_REGEX = re.compile(r'^([0-9]+\.){2}[0-9]+(-.*)?$')
 VERSION_TAG_REGEX = re.compile(r'^v([0-9]+\.){2}[0-9]+(-.*)?$')
@@ -110,7 +110,7 @@ def stop_coverage():
 
 def get_image_id(config, image):
     docker_args = [config['config']['dockerpath'], 'image', 'inspect', image, '--format={{ .Id }}']
-    return subprocess.check_output(docker_args).decode('utf-8').rstrip()
+    return subprocess.check_output(docker_args, stderr=subprocess.DEVNULL).decode('utf-8').rstrip()
 
 def use_docker(config):
     return os.environ.get('PYREX_DOCKER', config['run']['enable']) == '1'
@@ -273,11 +273,14 @@ def main():
 
                 print("Getting Docker image up to date...")
 
+                (_, _, image_type) = config['config']['dockerimage'].split('-')
+
                 docker_args = [docker_path, 'build',
                     '-t', tag,
                     '-f', config['dockerbuild']['dockerfile'],
                     '--network=host',
-                    os.path.join(config['build']['pyrexroot'], 'docker')
+                    os.path.join(config['build']['pyrexroot'], 'docker'),
+                    '--target', 'pyrex-%s' % image_type
                     ]
 
                 if config['config']['registry']:
