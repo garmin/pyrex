@@ -522,8 +522,13 @@ def main():
         write_cmd('cd "%s"' % config['build']['builddir'])
         return 0
 
+    subparser_args = {}
+    if sys.version_info >= (3, 6, 0):
+        subparser_args['required'] = True
+
     parser = argparse.ArgumentParser(description='Pyrex Setup Argument Parser')
-    subparsers = parser.add_subparsers(title='subcommands', description='Setup subcommands')
+    subparsers = parser.add_subparsers(title='subcommands', description='Setup subcommands', dest='subcommand',
+                                       **subparser_args)
 
     capture_parser = subparsers.add_parser('capture', help='Capture OE init environment')
     capture_parser.add_argument('fd', help='Output file descriptor', type=int)
