@@ -14,6 +14,7 @@
 
 ARG PYREX_BASE=ubuntu-18.04-oe
 ARG MY_REGISTRY=
+
 #
 # Base image for prebuilt static binaries
 #
@@ -114,6 +115,7 @@ RUN mkdir -p /usr/src/tini && \
     make && \
     make install DESTDIR=/dist/tini && \
     mv /dist/tini/usr/local/bin/tini-static /dist/tini/usr/local/bin/tini
+
 #
 # Ubuntu 14.04 base
 #
@@ -140,7 +142,7 @@ COPY --from=prebuilt-tini /dist/tini /
 
 #
 # Ubuntu 16.04 Base
-
+#
 FROM ${MY_REGISTRY}ubuntu:xenial as ubuntu-16.04-base
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
