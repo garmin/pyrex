@@ -612,7 +612,13 @@ def main():
     config_get_parser.set_defaults(func=config_get)
 
     args = parser.parse_args()
-    sys.exit(args.func(args))
+    func = getattr(args, 'func', None)
+    if not func:
+        parser.print_usage()
+        print("error: subcommand required")
+        sys.exit(1)
+
+    sys.exit(func(args))
 
 
 if __name__ == "__main__":
