@@ -47,7 +47,7 @@ built_images = set()
 
 class PyrexTest(object):
     def setUp(self):
-        self.build_dir = os.path.join(PYREX_ROOT, 'build')
+        self.build_dir = os.path.join(PYREX_ROOT, 'build', '%d' % os.getpid())
 
         def cleanup_build():
             if os.path.isdir(self.build_dir):
@@ -154,7 +154,8 @@ class PyrexTest(object):
     def _write_host_command(self, args, quiet_init=False):
         cmd_file = os.path.join(self.thread_dir, 'command')
         with open(cmd_file, 'w') as f:
-            f.write('. ./poky/pyrex-init-build-env%s && ' % (' > /dev/null 2>&1' if quiet_init else ''))
+            f.write('. ./poky/pyrex-init-build-env%s %s && ' %
+                    (' > /dev/null 2>&1' if quiet_init else '', self.build_dir))
             f.write(' && '.join(list(args)))
         return cmd_file
 
