@@ -32,7 +32,7 @@ import textwrap
 import stat
 import hashlib
 
-VERSION = '0.0.1-next1'
+VERSION = '0.0.2'
 
 VERSION_REGEX = re.compile(r'^([0-9]+\.){2}[0-9]+(-.*)?$')
 VERSION_TAG_REGEX = re.compile(r'^v([0-9]+\.){2}[0-9]+(-.*)?$')
