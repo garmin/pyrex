@@ -124,12 +124,20 @@ def copy_templateconf(conffile):
         with open(conffile, 'w') as f:
             f.write(read_default_config(False))
 
-def check_confversion(user_config):
-    confversion = user_config['config']['confversion']
-    if confversion != PYREX_CONFVERSION:
-        sys.stderr.write("Bad pyrex conf version '%s'\n" % user_config['config']['confversion'])
-        return False
-    return True
+
+def check_confversion(user_config, version_required=False):
+    try:
+        confversion = user_config['config']['confversion']
+        if confversion != PYREX_CONFVERSION:
+            sys.stderr.write("Bad pyrex conf version '%s'\n" % user_config['config']['confversion'])
+            return False
+        return True
+    except KeyError:
+        if version_required:
+            sys.stderr.write("Cannot find pyrex conf version!\n")
+            return False
+        raise
+
 
 def get_build_hash(config):
     # Docker doesn't currently have any sort of "dry-run" mechanism that could
@@ -163,32 +171,32 @@ def get_build_hash(config):
 def main():
     def capture(args):
         builddir = os.environ['BUILDDIR']
-        conffile = os.path.abspath(os.path.join(builddir, 'conf', 'pyrex.ini'))
+        conffile = os.environ.get('PYREXCONFFILE', '')
         oeinit = os.environ['PYREX_OEINIT']
 
         user_config = Config()
 
-        if not os.path.isfile(conffile):
-            copy_templateconf(conffile)
+        if not conffile:
+            conffile = os.path.abspath(os.path.join(builddir, 'conf', 'pyrex.ini'))
 
-        user_config.read(conffile)
+            if not os.path.isfile(conffile):
+                copy_templateconf(conffile)
 
-        try:
-            if not check_confversion(user_config):
-                return 1
-        except KeyError:
-            sys.stderr.write("Cannot find pyrex conf version! Restoring from template\n")
-
-            copy_templateconf(conffile)
-
-            user_config = Config()
             user_config.read(conffile)
+
             try:
                 if not check_confversion(user_config):
                     return 1
             except KeyError:
-                sys.stderr.write("Still cannot find pyrex conf version!\n")
-                return 1
+                sys.stderr.write("Cannot find pyrex conf version! Restoring from template\n")
+
+                copy_templateconf(conffile)
+
+                user_config = Config()
+
+        user_config.read(conffile)
+        if not check_confversion(user_config, True):
+            return 1
 
         # Setup the build configuration
         build_config = Config()
