@@ -116,17 +116,35 @@ PYREX_ROOT="$(pwd)/meta-pyrex"
 # location that oe-init-build-env will look for local.conf.sample & friends)
 PYREXCONFTEMPLATE="$(pwd)/pyrex.ini.sample"
 
+# Alternatively, if it is desired to always use a fixed config file that users
+# can't change, set the following:
+#PYREXCONFFILE="$(pwd)/pyrex.ini"
+
 # Source the core pyrex environment script. Note that you must pass the
 # arguments
 . $(pwd)/meta-pyrex/pyrex-init-build-env "$@"
 ```
 
 ### Configuration
-Pyrex is configured using a `pyrex.ini` file located in the bitbake conf
-directory (i.e. the same place as `local.conf`). Pyrex will generate a default
-`pyrex.ini` file if one doesn't exist by either copying a `pyrex.ini.sample`
-file from the [TEMPLATECONF][] directory, or if one doesn't exist creating it
-from the internal Pyrex default configuration.
+Pyrex is configured using a ini-style configuration file and uses the following
+precedence to determine where this file is located:
+1. The file specified in the environment variable `PYREXCONFFILE`.
+2. The `pyrex.ini` file in the bitbake conf directory (e.g.
+   `${OEROOT}/build/conf/pyrex.ini`, if it exists and has a version number
+   specified in `${config:confversion}`. For further rules, this file will
+   be known as `PYREX_USER_CONF`
+3. If the file specified in the environment variable `$PYREXCONFTEMPLATE` exists,
+   is copied to `PYREX_USER_CONF`, then `PYREX_USER_CONF` is used
+4. If the file `$TEMPLATECONF/pyrex.ini.sample` exists, it is copied to
+   `PYREX_USER_CONF`, the `PYREX_USER_CONF` is used. This is the same rules
+   that bitbake uses for `local.conf.sample`, allowing you to easily put a
+   `pyrex.conf.sample` file along side the other default config files. See
+   [TEMPLATECONF][].
+5. The internal default config file provided by Pyrex is coped to
+   `PYREX_USER_CONF`, then `PYREX_USER_CONF` is used.
+
+**Note:** The config file is only populated when Pyrex initializes the
+environment (e.g. when the init script is sourced).
 
 The configuration file is the ini file format supported by Python's
 [configparser](https://docs.python.org/3/library/configparser.html) class, with

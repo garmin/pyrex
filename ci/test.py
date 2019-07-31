@@ -397,6 +397,30 @@ class PyrexImageType_base(PyrexTest):
 
         self.assertPyrexHostCommand('true', returncode=1, env=env)
 
+    def test_force_conf(self):
+        # Write out a new config file and set the variable to force it to be
+        # used
+        conf = self.get_config()
+        conf['config']['test'] = 'bar'
+        force_conf_file = os.path.join(self.thread_dir, 'force.ini')
+        with open(force_conf_file, 'w') as f:
+            conf.write(f)
+
+        # Set the variable to a different value in the standard config file
+        conf = self.get_config()
+        conf['config']['test'] = 'foo'
+        conf.write_conf()
+
+        output = self.assertPyrexHostCommand('pyrex-config get config:test', quiet_init=True,
+                                             capture=True).decode('utf-8').strip()
+        self.assertEqual(output, 'foo')
+
+        env = os.environ.copy()
+        env['PYREXCONFFILE'] = force_conf_file
+        output = self.assertPyrexHostCommand('pyrex-config get config:test', quiet_init=True,
+                                             capture=True, env=env).decode('utf-8').strip()
+        self.assertEqual(output, 'bar')
+
     @skipIfPrebuilt
     def test_local_build(self):
         # Run any command to build the images locally
