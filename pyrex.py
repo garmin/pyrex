@@ -355,6 +355,16 @@ def main():
                     this_script=THIS_SCRIPT)))
         os.chmod(runfile, stat.S_IRWXU)
 
+        # Write out config convenience command
+        configcmd = os.path.join(shimdir, 'pyrex-config')
+        with open(configcmd, 'w') as f:
+            f.write(textwrap.dedent('''\
+                #! /bin/sh
+                exec {pyrexroot}/{this_script} config {conffile} "$@"
+                '''.format(pyrexroot=config['build']['pyrexroot'], conffile=args.conffile,
+                    this_script=THIS_SCRIPT)))
+        os.chmod(configcmd, stat.S_IRWXU)
+
         # Write out the shim file
         shimfile = os.path.join(shimdir, 'exec-shim-pyrex')
         with open(shimfile, 'w') as f:
@@ -522,6 +532,23 @@ def main():
         write_cmd('cd "%s"' % config['build']['builddir'])
         return 0
 
+    def config_get(args):
+        config, _ = load_configs(args.conffile)
+
+        try:
+            (section, name) = args.var.split(':')
+        except ValueError:
+            sys.stderr.write('"%s" is not of the form SECTION:NAME\n' % args.var)
+            return 1
+
+        try:
+            val = config[section][name]
+        except KeyError:
+            return 1
+
+        print(val)
+        return 0
+
     subparser_args = {}
     if sys.version_info >= (3, 6, 0):
         subparser_args['required'] = True
@@ -549,6 +576,14 @@ def main():
     env_parser.add_argument('fd', help='Output file descriptor', type=int)
     env_parser.set_defaults(func=env)
 
+    config_parser = subparsers.add_parser('config', help='Pyrex configuration')
+    config_parser.add_argument('conffile', help='Pyrex config file')
+    config_subparsers = config_parser.add_subparsers(title='subcommands', description='Config subcommands',
+                                                     dest='config_subcommand', **subparser_args)
+
+    config_get_parser = config_subparsers.add_parser('get', help='Get Pyrex config value')
+    config_get_parser.add_argument('var', metavar='SECTION:NAME', help='Config variable to get')
+    config_get_parser.set_defaults(func=config_get)
 
     args = parser.parse_args()
     sys.exit(args.func(args))
