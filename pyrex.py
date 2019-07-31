@@ -558,7 +558,7 @@ def main():
         return 0
 
     subparser_args = {}
-    if sys.version_info >= (3, 6, 0):
+    if sys.version_info >= (3, 7, 0):
         subparser_args['required'] = True
 
     parser = argparse.ArgumentParser(description='Pyrex Setup Argument Parser')
