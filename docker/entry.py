@@ -15,10 +15,10 @@
 # limitations under the License.
 
 import os
-import stat
 import sys
 import subprocess
 import signal
+
 
 def get_var(name):
     if name in os.environ:
@@ -31,6 +31,7 @@ def get_var(name):
     sys.stderr.write('"%s" is missing from the environment\n' % name)
     sys.exit(1)
 
+
 def main():
     # Block the SIGTSTP signal. We haven't figured out how to do proper job
     # control inside of docker yet, and if the user accidentally presses CTRL+Z
@@ -41,9 +42,12 @@ def main():
 
     # Check TERM
     if 'TERM' in os.environ:
-        r = subprocess.call(['/usr/bin/infocmp', os.environ['TERM']], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        r = subprocess.call(['/usr/bin/infocmp', os.environ['TERM']],
+                            stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         if r != 0:
-            sys.stderr.write('$TERM has an unrecognized value of "%s". The interactive terminal may not behave appropriately\n' % os.environ['TERM'])
+            sys.stderr.write(
+                '$TERM has an unrecognized value of "%s". The interactive terminal may not behave appropriately\n' %
+                os.environ['TERM'])
 
     uid = int(get_var('PYREX_UID'))
     gid = int(get_var('PYREX_GID'))
@@ -58,20 +62,20 @@ def main():
 
         # Create user and group
         subprocess.check_call(['groupadd',
-                '--non-unique',
-                '--gid', '%d' % gid,
-                group
-            ], stdout=subprocess.DEVNULL)
+                               '--non-unique',
+                               '--gid', '%d' % gid,
+                               group
+                               ], stdout=subprocess.DEVNULL)
 
         subprocess.check_call(['useradd',
-                '--non-unique',
-                '--uid', '%d' % uid,
-                '--gid', '%d' % gid,
-                '--home', home,
-                '--no-create-home',
-                '--shell', '/bin/sh',
-                user
-            ], stdout=subprocess.DEVNULL)
+                               '--non-unique',
+                               '--uid', '%d' % uid,
+                               '--gid', '%d' % gid,
+                               '--home', home,
+                               '--no-create-home',
+                               '--shell', '/bin/sh',
+                               user
+                               ], stdout=subprocess.DEVNULL)
 
         try:
             os.makedirs(home, 0o755)
@@ -115,17 +119,17 @@ def main():
 
     # Invoke setpriv to drop root privileges.
     os.execlp('setpriv', 'setpriv',
-        '--inh-caps=-all', # Drop all root capabilities
-        '--clear-groups',
-        '--reuid', '%d' % uid,
-        '--regid', '%d' % gid,
-        *sys.argv[1:]
-        )
+              '--inh-caps=-all',  # Drop all root capabilities
+              '--clear-groups',
+              '--reuid', '%d' % uid,
+              '--regid', '%d' % gid,
+              *sys.argv[1:]
+              )
 
     # If we get here, it is an error
     sys.syderr.write('Unable to exec setpriv\n')
     sys.exit(1)
 
+
 if __name__ == "__main__":
     sys.exit(main())
-

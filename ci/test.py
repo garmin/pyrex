@@ -20,7 +20,6 @@ import os
 import pwd
 import re
 import shutil
-import stat
 import subprocess
 import sys
 import tempfile
@@ -30,9 +29,10 @@ import pty
 
 PYREX_ROOT = os.path.join(os.path.dirname(__file__), '..')
 sys.path.append(PYREX_ROOT)
-import pyrex
+import pyrex  # NOQA
 
 TEST_PREBUILT_TAG_ENV_VAR = 'TEST_PREBUILT_TAG'
+
 
 def skipIfPrebuilt(func):
     def wrapper(self, *args, **kwargs):
@@ -40,6 +40,7 @@ def skipIfPrebuilt(func):
             self.skipTest('Test does not apply to prebuilt images')
         return func(self, *args, **kwargs)
     return wrapper
+
 
 class PyrexTest(object):
     def setUp(self):
@@ -166,6 +167,7 @@ class PyrexTest(object):
         container_cmd_file = self._write_container_command(args)
         host_cmd_file = self._write_host_command(['pyrex-shell %s' % container_cmd_file], quiet_init)
         stdout = []
+
         def master_read(fd):
             while True:
                 data = os.read(fd, 1024)
@@ -187,16 +189,19 @@ class PyrexTest(object):
                 os.environ.clear()
                 os.environ.update(old_env)
 
-        self.assertFalse(os.WIFSIGNALED(status), msg='%s died from a signal: %s' % (' '.join(args), os.WTERMSIG(status)))
+        self.assertFalse(os.WIFSIGNALED(status), msg='%s died from a signal: %s' %
+                         (' '.join(args), os.WTERMSIG(status)))
         self.assertTrue(os.WIFEXITED(status), msg='%s exited abnormally' % ' '.join(args))
         self.assertEqual(os.WEXITSTATUS(status), returncode, msg='%s failed' % ' '.join(args))
         return b''.join(stdout)
+
 
 class PyrexImageType_base(PyrexTest):
     """
     Base image tests. All images that derive from a -base image should derive
     from this class
     """
+
     def test_init(self):
         self.assertPyrexHostCommand('true')
 
@@ -241,7 +246,8 @@ class PyrexImageType_base(PyrexTest):
         self.assertPyrexHostCommand('true', env=env)
 
         # Verify that pyrex won't allow you to try and use docker later
-        output = self.assertPyrexHostCommand('PYREX_DOCKER=1 bitbake', returncode=1, capture=True, env=env).decode('utf-8')
+        output = self.assertPyrexHostCommand('PYREX_DOCKER=1 bitbake', returncode=1,
+                                             capture=True, env=env).decode('utf-8')
         self.assertIn('Docker was not enabled when the environment was setup', output)
 
     def test_bad_docker(self):
@@ -310,7 +316,8 @@ class PyrexImageType_base(PyrexTest):
         thread = threading.Thread(target=read_fifo)
         thread.start()
         try:
-            self.assertPyrexContainerShellCommand('echo "$(id -u):$(id -g):$(id -un):$(id -gn):$USER:$GROUP" > %s' % fifo)
+            self.assertPyrexContainerShellCommand(
+                'echo "$(id -u):$(id -g):$(id -un):$(id -gn):$USER:$GROUP" > %s' % fifo)
         finally:
             thread.join()
 
@@ -448,7 +455,8 @@ class PyrexImageType_base(PyrexTest):
             tag = os.environ['TRAVIS_TAG']
         else:
             try:
-                tags = subprocess.check_output(['git', '-C', PYREX_ROOT, 'tag', '-l', '--points-at', 'HEAD']).decode('utf-8').splitlines()
+                tags = subprocess.check_output(['git', '-C', PYREX_ROOT, 'tag', '-l',
+                                                '--points-at', 'HEAD']).decode('utf-8').splitlines()
                 if tags:
                     tag = tags[0]
             except subprocess.CalledProcessError:
@@ -470,7 +478,8 @@ class PyrexImageType_base(PyrexTest):
 
         self.assertPyrexHostCommand('true', returncode=1)
 
-        output = self.assertSubprocess(['docker', 'images', '-q', conf['config']['tag']], capture=True).decode('utf-8').strip()
+        output = self.assertSubprocess(['docker', 'images', '-q', conf['config']['tag']],
+                                       capture=True).decode('utf-8').strip()
         self.assertEqual(output, "", msg="Tagged image found!")
 
     def test_pty(self):
@@ -484,25 +493,28 @@ class PyrexImageType_base(PyrexTest):
         env['TERM'] = bad_term
         output = self.assertPyrexContainerShellPTY('true', env=env).decode('utf-8').strip()
         self.assertIn('$TERM has an unrecognized value of "%s"' % bad_term, output)
-        self.assertPyrexContainerShellPTY('/usr/bin/infocmp %s > /dev/null' % bad_term, env=env, returncode=1, quiet_init=True)
+        self.assertPyrexContainerShellPTY('/usr/bin/infocmp %s > /dev/null' %
+                                          bad_term, env=env, returncode=1, quiet_init=True)
 
     def test_required_terms(self):
         # Tests that a minimum set of terminals are supported
         REQUIRED_TERMS = (
-                'dumb',
-                'vt100',
-                'xterm',
-                'xterm-256color'
-                )
+            'dumb',
+            'vt100',
+            'xterm',
+            'xterm-256color'
+        )
 
         env = os.environ.copy()
         for t in REQUIRED_TERMS:
             with self.subTest(term=t):
                 env['TERM'] = t
-                output = self.assertPyrexContainerShellPTY('echo $TERM', env=env, quiet_init=True).decode('utf-8').strip()
+                output = self.assertPyrexContainerShellPTY(
+                    'echo $TERM', env=env, quiet_init=True).decode('utf-8').strip()
                 self.assertEqual(output, t, msg='Bad $TERM found in container!')
 
-                output = self.assertPyrexContainerShellPTY('/usr/bin/infocmp %s > /dev/null' % t, env=env).decode('utf-8').strip()
+                output = self.assertPyrexContainerShellPTY(
+                    '/usr/bin/infocmp %s > /dev/null' % t, env=env).decode('utf-8').strip()
                 self.assertNotIn('$TERM has an unrecognized value', output)
 
     def test_tini(self):
@@ -516,8 +528,10 @@ class PyrexImageType_base(PyrexTest):
         (image_name, image_version, _) = self.test_image.split('-')
 
         # Capture the LSB release information.
-        dist_id_str = self.assertPyrexContainerCommand('lsb_release -i', quiet_init=True, capture=True).decode('utf-8').rstrip()
-        release_str = self.assertPyrexContainerCommand('lsb_release -r', quiet_init=True, capture=True).decode('utf-8').rstrip()
+        dist_id_str = self.assertPyrexContainerCommand(
+            'lsb_release -i', quiet_init=True, capture=True).decode('utf-8').rstrip()
+        release_str = self.assertPyrexContainerCommand(
+            'lsb_release -r', quiet_init=True, capture=True).decode('utf-8').rstrip()
 
         self.assertRegex(dist_id_str.lower(), r'^distributor id:\s+' + re.escape(image_name))
         self.assertRegex(release_str.lower(), r'^release:\s+' + re.escape(image_version) + r'(\.|$)')
@@ -539,16 +553,20 @@ class PyrexImageType_base(PyrexTest):
         env = os.environ.copy()
         env['TEST_ENV'] = test_string
 
-        s = self.assertPyrexContainerShellCommand('echo $TEST_ENV', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
+        s = self.assertPyrexContainerShellCommand(
+            'echo $TEST_ENV', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
         self.assertEqual(s, test_string)
 
-        s = self.assertPyrexContainerShellCommand('echo $TEST_ENV2', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
+        s = self.assertPyrexContainerShellCommand(
+            'echo $TEST_ENV2', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
         self.assertEqual(s, '')
+
 
 class PyrexImageType_oe(PyrexImageType_base):
     """
     Tests images designed for building OpenEmbedded
     """
+
     def test_bitbake_parse(self):
         self.assertPyrexHostCommand('bitbake -p')
 
@@ -561,8 +579,10 @@ class PyrexImageType_oe(PyrexImageType_base):
 
         self.assertTrue(os.path.isabs(template_dir))
 
-        shutil.copyfile(os.path.join(PYREX_ROOT, 'poky/meta-poky/conf/local.conf.sample'), os.path.join(template_dir, 'local.conf.sample'))
-        shutil.copyfile(os.path.join(PYREX_ROOT, 'poky/meta-poky/conf/bblayers.conf.sample'), os.path.join(template_dir, 'bblayers.conf.sample'))
+        shutil.copyfile(os.path.join(PYREX_ROOT, 'poky/meta-poky/conf/local.conf.sample'),
+                        os.path.join(template_dir, 'local.conf.sample'))
+        shutil.copyfile(os.path.join(PYREX_ROOT, 'poky/meta-poky/conf/bblayers.conf.sample'),
+                        os.path.join(template_dir, 'bblayers.conf.sample'))
 
         test_string = 'set_by_test.%d' % threading.get_ident()
 
@@ -581,7 +601,8 @@ class PyrexImageType_oe(PyrexImageType_base):
         env['TEMPLATECONF'] = template_dir
         env['TEST_ENV'] = test_string
 
-        s = self.assertPyrexContainerShellCommand('echo $TEST_ENV', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
+        s = self.assertPyrexContainerShellCommand(
+            'echo $TEST_ENV', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
         self.assertEqual(s, test_string)
 
     def test_templateconf_rel(self):
@@ -590,8 +611,10 @@ class PyrexImageType_oe(PyrexImageType_base):
 
         self.assertTrue(os.path.isabs(template_dir))
 
-        shutil.copyfile(os.path.join(PYREX_ROOT, 'poky/meta-poky/conf/local.conf.sample'), os.path.join(template_dir, 'local.conf.sample'))
-        shutil.copyfile(os.path.join(PYREX_ROOT, 'poky/meta-poky/conf/bblayers.conf.sample'), os.path.join(template_dir, 'bblayers.conf.sample'))
+        shutil.copyfile(os.path.join(PYREX_ROOT, 'poky/meta-poky/conf/local.conf.sample'),
+                        os.path.join(template_dir, 'local.conf.sample'))
+        shutil.copyfile(os.path.join(PYREX_ROOT, 'poky/meta-poky/conf/bblayers.conf.sample'),
+                        os.path.join(template_dir, 'bblayers.conf.sample'))
 
         test_string = 'set_by_test.%d' % threading.get_ident()
 
@@ -610,12 +633,14 @@ class PyrexImageType_oe(PyrexImageType_base):
         env['TEMPLATECONF'] = os.path.relpath(template_dir, os.path.join(PYREX_ROOT, 'poky'))
         env['TEST_ENV'] = test_string
 
-        s = self.assertPyrexContainerShellCommand('echo $TEST_ENV', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
+        s = self.assertPyrexContainerShellCommand(
+            'echo $TEST_ENV', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
         self.assertEqual(s, test_string)
 
 
 TEST_IMAGES = ('ubuntu-14.04-base', 'ubuntu-16.04-base', 'ubuntu-18.04-base', 'centos-7-base',
                'ubuntu-14.04-oe', 'ubuntu-16.04-oe', 'ubuntu-18.04-oe')
+
 
 def add_image_tests():
     for image in TEST_IMAGES:
@@ -626,6 +651,7 @@ def add_image_tests():
 
         name = 'PyrexImage_' + re.sub(r'\W', '_', image)
         setattr(self, name, type(name, (parent, unittest.TestCase), {'test_image': image}))
+
 
 add_image_tests()
 

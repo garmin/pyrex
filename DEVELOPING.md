@@ -1,6 +1,23 @@
 # Developer Guide
 Pyrex development information and processes
 
+## Linting
+Pyrex conforms to [PEP8](https://pep8.org/) for all Python code, and also make
+use of [flake8](https://pypi.org/project/flake8/) as a linter. Please ensure
+all code conforms to this. There is helpful tool that will report any places
+where the code is non-conformant in the project root:
+
+```shell
+./lint
+```
+
+If you would like to tool to automatically reformat code to comply with PEP8,
+pass the `--reformat` option:
+
+```
+./lint --reformat
+```
+
 ## Testing
 Pyrex has a comprehensive test suite that can be used to test all generated
 Docker images. Some external test data is required to perform the test. To
