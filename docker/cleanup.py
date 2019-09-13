@@ -25,10 +25,10 @@ import time
 # These Linux process states are considered "already dead" and will not cause
 # the script to wait
 ALREADY_DEAD_STATES = (
-        'Z', # Zombie
-        'X', # Dead (from Linux 2.6.0 onward)
-        'x', # Dead (Linux 2.6.33 to 3.13 only)
-        )
+    'Z',  # Zombie
+    'X',  # Dead (from Linux 2.6.0 onward)
+    'x',  # Dead (Linux 2.6.33 to 3.13 only)
+)
 
 EXIT_WAIT_PHASES = 2
 
@@ -69,20 +69,24 @@ INTERRUPT_SIGNALS = (
     signal.SIGINT,
     signal.SIGQUIT,
     signal.SIGTERM,
-    )
+)
+
 
 def pid_str_list(s):
     return '  ' + '\n  '.join(s[key] for key in sorted(s.keys()))
+
 
 signals_enabled = False
 keep_waiting = True
 keep_waiting_notified = False
 
+
 def stop_process_waiting(signum, frame):
     global keep_waiting
     keep_waiting = False
     # Note: Can't use logging in a signal handler. Uncomment this to debug
-    #print("Got signal %d" % signum)
+    #print("Got signal %d" % signum) # NOQA
+
 
 def wait_for_processes(sig, max_wait):
     global keep_waiting
@@ -132,8 +136,8 @@ def wait_for_processes(sig, max_wait):
 
                 logging.debug("Found %s", description)
 
-                if not state in ALREADY_DEAD_STATES and pid != my_pid and pid != 1:
-                    if not pid in killed_processes and sig is not None:
+                if state not in ALREADY_DEAD_STATES and pid != my_pid and pid != 1:
+                    if pid not in killed_processes and sig is not None:
                         logging.info("Killing %s", description)
                         os.kill(pid, sig)
                         killed_processes.add(pid)
@@ -176,6 +180,7 @@ def wait_for_processes(sig, max_wait):
             sleep_time = 0.5
 
         time.sleep(sleep_time)
+
 
 def main():
     # Setup logging. The child stdout may need to be parsable, so the logging
@@ -226,6 +231,7 @@ def main():
 
     # Pass the previous child exit code on to tini
     return int(sys.argv[1])
+
 
 if __name__ == "__main__":
     sys.exit(main())

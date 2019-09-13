@@ -23,9 +23,6 @@ import subprocess
 import re
 import pwd
 import grp
-import tempfile
-import binascii
-import pickle
 import shlex
 import glob
 import textwrap
@@ -41,9 +38,11 @@ THIS_SCRIPT = os.path.basename(__file__)
 PYREX_CONFVERSION = '1'
 MINIMUM_DOCKER_VERSION = 17
 
+
 class Config(configparser.ConfigParser):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, interpolation=configparser.ExtendedInterpolation(), comment_prefixes=['#'], delimiters=['='], **kwargs)
+        super().__init__(*args, interpolation=configparser.ExtendedInterpolation(),
+                         comment_prefixes=['#'], delimiters=['='], **kwargs)
 
         # All keys are case-sensitive
         self.optionxform = lambda option: option
@@ -53,14 +52,16 @@ class Config(configparser.ConfigParser):
         merging configs together"""
         return {section: values for (section, values) in self.items(raw=True)}
 
+
 def read_default_config(keep_defaults):
     with open(os.path.join(os.path.dirname(__file__), 'pyrex.ini'), 'r') as f:
-        l = f.read().replace('@CONFVERSION@', PYREX_CONFVERSION)
+        line = f.read().replace('@CONFVERSION@', PYREX_CONFVERSION)
         if keep_defaults:
-            l = l.replace('%', '')
+            line = line.replace('%', '')
         else:
-            l = l.replace('%', '#')
-        return l
+            line = line.replace('%', '#')
+        return line
+
 
 def load_configs(conffile):
     # Load the build time config file
@@ -95,6 +96,7 @@ def load_configs(conffile):
 
     return user_config, build_config
 
+
 def stop_coverage():
     """
     Helper to stop coverage reporting
@@ -105,15 +107,18 @@ def stop_coverage():
         if c is not None:
             c.stop()
             c.save()
-    except:
+    except Exception:
         pass
+
 
 def get_image_id(config, image):
     docker_args = [config['config']['dockerpath'], 'image', 'inspect', image, '--format={{ .Id }}']
     return subprocess.check_output(docker_args, stderr=subprocess.DEVNULL).decode('utf-8').rstrip()
 
+
 def use_docker(config):
     return os.environ.get('PYREX_DOCKER', config['run']['enable']) == '1'
+
 
 def copy_templateconf(conffile):
     template = os.environ['PYREXCONFTEMPLATE']
@@ -168,6 +173,7 @@ def get_build_hash(config):
 
     return h.hexdigest()
 
+
 def main():
     def capture(args):
         builddir = os.environ['BUILDDIR']
@@ -214,7 +220,7 @@ def main():
 
         try:
             os.makedirs(user_config['config']['tempdir'])
-        except:
+        except Exception:
             pass
 
         build_conffile = os.path.join(user_config['config']['tempdir'], 'build.ini')
@@ -244,7 +250,7 @@ def main():
                 print("  https://docs.docker.com/install/linux/docker-ce/fedora/")
                 print()
                 print(textwrap.fill("After installing docker, give your login account permission to " +
-                                     "docker commands by running:"))
+                                    "docker commands by running:"))
                 print()
                 print("  sudo usermod -aG docker $USER")
                 print()
@@ -267,7 +273,8 @@ def main():
             version = m.group(1)
 
             if int(version.split('.')[0]) < MINIMUM_DOCKER_VERSION:
-                sys.stderr.write("Docker version is too old (have %s), need >= %d\n" % (version, MINIMUM_DOCKER_VERSION))
+                sys.stderr.write("Docker version is too old (have %s), need >= %d\n" %
+                                 (version, MINIMUM_DOCKER_VERSION))
                 return 1
 
             tag = config['config']['tag']
@@ -275,7 +282,7 @@ def main():
             if config['config']['buildlocal'] == '1':
                 if VERSION_TAG_REGEX.match(tag.split(':')[-1]) is not None:
                     sys.stderr.write("Image tag '%s' will overwrite release image tag, which is not what you want\n" %
-                            tag)
+                                     tag)
                     sys.stderr.write("Try changing 'config:pyrextag' to a different value\n")
                     return 1
 
@@ -284,12 +291,12 @@ def main():
                 (_, _, image_type) = config['config']['dockerimage'].split('-')
 
                 docker_args = [docker_path, 'build',
-                    '-t', tag,
-                    '-f', config['dockerbuild']['dockerfile'],
-                    '--network=host',
-                    os.path.join(config['build']['pyrexroot'], 'docker'),
-                    '--target', 'pyrex-%s' % image_type
-                    ]
+                               '-t', tag,
+                               '-f', config['dockerbuild']['dockerfile'],
+                               '--network=host',
+                               os.path.join(config['build']['pyrexroot'], 'docker'),
+                               '--target', 'pyrex-%s' % image_type
+                               ]
 
                 if config['config']['registry']:
                     docker_args.extend(['--build-arg', 'MY_REGISTRY=%s/' % config['config']['registry']])
@@ -307,9 +314,11 @@ def main():
                     env[name] = val
 
                 try:
-                    if os.environ.get('PYREX_DOCKER_BUILD_QUIET', '1') == '1' and config['dockerbuild'].getboolean('quiet'):
+                    if os.environ.get('PYREX_DOCKER_BUILD_QUIET',
+                                      '1') == '1' and config['dockerbuild'].getboolean('quiet'):
                         docker_args.append('-q')
-                        build_config['build']['buildid'] = subprocess.check_output(docker_args, env=env).decode('utf-8').rstrip()
+                        build_config['build']['buildid'] = subprocess.check_output(
+                            docker_args, env=env).decode('utf-8').rstrip()
                     else:
                         subprocess.check_call(docker_args, env=env)
                         build_config['build']['buildid'] = get_image_id(config, tag)
@@ -349,7 +358,7 @@ def main():
 
         try:
             shutil.rmtree(shimdir)
-        except:
+        except Exception:
             pass
         os.makedirs(shimdir)
 
@@ -360,7 +369,7 @@ def main():
                 #! /bin/sh
                 exec {pyrexroot}/{this_script} run {conffile} -- "$@"
                 '''.format(pyrexroot=config['build']['pyrexroot'], conffile=args.conffile,
-                    this_script=THIS_SCRIPT)))
+                           this_script=THIS_SCRIPT)))
         os.chmod(runfile, stat.S_IRWXU)
 
         # Write out config convenience command
@@ -370,7 +379,7 @@ def main():
                 #! /bin/sh
                 exec {pyrexroot}/{this_script} config {conffile} "$@"
                 '''.format(pyrexroot=config['build']['pyrexroot'], conffile=args.conffile,
-                    this_script=THIS_SCRIPT)))
+                           this_script=THIS_SCRIPT)))
         os.chmod(configcmd, stat.S_IRWXU)
 
         # Write out the shim file
@@ -398,7 +407,7 @@ def main():
                 #! /bin/sh
                 exec {pyrexroot}/{this_script} build {conffile}
                 '''.format(pyrexroot=config['build']['pyrexroot'], conffile=args.conffile,
-                    this_script=THIS_SCRIPT)))
+                           this_script=THIS_SCRIPT)))
         os.chmod(rebuildfile, stat.S_IRWXU)
 
         command_globs = [g for g in config['config']['commands'].split() if g]
@@ -459,23 +468,23 @@ def main():
             command_prefix = config['run'].get('commandprefix', '').splitlines()
 
             docker_args = [docker_path, 'run',
-                    '--rm',
-                    '-i',
-                    '--net=host',
-                    '-e', 'PYREX_USER=%s' % username,
-                    '-e', 'PYREX_UID=%d' % uid,
-                    '-e', 'PYREX_GROUP=%s' % groupname,
-                    '-e', 'PYREX_GID=%d' % gid,
-                    '-e', 'PYREX_HOME=%s' % os.environ['HOME'],
-                    '-e', 'PYREX_INIT_COMMAND=%s' % init_command,
-                    '-e', 'PYREX_OEROOT=%s' % config['build']['oeroot'],
-                    '-e', 'PYREX_CLEANUP_EXIT_WAIT',
-                    '-e', 'PYREX_CLEANUP_LOG_FILE',
-                    '-e', 'PYREX_CLEANUP_LOG_LEVEL',
-                    '-e', 'PYREX_COMMAND_PREFIX=%s' % ' '.join(command_prefix),
-                    '-e', 'TINI_VERBOSITY',
-                    '--workdir', os.getcwd(),
-                    ]
+                           '--rm',
+                           '-i',
+                           '--net=host',
+                           '-e', 'PYREX_USER=%s' % username,
+                           '-e', 'PYREX_UID=%d' % uid,
+                           '-e', 'PYREX_GROUP=%s' % groupname,
+                           '-e', 'PYREX_GID=%d' % gid,
+                           '-e', 'PYREX_HOME=%s' % os.environ['HOME'],
+                           '-e', 'PYREX_INIT_COMMAND=%s' % init_command,
+                           '-e', 'PYREX_OEROOT=%s' % config['build']['oeroot'],
+                           '-e', 'PYREX_CLEANUP_EXIT_WAIT',
+                           '-e', 'PYREX_CLEANUP_LOG_FILE',
+                           '-e', 'PYREX_CLEANUP_LOG_LEVEL',
+                           '-e', 'PYREX_COMMAND_PREFIX=%s' % ' '.join(command_prefix),
+                           '-e', 'TINI_VERBOSITY',
+                           '--workdir', os.getcwd(),
+                           ]
 
             # Run the docker image with a TTY if this script was run in a tty
             if os.isatty(1):
@@ -494,7 +503,7 @@ def main():
                 docker_args.extend([
                     '--mount', 'type=bind,src=%s,dst=/tmp/%s-ssh-agent-sock' % (os.environ['SSH_AUTH_SOCK'], username),
                     '-e', 'SSH_AUTH_SOCK=/tmp/%s-ssh-agent-sock' % username,
-                    ])
+                ])
 
             # Pass along BB_ENV_EXTRAWHITE and anything it has whitelisted
             if 'BB_ENV_EXTRAWHITE' in os.environ:
@@ -595,6 +604,7 @@ def main():
 
     args = parser.parse_args()
     sys.exit(args.func(args))
+
 
 if __name__ == "__main__":
     main()

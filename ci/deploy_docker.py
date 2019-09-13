@@ -7,9 +7,11 @@ import requests
 import subprocess
 import sys
 
+
 def main():
     parser = argparse.ArgumentParser(description='Deploy docker images')
-    parser.add_argument('--login', action='store_true', help='Login to Dockerhub using the environment variables $DOCKER_USERNAME and $DOCKER_PASSWORD')
+    parser.add_argument('--login', action='store_true',
+                        help='Login to Dockerhub using the environment variables $DOCKER_USERNAME and $DOCKER_PASSWORD')
     parser.add_argument('image', metavar='IMAGE[:TAG]', help='The image to build and push')
 
     args = parser.parse_args()
@@ -37,7 +39,8 @@ def main():
                 print("$%s is missing from the environment. Images will not be deployed" % v)
                 return 0
 
-        with subprocess.Popen(['docker', 'login', '--username', os.environ['DOCKER_USERNAME'], '--password-stdin'], stdin=subprocess.PIPE) as p:
+        with subprocess.Popen(['docker', 'login', '--username', os.environ['DOCKER_USERNAME'],
+                               '--password-stdin'], stdin=subprocess.PIPE) as p:
             try:
                 p.communicate(os.environ['DOCKER_PASSWORD'].encode('utf-8'), timeout=60)
             except subprocess.TimeoutExpired:
@@ -52,12 +55,13 @@ def main():
     print("Deploying %s..." % name)
 
     # Get a login token for the docker registry and download the manifest
-    token = requests.get("https://auth.docker.io/token?service=registry.docker.io&scope=repository:%s:pull" % repo, json=True).json()["token"]
+    token = requests.get("https://auth.docker.io/token?service=registry.docker.io&scope=repository:%s:pull" %
+                         repo, json=True).json()["token"]
     manifest = requests.get(
-            "https://registry.hub.docker.com/v2/%s/manifests/%s" % (repo, tag),
-            headers={"Authorization": "Bearer %s" % token},
-            json=True
-            ).json()
+        "https://registry.hub.docker.com/v2/%s/manifests/%s" % (repo, tag),
+        headers={"Authorization": "Bearer %s" % token},
+        json=True
+    ).json()
 
     found_manifest = (manifest.get('name', '') == repo)
 
@@ -80,7 +84,7 @@ def main():
 
     try:
         subprocess.check_call(['docker', 'build'] + docker_build_args)
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         print("Building failed!")
         return 1
 
@@ -91,18 +95,19 @@ def main():
         test_name = 'PyrexImage_' + re.sub(r'\W', '_', image)
 
         subprocess.check_call(['%s/test.py' % this_dir, '-vbf', test_name], env=env, cwd=os.path.join(this_dir, '..'))
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         print("Testing failed!")
         return 1
 
     print("Pushing", name)
     try:
         subprocess.check_call(['docker', 'push', name])
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         print("Pushing failed!")
         return 1
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
