@@ -201,7 +201,6 @@ RUN set -x && \
       yum install -y https://centos7.iuscommunity.org/ius-release.rpm &&\
       yum install -y python36u &&\
       yum clean all &&\
-      ln -s /usr/bin/python3.6 /usr/bin/python3 &&\
       localedef -c -f UTF-8 -i en_US en_US.UTF-8
 
 # Copy prebuilt items
