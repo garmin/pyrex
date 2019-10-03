@@ -62,8 +62,10 @@ so by making the following changes to `pyrex.ini`:
    overwrite your local docker cache tags for the prebuilt images. As an
    example, you might add the following to `pyrex.ini`:
 
+    ```
     [config]
     tag = ${config:dockerimage}:my-image
+    ```
 
 3. Set `config:dockerfile` to the path where the Dockerfile you wish to build
    is located. Alternatively, you can leave it as the default to build the
