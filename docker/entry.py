@@ -117,6 +117,16 @@ def main():
     except OSError:
         pass
 
+    # Execute any startup executables.
+    for exe in os.listdir('/usr/libexec/pyrex/startup.d'):
+        path = os.path.join('/usr/libexec/pyrex/startup.d', exe)
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            try:
+                subprocess.check_call([path])
+            except subprocess.CalledProcessError as e:
+                sys.stderr.write('%s exited with %d\n' % (path, e.returncode))
+                sys.exit(e.returncode)
+
     # Invoke setpriv to drop root privileges.
     os.execlp('setpriv', 'setpriv',
               '--inh-caps=-all',  # Drop all root capabilities
