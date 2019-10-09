@@ -441,6 +441,9 @@ RUN chmod +x /usr/libexec/tini/cleanup.py \
     /usr/libexec/tini/entry.py \
     /usr/libexec/tini/startup.sh
 
+# Add startup script directory.
+RUN mkdir -p /usr/libexec/pyrex/startup.d
+
 # Precompile python files for improved startup time
 RUN python3 -m py_compile /usr/libexec/tini/*.py
 
