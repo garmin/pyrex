@@ -561,6 +561,21 @@ class PyrexImageType_base(PyrexTest):
             'echo $TEST_ENV2', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
         self.assertEqual(s, '')
 
+    def test_custom_startup_script(self):
+        conf = self.get_config()
+        conf['run']['envvars'] += ' PYREX_TEST_STARTUP_SCRIPT'
+        conf.write_conf()
+
+        env = os.environ.copy()
+        env['PYREX_TEST_STARTUP_SCRIPT'] = "3"
+        self.assertPyrexContainerShellCommand(
+            'echo $PYREX_TEST_STARTUP_SCRIPT', env=env, quiet_init=True, returncode=3)
+
+        env['PYREX_TEST_STARTUP_SCRIPT'] = "0"
+        s = self.assertPyrexContainerShellCommand(
+            'echo $PYREX_TEST_STARTUP_SCRIPT', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
+        self.assertEqual(s, "Startup script test\n0")
+
 
 class PyrexImageType_oe(PyrexImageType_base):
     """
