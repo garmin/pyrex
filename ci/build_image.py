@@ -26,6 +26,8 @@ def main():
     parser.add_argument('image', help='Pyrex image to build')
     parser.add_argument('--provider', choices=('docker', 'podman'), default='docker',
                         help='Specify which tool should be used to build the images')
+    parser.add_argument('--quiet', action='store_true',
+                        help='Build quietly')
 
     args = parser.parse_args()
 
@@ -51,7 +53,23 @@ def main():
                    '--target', 'pyrex-%s' % image_type
                    ]
 
-    subprocess.check_call(docker_args)
+    if args.quiet:
+        p = subprocess.Popen(docker_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        while True:
+            try:
+                out, err = p.communicate(timeout=1)
+                break
+            except subprocess.TimeoutExpired:
+                sys.stdout.write('.')
+                sys.stdout.flush()
+        sys.stdout.write('\n')
+
+        if p.returncode:
+            sys.stdout.write(out.decode('utf-8'))
+
+        return p.returncode
+    else:
+        subprocess.check_call(docker_args)
 
 
 if __name__ == "__main__":

@@ -39,8 +39,8 @@ before_script:
   >> "/home/travis/virtualenv/python${TRAVIS_PYTHON_VERSION}/lib/python${TRAVIS_PYTHON_VERSION}/sitecustomize.py"
 - rm -f .coverage-report.*
 # Pre build the image. This prevents long delays with no output in test cases
-- ./ci/build_image.py $TEST_IMAGE --provider=$DOCKER_PROVIDER
-script: 
+- ./ci/build_image.py $TEST_IMAGE --provider=$DOCKER_PROVIDER --quiet
+script:
 - flake8 $(git ls-files '*.py')
 - COVERAGE_PROCESS_START=${TRAVIS_BUILD_DIR}/.coveragerc ci/test.py -vb PyrexImage_${DOCKER_PROVIDER}_$(echo $TEST_IMAGE | sed 's/\W/_/g')
 after_success:
