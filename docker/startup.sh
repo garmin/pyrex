@@ -19,8 +19,8 @@ declare -a COMMAND=("$@")
 # Consume all arguments before sourcing the environment script
 shift $#
 
-if [ -n "$PYREX_OEROOT" ] && [ -n "$PYREX_INIT_COMMAND" ]; then
-    pushd "$PYREX_OEROOT" > /dev/null
+if [ -n "$PYREX_INIT_DIR" ] && [ -n "$PYREX_INIT_COMMAND" ]; then
+    pushd "$PYREX_INIT_DIR" > /dev/null
     source $PYREX_INIT_COMMAND > /dev/null
     popd > /dev/null
 fi
