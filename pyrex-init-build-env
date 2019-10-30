@@ -67,8 +67,8 @@ pyrex_cleanup() {
 	export PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREXCONFTEMPLATE
 
 	# Instruct pyrex.py to output the name of the configuration file to
-	# file descriptor 11
-	$PYREX_ROOT/pyrex.py capture 11 -- "$@" 11> $PYREX_TEMP_FILE
+	# file descriptor 9
+	$PYREX_ROOT/pyrex.py capture 9 -- "$@" 9> $PYREX_TEMP_FILE
 )
 if [ $? -ne 0 ]; then
 	pyrex_cleanup
@@ -84,7 +84,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Setup build environment
-$PYREX_ROOT/pyrex.py env "$PYREX_TEMPCONFFILE" 11 11> $PYREX_TEMP_FILE
+$PYREX_ROOT/pyrex.py env "$PYREX_TEMPCONFFILE" 9 9> $PYREX_TEMP_FILE
 if [ $? -ne 0 ]; then
 	pyrex_cleanup
 	return 1
