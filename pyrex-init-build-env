@@ -46,11 +46,13 @@ fi
 
 pyrex_cleanup() {
 	rm -f "$PYREX_TEMP_FILE"
-	unset PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREX_TEMPCONFFILE PYREX_TEMP_FILE pyrex_cleanup
+	unset PYREX_OEROOT PYREX_OEINIT PYREX_OEINIT_DIR PYREX_ROOT PYREX_TEMPCONFFILE PYREX_TEMP_FILE pyrex_cleanup
 }
 
 # Capture OE Build environment
 (
+	PYREX_OEINIT_DIR="$PWD"
+
 	. $PYREX_OEINIT "$@"
 	if [ $? -ne 0 ]; then
 		exit 1
@@ -64,7 +66,7 @@ pyrex_cleanup() {
 		esac
 	fi
 
-	export PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREXCONFTEMPLATE
+	export PYREX_OEROOT PYREX_OEINIT PYREX_OEINIT_DIR PYREX_ROOT PYREXCONFTEMPLATE
 
 	# Instruct pyrex.py to output the name of the configuration file to
 	# file descriptor 9

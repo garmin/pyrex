@@ -213,6 +213,7 @@ def main():
         build_config['build']['oeinit'] = oeinit
         build_config['build']['pyrexroot'] = os.environ['PYREX_ROOT']
         build_config['build']['initcommand'] = ' '.join(shlex.quote(a) for a in [oeinit] + args.init)
+        build_config['build']['initdir'] = os.environ['PYREX_OEINIT_DIR']
         build_config['build']['userconfig'] = conffile
 
         # Merge the build config into the user config (so that interpolation works)
@@ -464,6 +465,7 @@ def main():
             username = config['run'].get('username') or pwd.getpwuid(uid).pw_name
             groupname = config['run'].get('groupname') or grp.getgrgid(gid).gr_name
             init_command = config['run'].get('initcommand', config['build']['initcommand'])
+            init_dir = config['run'].get('initdir', config['build']['initdir'])
 
             command_prefix = config['run'].get('commandprefix', '').splitlines()
 
@@ -477,7 +479,7 @@ def main():
                            '-e', 'PYREX_GID=%d' % gid,
                            '-e', 'PYREX_HOME=%s' % os.environ['HOME'],
                            '-e', 'PYREX_INIT_COMMAND=%s' % init_command,
-                           '-e', 'PYREX_OEROOT=%s' % config['build']['oeroot'],
+                           '-e', 'PYREX_INIT_DIR=%s' % init_dir,
                            '-e', 'PYREX_CLEANUP_EXIT_WAIT',
                            '-e', 'PYREX_CLEANUP_LOG_FILE',
                            '-e', 'PYREX_CLEANUP_LOG_LEVEL',
@@ -536,7 +538,7 @@ def main():
 
             env = os.environ.copy()
             env['PYREX_INIT_COMMAND'] = config['build']['initcommand']
-            env['PYREX_OEROOT'] = config['build']['oeroot']
+            env['PYREX_INIT_DIR'] = config['build']['initdir']
 
             stop_coverage()
 
