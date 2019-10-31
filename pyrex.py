@@ -500,8 +500,9 @@ def main():
 
             # Special case: Make the user SSH authentication socket available in Docker
             if 'SSH_AUTH_SOCK' in os.environ:
+                socket = os.path.realpath(os.environ['SSH_AUTH_SOCK'])
                 docker_args.extend([
-                    '--mount', 'type=bind,src=%s,dst=/tmp/%s-ssh-agent-sock' % (os.environ['SSH_AUTH_SOCK'], username),
+                    '--mount', 'type=bind,src=%s,dst=/tmp/%s-ssh-agent-sock' % (socket, username),
                     '-e', 'SSH_AUTH_SOCK=/tmp/%s-ssh-agent-sock' % username,
                 ])
 
