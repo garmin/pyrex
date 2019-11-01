@@ -492,6 +492,9 @@ def main():
 
             # Configure binds
             for b in set(config['run']['bind'].split()):
+                if not os.path.exists(b):
+                    print('Error: bind source path {b} does not exist'.format(b=b))
+                    continue
                 docker_args.extend(['--mount', 'type=bind,src={b},dst={b}'.format(b=b)])
 
             # Pass environment variables
@@ -501,10 +504,13 @@ def main():
             # Special case: Make the user SSH authentication socket available in Docker
             if 'SSH_AUTH_SOCK' in os.environ:
                 socket = os.path.realpath(os.environ['SSH_AUTH_SOCK'])
-                docker_args.extend([
-                    '--mount', 'type=bind,src=%s,dst=/tmp/%s-ssh-agent-sock' % (socket, username),
-                    '-e', 'SSH_AUTH_SOCK=/tmp/%s-ssh-agent-sock' % username,
-                ])
+                if not os.path.exists(socket):
+                    print('Warning: SSH_AUTH_SOCK {} does not exist'.format(socket))
+                else:
+                    docker_args.extend([
+                        '--mount', 'type=bind,src=%s,dst=/tmp/%s-ssh-agent-sock' % (socket, username),
+                        '-e', 'SSH_AUTH_SOCK=/tmp/%s-ssh-agent-sock' % username,
+                    ])
 
             # Pass along BB_ENV_EXTRAWHITE and anything it has whitelisted
             if 'BB_ENV_EXTRAWHITE' in os.environ:
