@@ -576,6 +576,22 @@ class PyrexImageType_base(PyrexTest):
             'echo $PYREX_TEST_STARTUP_SCRIPT', env=env, quiet_init=True, capture=True).decode('utf-8').rstrip()
         self.assertEqual(s, "Startup script test\n0")
 
+    def test_users(self):
+        users = set(
+            self.assertPyrexContainerShellCommand(
+                'getent passwd | cut -f1 -d:',
+                quiet_init=True,
+                capture=True).decode('utf-8').rstrip().split())
+        self.assertEqual(users, {'root', pwd.getpwuid(os.getuid()).pw_name})
+
+    def test_groups(self):
+        groups = set(
+            self.assertPyrexContainerShellCommand(
+                'getent group | cut -f1 -d:',
+                quiet_init=True,
+                capture=True).decode('utf-8').rstrip().split())
+        self.assertEqual(groups, {'root', grp.getgrgid(os.getgid()).gr_name})
+
 
 class PyrexImageType_oe(PyrexImageType_base):
     """
