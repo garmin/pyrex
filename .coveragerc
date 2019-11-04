@@ -1,5 +1,6 @@
 [run]
-omit = ci/*test*
+include =
+    ${TRAVIS_BUILD_DIR}/pyrex.py
 parallel = True
 data_file = ${TRAVIS_BUILD_DIR}/.coverage
 
