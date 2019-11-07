@@ -143,7 +143,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-
 # Clean up apt-cache
     rm -rf /var/lib/apt/lists/* &&\
 # generate utf8 locale
-    locale-gen en_US.UTF-8
+    locale-gen en_US.UTF-8 && \
+    (locale -a | tee /dev/stderr | grep -qx en_US.utf8)
 
 # Copy prebuilt items
 COPY --from=prebuilt-setpriv /dist/setpriv /
@@ -169,7 +170,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-
 # Clean up apt-cache
     rm -rf /var/lib/apt/lists/* &&\
 # generate utf8 locale
-    locale-gen en_US.UTF-8
+    locale-gen en_US.UTF-8 && \
+    (locale -a | tee /dev/stderr | grep -qx en_US.utf8)
 
 # Copy prebuilt items
 COPY --from=prebuilt-setpriv /dist/setpriv /
@@ -196,7 +198,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-
 # Clean up apt-cache
     rm -rf /var/lib/apt/lists/* && \
 # generate utf8 locale
-    locale-gen en_US.UTF-8
+    locale-gen en_US.UTF-8 && \
+    (locale -a | tee /dev/stderr | grep -qx en_US.utf8)
 
 # Copy prebuilt items
 COPY --from=prebuilt-tini /dist/tini /
