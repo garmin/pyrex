@@ -79,7 +79,7 @@ class PyrexTest(object):
         os.makedirs(self.thread_dir)
 
         helper = os.path.join(PYREX_ROOT, 'ci', '%s-helper.py' % self.docker_provider)
-        if os.path.exists(helper):
+        if os.path.exists(helper) and os.environ.get('USE_HELPER', '0') == '1':
             self.dockerpath = helper
         else:
             self.dockerpath = self.docker_provider

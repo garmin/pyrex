@@ -15,22 +15,15 @@
 # limitations under the License.
 #
 #
-# A shim helper for podman that implements a poor man's BuildKit. Creates a new
-# temporary Dockerfile with all unnecessary build targets removed to speed up
-# build times
+# A shim helper for podman that does actual image builds using docker, then
+# imports the files into podman. This is much faster (with BuildKit), more
+# accurate for testing (since the docker built images are the ones released),
+# and works (since building images with podman on Travis doesn't actually work)
 
 import argparse
 import os
-import re
-import string
 import subprocess
 import sys
-import tempfile
-
-
-class D(dict):
-    def __getitem__(self, idx):
-        return self.get(idx, '')
 
 
 def forward():
@@ -38,93 +31,27 @@ def forward():
     sys.exit(1)
 
 
-def process_targets(cur, targets):
-    if cur not in targets:
-        return set()
-
-    s = set((cur,))
-    for c in targets[cur]:
-        s.update(process_targets(c, targets))
-
-    return s
-
-
-def docker_file_lines(lines, build_args):
-    current_target = None
-
-    for l in lines:
-        if l.lower().startswith('from'):
-            expanded = string.Template(l).substitute(build_args)
-            m = re.match(r'FROM\s+(?P<parent>\S+)\s+AS\s+(?P<name>\S+)', expanded, re.IGNORECASE)
-            if m is not None:
-                current_target = m.group('name')
-                yield (l, current_target, 'from', m)
-                continue
-
-            m = re.match(r'FROM\s+(?P<parent>\S+)', expanded, re.IGNORECASE)
-            if m is not None:
-                current_target = None
-
-        if l.lower().startswith('copy'):
-            expanded = string.Template(l).substitute(build_args)
-            m = re.match(r'COPY\s+--from=(?P<from>\S+)', expanded, re.IGNORECASE)
-            if m is not None:
-                yield (l, current_target, 'copy', m)
-                continue
-
-        yield (l, current_target, '', None)
-
-
 def main():
     if len(sys.argv) < 2 or sys.argv[1] != 'build':
         forward()
 
     parser = argparse.ArgumentParser(description='Container build helper')
-    parser.add_argument('--build-arg', action='append', default=[],
-                        help='name and value of a buildarg')
-    parser.add_argument('--file', '-f', default='Dockerfile',
-                        help='Docker file')
-    parser.add_argument('--target', help='set target build stage to build')
+    parser.add_argument('-t', '--tag', help='Image tag', required=True)
 
-    (args, extra) = parser.parse_known_args(sys.argv[2:])
+    (args, extra_args) = parser.parse_known_args(sys.argv[2:])
 
-    if not args.target:
-        forward()
+    try:
+        subprocess.check_call(['docker', 'build', '-t', args.tag] + extra_args)
+    except subprocess.CalledProcessError as e:
+        return e.returncode
 
-    build_args = D()
-    for b in args.build_arg:
-        name, value = b.split('=', 1)
-        build_args[name] = value
+    docker_p = subprocess.Popen(['docker', 'save', args.tag], stdout=subprocess.PIPE)
+    podman_p = subprocess.Popen(['podman', 'load', args.tag], stdin=docker_p.stdout)
 
-    with open(args.file, 'r') as f:
-        docker_file = [l.rstrip() for l in f.readlines()]
+    docker_p.wait()
+    podman_p.wait()
 
-    # Process docker file for build target dependencies
-    targets = {}
-    for l, current_target, inst, data in docker_file_lines(docker_file, build_args):
-        if inst == 'from':
-            targets[current_target] = set((data.group('parent'),))
-        elif inst == 'copy':
-            targets[current_target].add(data.group('from'))
-
-    needed_targets = process_targets(args.target, targets)
-
-    # Create a new docker file that only contains the necessary build
-    # dependencies
-    new_file = []
-    for l, current_target, _, _ in docker_file_lines(docker_file, build_args):
-        if current_target is None or current_target in needed_targets:
-            new_file.append(l)
-        else:
-            new_file.append('')
-
-    with tempfile.NamedTemporaryFile() as t:
-        t.write('\n'.join(new_file).encode('utf-8'))
-        t.flush()
-        return subprocess.call(['podman', 'build', '--target', args.target, '-f', t.name] +
-                               ['--build-arg=%s' % arg for arg in args.build_arg] + extra)
-
-    return 0
+    return docker_p.returncode or podman_p.returncode
 
 
 if __name__ == "__main__":

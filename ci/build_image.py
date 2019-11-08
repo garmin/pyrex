@@ -38,7 +38,7 @@ def main():
     docker_file = os.path.join(docker_dir, 'Dockerfile')
 
     helper = os.path.join(THIS_DIR, '%s-helper.py' % args.provider)
-    if os.path.exists(helper):
+    if os.path.exists(helper) and os.environ.get('USE_HELPER', '0') == '1':
         print("Invoking %s as %s" % (helper, args.provider))
         provider = helper
     else:
