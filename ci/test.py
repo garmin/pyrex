@@ -27,7 +27,7 @@ import threading
 import unittest
 import pty
 
-PYREX_ROOT = os.path.join(os.path.dirname(__file__), '..')
+PYREX_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(PYREX_ROOT)
 import pyrex  # NOQA
 
@@ -42,9 +42,12 @@ def skipIfPrebuilt(func):
     return wrapper
 
 
+built_images = set()
+
+
 class PyrexTest(object):
     def setUp(self):
-        self.build_dir = os.path.abspath(os.path.join(PYREX_ROOT, 'build'))
+        self.build_dir = os.path.join(PYREX_ROOT, 'build', '%d' % os.getpid())
 
         def cleanup_build():
             if os.path.isdir(self.build_dir):
@@ -75,9 +78,28 @@ class PyrexTest(object):
         self.thread_dir = os.path.join(self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident()))
         os.makedirs(self.thread_dir)
 
+        helper = os.path.join(PYREX_ROOT, 'ci', '%s-helper.py' % self.docker_provider)
+        if os.path.exists(helper) and os.environ.get('USE_HELPER', '0') == '1':
+            self.dockerpath = helper
+        else:
+            self.dockerpath = self.docker_provider
+
         # Write out the default test config
         conf = self.get_config()
         conf.write_conf()
+
+        if not os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, ''):
+            self.prebuild_image()
+
+    def prebuild_image(self):
+        global built_images
+        image = ':'.join((self.test_image, self.docker_provider))
+        if image not in built_images:
+            self.assertSubprocess([os.path.join(PYREX_ROOT, 'ci', 'build_image.py'),
+                                   '--provider', self.docker_provider,
+                                   self.test_image
+                                   ])
+            built_images.add(image)
 
     def get_config(self, defaults=False):
         class Config(configparser.RawConfigParser):
@@ -96,16 +118,9 @@ class PyrexTest(object):
 
             # Setup the config suitable for testing
             config['config']['dockerimage'] = self.test_image
-
-            prebuilt_tag = os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, '')
-            if prebuilt_tag:
-                config['config']['pyrextag'] = prebuilt_tag
-                config['config']['buildlocal'] = '0'
-            else:
-                # Always build the latest image locally for testing. Use a tag that
-                # isn't present on docker hub so that any attempt to pull it fails
-                config['config']['pyrextag'] = 'ci-test'
-                config['config']['buildlocal'] = '1'
+            config['config']['dockerpath'] = self.dockerpath
+            config['config']['buildlocal'] = '0'
+            config['config']['pyrextag'] = os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, '') or 'ci-test'
 
         return config
 
@@ -139,10 +154,8 @@ class PyrexTest(object):
     def _write_host_command(self, args, quiet_init=False):
         cmd_file = os.path.join(self.thread_dir, 'command')
         with open(cmd_file, 'w') as f:
-            f.write('. ./poky/pyrex-init-build-env ')
-            if quiet_init:
-                f.write('> /dev/null 2>&1 ')
-            f.write('&& ')
+            f.write('. ./poky/pyrex-init-build-env%s %s && ' %
+                    (' > /dev/null 2>&1' if quiet_init else '', self.build_dir))
             f.write(' && '.join(list(args)))
         return cmd_file
 
@@ -212,56 +225,69 @@ class PyrexImageType_base(PyrexTest):
         self.assertPyrexContainerCommand('/bin/false', returncode=1)
 
     def test_disable_pyrex(self):
-        # Capture our cgroups
-        with open('/proc/self/cgroup', 'r') as f:
-            cgroup = f.read()
+        def capture_pyrex_state(*args, **kwargs):
+            capture_file = os.path.join(self.thread_dir, 'pyrex_capture')
 
-        pyrex_cgroup_file = os.path.join(self.thread_dir, 'pyrex_cgroup')
+            if self.docker_provider == 'podman':
+                self.assertPyrexContainerShellCommand(
+                    'cp --no-preserve=all /proc/1/cmdline %s' %
+                    capture_file, *args, **kwargs)
+                with open(capture_file, 'rb') as f:
+                    return f.read()
+            else:
+                self.assertPyrexContainerShellCommand('cat /proc/self/cgroup > %s' % capture_file, *args, **kwargs)
+                with open(capture_file, 'r') as f:
+                    return f.read()
 
-        # Capture cgroups when pyrex is enabled
-        self.assertPyrexContainerShellCommand('cat /proc/self/cgroup > %s' % pyrex_cgroup_file)
-        with open(pyrex_cgroup_file, 'r') as f:
-            pyrex_cgroup = f.read()
-        self.assertNotEqual(cgroup, pyrex_cgroup)
+        def capture_local_state():
+            if self.docker_provider == 'podman':
+                with open('/proc/1/cmdline', 'rb') as f:
+                    return f.read()
+            else:
+                with open('/proc/self/cgroup', 'r') as f:
+                    return f.read()
+
+        local_state = capture_local_state()
+
+        pyrex_state = capture_pyrex_state()
+        self.assertNotEqual(local_state, pyrex_state)
 
         env = os.environ.copy()
         env['PYREX_DOCKER'] = '0'
-        self.assertPyrexContainerShellCommand('cat /proc/self/cgroup > %s' % pyrex_cgroup_file, env=env)
-        with open(pyrex_cgroup_file, 'r') as f:
-            pyrex_cgroup = f.read()
-        self.assertEqual(cgroup, pyrex_cgroup)
+        pyrex_state = capture_pyrex_state(env=env)
+        self.assertEqual(local_state, pyrex_state)
 
     def test_quiet_build(self):
         env = os.environ.copy()
         env['PYREX_DOCKER_BUILD_QUIET'] = '1'
         self.assertPyrexHostCommand('true', env=env)
 
-    def test_no_docker_build(self):
-        # Prevent docker from working
-        os.symlink('/bin/false', os.path.join(self.bin_dir, 'docker'))
+    def test_no_container_build(self):
+        # Prevent container from building
+        os.symlink('/bin/false', os.path.join(self.bin_dir, self.docker_provider))
 
-        # Docker will fail if invoked here
+        # Container build will fail if invoked here
         env = os.environ.copy()
         env['PYREX_DOCKER'] = '0'
         self.assertPyrexHostCommand('true', env=env)
 
-        # Verify that pyrex won't allow you to try and use docker later
+        # Verify that pyrex won't allow you to try and use the provider later
         output = self.assertPyrexHostCommand('PYREX_DOCKER=1 bitbake', returncode=1,
                                              capture=True, env=env).decode('utf-8')
-        self.assertIn('Docker was not enabled when the environment was setup', output)
+        self.assertIn('Container was not enabled when the environment was setup', output)
 
-    def test_bad_docker(self):
-        # Prevent docker from working
-        os.symlink('/bin/false', os.path.join(self.bin_dir, 'docker'))
+    def test_bad_provider(self):
+        # Prevent container build from working
+        os.symlink('/bin/false', os.path.join(self.bin_dir, self.docker_provider))
 
-        # Verify that attempting to run build pyrex without docker shows the
-        # installation instructions
+        # Verify that attempting to run build pyrex without a valid container
+        # provider shows the installation instructions
         output = self.assertPyrexHostCommand('true', returncode=1, capture=True).decode('utf-8')
         self.assertIn('Unable to run', output)
 
     def test_ownership(self):
-        # Test that files created in docker are the same UID/GID as the user
-        # running outside
+        # Test that files created in the container are the same UID/GID as the
+        # user running outside
 
         test_file = os.path.join(self.thread_dir, 'ownertest')
         if os.path.exists(test_file):
@@ -283,6 +309,9 @@ class PyrexImageType_base(PyrexTest):
     def test_owner_env(self):
         # This test is primarily designed to ensure that everything is passed
         # correctly through 'pyrex run'
+
+        if self.docker_provider == 'podman':
+            self.skipTest('Rootless podman cannot change to another user')
 
         conf = self.get_config()
 
@@ -430,6 +459,13 @@ class PyrexImageType_base(PyrexTest):
 
     @skipIfPrebuilt
     def test_local_build(self):
+        conf = self.get_config()
+        conf['config']['buildlocal'] = '1'
+        conf.write_conf()
+        self.assertPyrexHostCommand('true')
+
+    @skipIfPrebuilt
+    def test_bad_registry(self):
         # Run any command to build the images locally
         self.assertPyrexHostCommand('true')
 
@@ -437,6 +473,7 @@ class PyrexImageType_base(PyrexTest):
 
         # Trying to build with an invalid registry should fail
         conf['config']['registry'] = 'does.not.exist.invalid'
+        conf['config']['buildlocal'] = '1'
         conf.write_conf()
         self.assertPyrexHostCommand('true', returncode=1)
 
@@ -474,11 +511,12 @@ class PyrexImageType_base(PyrexTest):
         # (and doesn't build the image)
         conf = self.get_config()
         conf['config']['pyrextag'] = 'v1.2.3-ci-test'
+        conf['config']['buildlocal'] = '1'
         conf.write_conf()
 
         self.assertPyrexHostCommand('true', returncode=1)
 
-        output = self.assertSubprocess(['docker', 'images', '-q', conf['config']['tag']],
+        output = self.assertSubprocess([self.docker_provider, 'images', '-q', conf['config']['tag']],
                                        capture=True).decode('utf-8').strip()
         self.assertEqual(output, "", msg="Tagged image found!")
 
@@ -669,19 +707,23 @@ class PyrexImageType_oe(PyrexImageType_base):
         self.assertEqual(s, test_string)
 
 
+DOCKER_PROVIDERS = ('docker', 'podman')
+
 TEST_IMAGES = ('ubuntu-14.04-base', 'ubuntu-16.04-base', 'ubuntu-18.04-base', 'centos-7-base',
                'ubuntu-14.04-oe', 'ubuntu-16.04-oe', 'ubuntu-18.04-oe')
 
 
 def add_image_tests():
-    for image in TEST_IMAGES:
-        (_, _, image_type) = image.split('-')
-        self = sys.modules[__name__]
+    self = sys.modules[__name__]
+    for provider in DOCKER_PROVIDERS:
+        for image in TEST_IMAGES:
+            (_, _, image_type) = image.split('-')
 
-        parent = getattr(self, 'PyrexImageType_' + image_type)
+            parent = getattr(self, 'PyrexImageType_' + image_type)
 
-        name = 'PyrexImage_' + re.sub(r'\W', '_', image)
-        setattr(self, name, type(name, (parent, unittest.TestCase), {'test_image': image}))
+            name = 'PyrexImage_%s_%s' % (provider, re.sub(r'\W', '_', image))
+            setattr(self, name, type(name, (parent, unittest.TestCase),
+                                     {'test_image': image, 'docker_provider': provider}))
 
 
 add_image_tests()
