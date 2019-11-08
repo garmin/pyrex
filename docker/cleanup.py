@@ -25,9 +25,9 @@ import time
 # These Linux process states are considered "already dead" and will not cause
 # the script to wait
 ALREADY_DEAD_STATES = (
-    'Z',  # Zombie
-    'X',  # Dead (from Linux 2.6.0 onward)
-    'x',  # Dead (Linux 2.6.33 to 3.13 only)
+    "Z",  # Zombie
+    "X",  # Dead (from Linux 2.6.0 onward)
+    "x",  # Dead (Linux 2.6.33 to 3.13 only)
 )
 
 EXIT_WAIT_PHASES = 2
@@ -62,18 +62,14 @@ WAIT_FOREVER_DEFAULT = [0.5, -1]
 # script to stop waiting, which will terminate the container.
 
 # By default, wait forever
-DEFAULT_WAIT_TIME = '-1'
+DEFAULT_WAIT_TIME = "-1"
 
 # Signals which will interrupt cleanup if it is waiting forever
-INTERRUPT_SIGNALS = (
-    signal.SIGINT,
-    signal.SIGQUIT,
-    signal.SIGTERM,
-)
+INTERRUPT_SIGNALS = (signal.SIGINT, signal.SIGQUIT, signal.SIGTERM)
 
 
 def pid_str_list(s):
-    return '  ' + '\n  '.join(s[key] for key in sorted(s.keys()))
+    return "  " + "\n  ".join(s[key] for key in sorted(s.keys()))
 
 
 signals_enabled = False
@@ -85,7 +81,7 @@ def stop_process_waiting(signum, frame):
     global keep_waiting
     keep_waiting = False
     # Note: Can't use logging in a signal handler. Uncomment this to debug
-    #print("Got signal %d" % signum) # NOQA
+    # print("Got signal %d" % signum) # NOQA
 
 
 def wait_for_processes(sig, max_wait):
@@ -99,16 +95,18 @@ def wait_for_processes(sig, max_wait):
 
     killed_processes = set()
 
-    logging.debug('Waiting %f seconds', max_wait)
+    logging.debug("Waiting %f seconds", max_wait)
 
     sleep_time = 0.01
 
     while True:
         still_running = dict()
 
-        stat_files = [s for s in glob.glob("/proc/*/stat") if re.match(r'^/proc/[0-9]+/stat$', s)]
+        stat_files = [
+            s for s in glob.glob("/proc/*/stat") if re.match(r"^/proc/[0-9]+/stat$", s)
+        ]
 
-        logging.debug("Found PID stat files: %s", ' '.join(stat_files))
+        logging.debug("Found PID stat files: %s", " ".join(stat_files))
 
         for p in stat_files:
             try:
@@ -119,16 +117,16 @@ def wait_for_processes(sig, max_wait):
                     continue
 
                 # Strip out the command name (which might contain spaces), then split the rest
-                data = re.sub(r'\(.*\)', '', data).split()
+                data = re.sub(r"\(.*\)", "", data).split()
 
                 pid = int(data[0])
                 state = data[1]
 
-                command = ''
+                command = ""
                 try:
-                    with open('/proc/%d/cmdline' % pid, 'rb') as f:
+                    with open("/proc/%d/cmdline" % pid, "rb") as f:
                         command = f.read()
-                    command = command.replace(b'\x00', b' ').decode('utf-8')
+                    command = command.replace(b"\x00", b" ").decode("utf-8")
                 except IOError:
                     pass
 
@@ -150,21 +148,24 @@ def wait_for_processes(sig, max_wait):
         # list of running processes is fetched at least once and can be
         # returned
         if not still_running:
-            logging.debug('No more processes running')
+            logging.debug("No more processes running")
             return still_running
 
         if max_wait >= 0 and time.monotonic() > start_time + max_wait:
-            logging.debug('Wait timed out')
+            logging.debug("Wait timed out")
             return still_running
 
         if not keep_waiting:
             if not keep_waiting_notified:
-                logging.warning('Waiting interrupted')
+                logging.warning("Waiting interrupted")
                 keep_waiting_notified = True
             return still_running
 
-        if not signals_enabled and time.monotonic() > start_time + SIGNAL_ENABLE_WAIT_TIME:
-            logging.warning('Waiting for %d processes to exit...', len(still_running))
+        if (
+            not signals_enabled
+            and time.monotonic() > start_time + SIGNAL_ENABLE_WAIT_TIME
+        ):
+            logging.warning("Waiting for %d processes to exit...", len(still_running))
 
             for s in INTERRUPT_SIGNALS:
                 signal.signal(s, stop_process_waiting)
@@ -172,7 +173,11 @@ def wait_for_processes(sig, max_wait):
             signal.pthread_sigmask(signal.SIG_UNBLOCK, INTERRUPT_SIGNALS)
             signals_enabled = True
 
-        logging.debug('Waiting for %d processes to exit\n%s', len(still_running), pid_str_list(still_running))
+        logging.debug(
+            "Waiting for %d processes to exit\n%s",
+            len(still_running),
+            pid_str_list(still_running),
+        )
 
         # If we have been waiting longer than 2 seconds, then throttle down the
         # waits to twice a second
@@ -185,23 +190,23 @@ def wait_for_processes(sig, max_wait):
 def main():
     # Setup logging. The child stdout may need to be parsable, so the logging
     # goes to stderr by default
-    log_file = os.environ.get('PYREX_CLEANUP_LOG_FILE', '-')
-    log_level = os.environ.get('PYREX_CLEANUP_LOG_LEVEL', 'WARNING')
+    log_file = os.environ.get("PYREX_CLEANUP_LOG_FILE", "-")
+    log_level = os.environ.get("PYREX_CLEANUP_LOG_LEVEL", "WARNING")
 
-    fmt = '%(asctime)-15s %(levelname)s: %(message)s'
+    fmt = "%(asctime)-15s %(levelname)s: %(message)s"
 
-    if log_file == '-':
+    if log_file == "-":
         logging.basicConfig(stream=sys.stderr, format=fmt, level=log_level)
     else:
         logging.basicConfig(filename=log_file, format=fmt, level=log_level)
 
     # Set exit wait times
-    exit_wait = os.environ.get('PYREX_CLEANUP_EXIT_WAIT', DEFAULT_WAIT_TIME)
+    exit_wait = os.environ.get("PYREX_CLEANUP_EXIT_WAIT", DEFAULT_WAIT_TIME)
 
     try:
-        exit_wait_times = [float(w) for w in exit_wait.split(',')]
+        exit_wait_times = [float(w) for w in exit_wait.split(",")]
     except ValueError:
-        logging.error('Invalid value for PYREX_CLEANUP_EXIT_WAIT: %s', exit_wait)
+        logging.error("Invalid value for PYREX_CLEANUP_EXIT_WAIT: %s", exit_wait)
         return 1
 
     if len(exit_wait_times) == 1:
@@ -212,10 +217,14 @@ def main():
             exit_wait_times = [exit_wait_times[0] / EXIT_WAIT_PHASES] * EXIT_WAIT_PHASES
 
     if len(exit_wait_times) != EXIT_WAIT_PHASES:
-        logging.error('Invalid value for PYREX_CLEANUP_EXIT_WAIT: %s', '', ','.join(exit_wait_times))
+        logging.error(
+            "Invalid value for PYREX_CLEANUP_EXIT_WAIT: %s",
+            "",
+            ",".join(exit_wait_times),
+        )
         return 1
 
-    logging.debug('Wait times are %s', ','.join(str(w) for w in exit_wait_times))
+    logging.debug("Wait times are %s", ",".join(str(w) for w in exit_wait_times))
 
     # Wait for processes to exit naturally
     logging.info("Waiting for processes to exit")
@@ -227,7 +236,11 @@ def main():
         still_running = wait_for_processes(signal.SIGTERM, exit_wait_times[1])
 
     if still_running:
-        logging.warning("%d processes were left running!\n%s", len(still_running), pid_str_list(still_running))
+        logging.warning(
+            "%d processes were left running!\n%s",
+            len(still_running),
+            pid_str_list(still_running),
+        )
 
     # Pass the previous child exit code on to tini
     return int(sys.argv[1])

@@ -27,26 +27,26 @@ import sys
 
 
 def forward():
-    os.execvp('podman', ['podman'] + sys.argv[1:])
+    os.execvp("podman", ["podman"] + sys.argv[1:])
     sys.exit(1)
 
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] != 'build':
+    if len(sys.argv) < 2 or sys.argv[1] != "build":
         forward()
 
-    parser = argparse.ArgumentParser(description='Container build helper')
-    parser.add_argument('-t', '--tag', help='Image tag', required=True)
+    parser = argparse.ArgumentParser(description="Container build helper")
+    parser.add_argument("-t", "--tag", help="Image tag", required=True)
 
     (args, extra_args) = parser.parse_known_args(sys.argv[2:])
 
     try:
-        subprocess.check_call(['docker', 'build', '-t', args.tag] + extra_args)
+        subprocess.check_call(["docker", "build", "-t", args.tag] + extra_args)
     except subprocess.CalledProcessError as e:
         return e.returncode
 
-    docker_p = subprocess.Popen(['docker', 'save', args.tag], stdout=subprocess.PIPE)
-    podman_p = subprocess.Popen(['podman', 'load', args.tag], stdin=docker_p.stdout)
+    docker_p = subprocess.Popen(["docker", "save", args.tag], stdout=subprocess.PIPE)
+    podman_p = subprocess.Popen(["podman", "load", args.tag], stdin=docker_p.stdout)
 
     docker_p.wait()
     podman_p.wait()

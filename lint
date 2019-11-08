@@ -14,20 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if ! which autopep8 > /dev/null 2>&1; then
-    echo "autopep8 not found!"
-    exit 1
-fi
-
-if ! which flake8 > /dev/null 2>&1; then
-    echo "flake8 not found!"
+if ! which black > /dev/null 2>&1; then
+    echo "black not found!"
     exit 1
 fi
 
 cd "$(readlink -f $(dirname $0))"
 if [ "$1" == "-r" ] || [ "$1" == "--reformat" ]; then
-    autopep8 -i -a --global-config /dev/null $(git ls-files '*.py')
+    black $(git ls-files '*.py')
+else
+    black --check $(git ls-files '*.py')
 fi
-
-flake8 $(git ls-files '*.py')
 
