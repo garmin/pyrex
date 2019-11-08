@@ -49,13 +49,13 @@ after_success:
 - coveralls
 deploy:
 - provider: script
-  cleanup: false
+  skip_cleanup: true
   script: "./ci/deploy_docker.py --login $TEST_IMAGE"
   on:
     all_branches: true
     condition: "$DOCKER_PROVIDER == docker && $TRAVIS_PULL_REQUEST == false && ($TRAVIS_BRANCH == master || $TRAVIS_TAG =~ ^v[0-9].*$)"
 - provider: script
-  cleanup: false
+  skip_cleanup: true
   script: "./ci/deploy_docker.py --login $TEST_IMAGE:next"
   on:
     branch: next
