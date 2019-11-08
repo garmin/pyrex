@@ -29,7 +29,7 @@ import textwrap
 import stat
 import hashlib
 
-VERSION = "0.0.3"
+VERSION = "0.0.4"
 
 VERSION_REGEX = re.compile(r"^([0-9]+\.){2}[0-9]+(-.*)?$")
 VERSION_TAG_REGEX = re.compile(r"^v([0-9]+\.){2}[0-9]+(-.*)?$")
