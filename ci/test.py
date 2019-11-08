@@ -165,7 +165,7 @@ class PyrexTest(object):
                 returncode,
                 msg="%s: %s" % (" ".join(*args), output.decode("utf-8")),
             )
-            return output
+            return output.decode("utf-8").rstrip()
         else:
             with subprocess.Popen(
                 *args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs
@@ -332,7 +332,7 @@ class PyrexImageType_base(PyrexTest):
         # Verify that pyrex won't allow you to try and use the provider later
         output = self.assertPyrexHostCommand(
             "PYREX_DOCKER=1 bitbake", returncode=1, capture=True, env=env
-        ).decode("utf-8")
+        )
         self.assertIn(
             "Container was not enabled when the environment was setup", output
         )
@@ -343,9 +343,7 @@ class PyrexImageType_base(PyrexTest):
 
         # Verify that attempting to run build pyrex without a valid container
         # provider shows the installation instructions
-        output = self.assertPyrexHostCommand("true", returncode=1, capture=True).decode(
-            "utf-8"
-        )
+        output = self.assertPyrexHostCommand("true", returncode=1, capture=True)
         self.assertIn("Unable to run", output)
 
     def test_ownership(self):
@@ -513,23 +511,15 @@ class PyrexImageType_base(PyrexTest):
         conf["config"]["test"] = "foo"
         conf.write_conf()
 
-        output = (
-            self.assertPyrexHostCommand(
-                "pyrex-config get config:test", quiet_init=True, capture=True
-            )
-            .decode("utf-8")
-            .strip()
+        output = self.assertPyrexHostCommand(
+            "pyrex-config get config:test", quiet_init=True, capture=True
         )
         self.assertEqual(output, "foo")
 
         env = os.environ.copy()
         env["PYREXCONFFILE"] = force_conf_file
-        output = (
-            self.assertPyrexHostCommand(
-                "pyrex-config get config:test", quiet_init=True, capture=True, env=env
-            )
-            .decode("utf-8")
-            .strip()
+        output = self.assertPyrexHostCommand(
+            "pyrex-config get config:test", quiet_init=True, capture=True, env=env
         )
         self.assertEqual(output, "bar")
 
@@ -601,14 +591,9 @@ class PyrexImageType_base(PyrexTest):
 
         self.assertPyrexHostCommand("true", returncode=1)
 
-        output = (
-            self.assertSubprocess(
-                [self.docker_provider, "images", "-q", conf["config"]["tag"]],
-                capture=True,
-            )
-            .decode("utf-8")
-            .strip()
-        )
+        output = self.assertSubprocess(
+            [self.docker_provider, "images", "-q", conf["config"]["tag"]], capture=True
+        ).strip()
         self.assertEqual(output, "", msg="Tagged image found!")
 
     def test_pty(self):
@@ -668,19 +653,11 @@ class PyrexImageType_base(PyrexTest):
         (image_name, image_version, _) = self.test_image.split("-")
 
         # Capture the LSB release information.
-        dist_id_str = (
-            self.assertPyrexContainerCommand(
-                "lsb_release -i", quiet_init=True, capture=True
-            )
-            .decode("utf-8")
-            .rstrip()
+        dist_id_str = self.assertPyrexContainerCommand(
+            "lsb_release -i", quiet_init=True, capture=True
         )
-        release_str = (
-            self.assertPyrexContainerCommand(
-                "lsb_release -r", quiet_init=True, capture=True
-            )
-            .decode("utf-8")
-            .rstrip()
+        release_str = self.assertPyrexContainerCommand(
+            "lsb_release -r", quiet_init=True, capture=True
         )
 
         self.assertRegex(
@@ -707,21 +684,13 @@ class PyrexImageType_base(PyrexTest):
         env = os.environ.copy()
         env["TEST_ENV"] = test_string
 
-        s = (
-            self.assertPyrexContainerShellCommand(
-                "echo $TEST_ENV", env=env, quiet_init=True, capture=True
-            )
-            .decode("utf-8")
-            .rstrip()
+        s = self.assertPyrexContainerShellCommand(
+            "echo $TEST_ENV", env=env, quiet_init=True, capture=True
         )
         self.assertEqual(s, test_string)
 
-        s = (
-            self.assertPyrexContainerShellCommand(
-                "echo $TEST_ENV2", env=env, quiet_init=True, capture=True
-            )
-            .decode("utf-8")
-            .rstrip()
+        s = self.assertPyrexContainerShellCommand(
+            "echo $TEST_ENV2", env=env, quiet_init=True, capture=True
         )
         self.assertEqual(s, "")
 
@@ -737,15 +706,8 @@ class PyrexImageType_base(PyrexTest):
         )
 
         env["PYREX_TEST_STARTUP_SCRIPT"] = "0"
-        s = (
-            self.assertPyrexContainerShellCommand(
-                "echo $PYREX_TEST_STARTUP_SCRIPT",
-                env=env,
-                quiet_init=True,
-                capture=True,
-            )
-            .decode("utf-8")
-            .rstrip()
+        s = self.assertPyrexContainerShellCommand(
+            "echo $PYREX_TEST_STARTUP_SCRIPT", env=env, quiet_init=True, capture=True
         )
         self.assertEqual(s, "Startup script test\n0")
 
@@ -753,10 +715,7 @@ class PyrexImageType_base(PyrexTest):
         users = set(
             self.assertPyrexContainerShellCommand(
                 "getent passwd | cut -f1 -d:", quiet_init=True, capture=True
-            )
-            .decode("utf-8")
-            .rstrip()
-            .split()
+            ).split()
         )
         self.assertEqual(users, {"root", pwd.getpwuid(os.getuid()).pw_name})
 
@@ -764,10 +723,7 @@ class PyrexImageType_base(PyrexTest):
         groups = set(
             self.assertPyrexContainerShellCommand(
                 "getent group | cut -f1 -d:", quiet_init=True, capture=True
-            )
-            .decode("utf-8")
-            .rstrip()
-            .split()
+            ).split()
         )
         self.assertEqual(groups, {"root", grp.getgrgid(os.getgid()).gr_name})
 
@@ -815,12 +771,8 @@ class PyrexImageType_oe(PyrexImageType_base):
         env["TEMPLATECONF"] = template_dir
         env["TEST_ENV"] = test_string
 
-        s = (
-            self.assertPyrexContainerShellCommand(
-                "echo $TEST_ENV", env=env, quiet_init=True, capture=True
-            )
-            .decode("utf-8")
-            .rstrip()
+        s = self.assertPyrexContainerShellCommand(
+            "echo $TEST_ENV", env=env, quiet_init=True, capture=True
         )
         self.assertEqual(s, test_string)
 
@@ -858,12 +810,8 @@ class PyrexImageType_oe(PyrexImageType_base):
         )
         env["TEST_ENV"] = test_string
 
-        s = (
-            self.assertPyrexContainerShellCommand(
-                "echo $TEST_ENV", env=env, quiet_init=True, capture=True
-            )
-            .decode("utf-8")
-            .rstrip()
+        s = self.assertPyrexContainerShellCommand(
+            "echo $TEST_ENV", env=env, quiet_init=True, capture=True
         )
         self.assertEqual(s, test_string)
 
@@ -888,7 +836,7 @@ class PyrexImageType_oe(PyrexImageType_base):
             ],
             capture=True,
             cwd=cwd,
-        ).decode("utf-8")
+        )
 
         shutil.rmtree(builddir)
 
@@ -899,7 +847,7 @@ class PyrexImageType_oe(PyrexImageType_base):
             capture=True,
             cwd=cwd,
             builddir="build",
-        ).decode("utf-8")
+        )
         shutil.rmtree(builddir)
 
         self.assertEqual(oe_topdir, pyrex_topdir)
