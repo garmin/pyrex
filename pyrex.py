@@ -736,6 +736,7 @@ def main():
 
             docker_args.append("--")
             docker_args.append(runid)
+            docker_args.append("/usr/libexec/pyrex/run")
             docker_args.extend(args.command)
 
             stop_coverage()
@@ -746,7 +747,7 @@ def main():
             sys.exit(1)
         else:
             startup_args = [
-                os.path.join(config["build"]["pyrexroot"], "docker", "startup.sh")
+                os.path.join(config["build"]["pyrexroot"], "docker", "run.sh")
             ]
             startup_args.extend(args.command)
 

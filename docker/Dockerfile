@@ -465,12 +465,12 @@ ENV LANG en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
 # Add startup scripts
-COPY ./startup.sh /usr/libexec/tini/startup.sh
+COPY ./run.sh /usr/libexec/pyrex/run
 COPY ./entry.py /usr/libexec/tini/entry.py
 COPY ./cleanup.py /usr/libexec/tini/cleanup.py
 RUN chmod +x /usr/libexec/tini/cleanup.py \
     /usr/libexec/tini/entry.py \
-    /usr/libexec/tini/startup.sh
+    /usr/libexec/pyrex/run
 
 # Add startup script directory & test script.
 COPY ./test_startup.sh /usr/libexec/pyrex/startup.d/
@@ -485,7 +485,7 @@ RUN getent group | cut -f1 -d: | grep -v '^root$' | xargs -L 1 groupdel
 
 # Use tini as the init process and instruct it to invoke the cleanup script
 # once the primary command dies
-ENTRYPOINT ["/usr/local/bin/tini", "-P", "/usr/libexec/tini/cleanup.py", "{}", ";", "--", "/usr/libexec/tini/entry.py", "/usr/libexec/tini/startup.sh"]
+ENTRYPOINT ["/usr/local/bin/tini", "-P", "/usr/libexec/tini/cleanup.py", "{}", ";", "--", "/usr/libexec/tini/entry.py"]
 
 # The startup script is expected to chain along to some other
 # command. By default, we'll use an interactive shell.
