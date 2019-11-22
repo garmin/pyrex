@@ -129,6 +129,14 @@ Pyrex is configured using a ini-style configuration file. The location of this
 file is specified by the `PYREXCONFFILE` environment variable. This environment
 variable must be set before the environment is initialized.
 
+If you do not yet have a config file, you can use the `mkconfig` command to use
+the default one and assign the `PYREXCONFFILE` variable in a single command
+like so:
+
+```shell
+$ export PYREXCONFFILE=`./meta-pyrex/mkconfig ./pyrex.ini`
+```
+
 The configuration file is the ini file format supported by Python's
 [configparser](https://docs.python.org/3/library/configparser.html) class, with
 the following notes:

@@ -689,6 +689,23 @@ class PyrexImageType_base(PyrexTest):
         )
         self.assertEqual(s, "ABCDEFGHI")
 
+    def test_pyrex_mkconfig(self):
+        out_file = os.path.join(self.build_dir, "temp-pyrex.ini")
+        cmd = [os.path.join(PYREX_ROOT, "pyrex.py"), "mkconfig"]
+
+        output = self.assertSubprocess(
+            cmd + [out_file], capture=True, cwd=self.build_dir
+        )
+        self.assertEqual(output, out_file)
+
+        output = self.assertSubprocess(cmd, capture=True)
+        self.assertEqual(output, pyrex.read_default_config(False).rstrip())
+
+        with open(out_file, "r") as f:
+            self.assertEqual(f.read().rstrip(), output)
+
+        self.assertSubprocess(cmd + [out_file], cwd=self.build_dir, returncode=1)
+
 
 class PyrexImageType_oe(PyrexImageType_base):
     """
