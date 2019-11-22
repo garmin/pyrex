@@ -125,25 +125,9 @@ PYREXCONFTEMPLATE="$(pwd)/pyrex.ini.sample"
 ```
 
 ### Configuration
-Pyrex is configured using a ini-style configuration file and uses the following
-precedence to determine where this file is located:
-1. The file specified in the environment variable `PYREXCONFFILE`.
-2. The `pyrex.ini` file in the bitbake conf directory (e.g.
-   `${OEROOT}/build/conf/pyrex.ini`, if it exists and has a version number
-   specified in `${config:confversion}`. For further rules, this file will
-   be known as `PYREX_USER_CONF`
-3. If the file specified in the environment variable `$PYREXCONFTEMPLATE` exists,
-   is copied to `PYREX_USER_CONF`, then `PYREX_USER_CONF` is used
-4. If the file `$TEMPLATECONF/pyrex.ini.sample` exists, it is copied to
-   `PYREX_USER_CONF`, the `PYREX_USER_CONF` is used. This is the same rules
-   that bitbake uses for `local.conf.sample`, allowing you to easily put a
-   `pyrex.conf.sample` file along side the other default config files. See
-   [TEMPLATECONF][].
-5. The internal default config file provided by Pyrex is coped to
-   `PYREX_USER_CONF`, then `PYREX_USER_CONF` is used.
-
-**Note:** The config file is only populated when Pyrex initializes the
-environment (e.g. when the init script is sourced).
+Pyrex is configured using a ini-style configuration file. The location of this
+file is specified by the `PYREXCONFFILE` environment variable. This environment
+variable must be set before the environment is initialized.
 
 The configuration file is the ini file format supported by Python's
 [configparser](https://docs.python.org/3/library/configparser.html) class, with

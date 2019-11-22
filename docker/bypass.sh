@@ -14,4 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-exec $PYREX_COMMAND_PREFIX "$@"
+declare -a COMMAND=("$@")
+
+# Consume all arguments before sourcing the environment script
+shift $#
+
+pushd "$PYREX_OEINIT_DIR" > /dev/null
+source $PYREX_OEINIT > /dev/null
+popd > /dev/null
+
+exec $PYREX_COMMAND_PREFIX "${COMMAND[@]}"
+

@@ -466,11 +466,15 @@ ENV LC_ALL en_US.UTF-8
 
 # Add startup scripts
 COPY ./run.sh /usr/libexec/pyrex/run
+COPY ./capture.sh /usr/libexec/pyrex/capture
+COPY ./bypass.sh /usr/libexec/pyrex/bypass
 COPY ./entry.py /usr/libexec/pyrex/entry.py
 COPY ./cleanup.py /usr/libexec/pyrex/cleanup.py
 RUN chmod +x /usr/libexec/pyrex/cleanup.py \
     /usr/libexec/pyrex/entry.py \
-    /usr/libexec/pyrex/run
+    /usr/libexec/pyrex/run \
+    /usr/libexec/pyrex/capture \
+    /usr/libexec/pyrex/bypass
 
 # Add startup script directory & test script.
 COPY ./test_startup.sh /usr/libexec/pyrex/startup.d/
@@ -489,7 +493,7 @@ ENTRYPOINT ["/usr/local/bin/tini", "-P", "/usr/libexec/pyrex/cleanup.py", "{}", 
 
 # The startup script is expected to chain along to some other
 # command. By default, we'll use an interactive shell.
-CMD ["/bin/bash"]
+CMD ["/usr/libexec/pyrex/run", "/bin/bash"]
 
 #
 # Yocto compatible target image.

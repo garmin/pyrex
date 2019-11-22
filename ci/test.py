@@ -64,7 +64,12 @@ class PyrexTest(object):
         else:
             self.dockerpath = self.docker_provider
 
-        self.pyrex_conf = self.prepare_build_dir(self.build_dir)
+        self.pyrex_conf = os.path.join(self.build_dir, "pyrex.ini")
+        conf = self.get_config()
+        conf.write_conf()
+
+        if not os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, ""):
+            self.prebuild_image()
 
         def cleanup_env():
             os.environ.clear()
@@ -77,34 +82,14 @@ class PyrexTest(object):
         os.symlink("/usr/bin/python2", os.path.join(self.bin_dir, "python"))
         os.environ["PATH"] = self.bin_dir + ":" + os.environ["PATH"]
         os.environ["PYREX_DOCKER_BUILD_QUIET"] = "0"
+        if "SSH_AUTH_SOCK" in os.environ:
+            del os.environ["SSH_AUTH_SOCK"]
         self.addCleanup(cleanup_env)
 
         self.thread_dir = os.path.join(
             self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident())
         )
         os.makedirs(self.thread_dir)
-
-    def prepare_build_dir(self, build_dir):
-        def cleanup_build():
-            if os.path.isdir(build_dir):
-                shutil.rmtree(build_dir)
-
-        conf_dir = os.path.join(build_dir, "conf")
-        try:
-            os.makedirs(conf_dir)
-        except FileExistsError:
-            pass
-
-        pyrex_conf = os.path.join(conf_dir, "pyrex.ini")
-
-        # Write out the default test config
-        conf = self.get_config(pyrex_conf=pyrex_conf)
-        conf.write_conf()
-
-        if not os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, ""):
-            self.prebuild_image()
-
-        return pyrex_conf
 
     def prebuild_image(self):
         global built_images
@@ -120,21 +105,18 @@ class PyrexTest(object):
             )
             built_images.add(image)
 
-    def get_config(self, *, defaults=False, pyrex_conf=None):
-        if pyrex_conf is None:
-            pyrex_conf = self.pyrex_conf
-
+    def get_config(self, *, defaults=False):
         class Config(configparser.RawConfigParser):
             def write_conf(self):
                 write_config_helper(self)
 
         def write_config_helper(conf):
-            with open(pyrex_conf, "w") as f:
+            with open(self.pyrex_conf, "w") as f:
                 conf.write(f)
 
         config = Config()
-        if os.path.exists(pyrex_conf) and not defaults:
-            config.read(pyrex_conf)
+        if os.path.exists(self.pyrex_conf) and not defaults:
+            config.read(self.pyrex_conf)
         else:
             config.read_string(pyrex.read_default_config(True))
 
@@ -145,6 +127,7 @@ class PyrexTest(object):
             config["config"]["pyrextag"] = (
                 os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, "") or "ci-test"
             )
+            config["run"]["bind"] = self.build_dir
 
         return config
 
@@ -191,6 +174,7 @@ class PyrexTest(object):
 
         cmd_file = os.path.join(self.thread_dir, "command")
         with open(cmd_file, "w") as f:
+            f.write("PYREXCONFFILE=%s\n" % self.pyrex_conf)
             f.write(
                 ". %s/poky/pyrex-init-build-env%s %s && ("
                 % (PYREX_ROOT, " > /dev/null 2>&1" if quiet_init else "", builddir)
@@ -320,23 +304,6 @@ class PyrexImageType_base(PyrexTest):
         env["PYREX_DOCKER_BUILD_QUIET"] = "1"
         self.assertPyrexHostCommand("true", env=env)
 
-    def test_no_container_build(self):
-        # Prevent container from building
-        os.symlink("/bin/false", os.path.join(self.bin_dir, self.docker_provider))
-
-        # Container build will fail if invoked here
-        env = os.environ.copy()
-        env["PYREX_DOCKER"] = "0"
-        self.assertPyrexHostCommand("true", env=env)
-
-        # Verify that pyrex won't allow you to try and use the provider later
-        output = self.assertPyrexHostCommand(
-            "PYREX_DOCKER=1 bitbake", returncode=1, capture=True, env=env
-        )
-        self.assertIn(
-            "Container was not enabled when the environment was setup", output
-        )
-
     def test_bad_provider(self):
         # Prevent container build from working
         os.symlink("/bin/false", os.path.join(self.bin_dir, self.docker_provider))
@@ -453,75 +420,6 @@ class PyrexImageType_base(PyrexTest):
             conf.write(f)
 
         self.assertPyrexHostCommand("true")
-
-    def test_conf_upgrade(self):
-        conf = self.get_config()
-        del conf["config"]["confversion"]
-        conf.write_conf()
-
-        # Write out a template in an alternate location. It will be respected
-        temp_dir = tempfile.mkdtemp("-pyrex")
-        self.addCleanup(shutil.rmtree, temp_dir)
-
-        conftemplate = os.path.join(temp_dir, "pyrex.ini.sample")
-
-        conf = self.get_config(defaults=True)
-        with open(conftemplate, "w") as f:
-            conf.write(f)
-
-        env = os.environ.copy()
-        env["PYREXCONFTEMPLATE"] = conftemplate
-
-        self.assertPyrexHostCommand("true", env=env)
-
-    def test_bad_conf_upgrade(self):
-        # Write out a template in an alternate location, but it also fails to
-        # have a confversion
-        conf = self.get_config()
-        del conf["config"]["confversion"]
-        conf.write_conf()
-
-        # Write out a template in an alternate location. It will be respected
-        temp_dir = tempfile.mkdtemp("-pyrex")
-        self.addCleanup(shutil.rmtree, temp_dir)
-
-        conftemplate = os.path.join(temp_dir, "pyrex.ini.sample")
-
-        conf = self.get_config(defaults=True)
-        del conf["config"]["confversion"]
-        with open(conftemplate, "w") as f:
-            conf.write(f)
-
-        env = os.environ.copy()
-        env["PYREXCONFTEMPLATE"] = conftemplate
-
-        self.assertPyrexHostCommand("true", returncode=1, env=env)
-
-    def test_force_conf(self):
-        # Write out a new config file and set the variable to force it to be
-        # used
-        conf = self.get_config()
-        conf["config"]["test"] = "bar"
-        force_conf_file = os.path.join(self.thread_dir, "force.ini")
-        with open(force_conf_file, "w") as f:
-            conf.write(f)
-
-        # Set the variable to a different value in the standard config file
-        conf = self.get_config()
-        conf["config"]["test"] = "foo"
-        conf.write_conf()
-
-        output = self.assertPyrexHostCommand(
-            "pyrex-config get config:test", quiet_init=True, capture=True
-        )
-        self.assertEqual(output, "foo")
-
-        env = os.environ.copy()
-        env["PYREXCONFFILE"] = force_conf_file
-        output = self.assertPyrexHostCommand(
-            "pyrex-config get config:test", quiet_init=True, capture=True, env=env
-        )
-        self.assertEqual(output, "bar")
 
     @skipIfPrebuilt
     def test_local_build(self):
@@ -756,16 +654,9 @@ class PyrexImageType_oe(PyrexImageType_base):
 
         test_string = "set_by_test.%d" % threading.get_ident()
 
-        # Write out a config template that passes along the TEST_ENV variable.
-        # The variable will only have the correct value in the container if
-        # the template is used
         conf = self.get_config()
         conf["run"]["envvars"] += " TEST_ENV"
-        with open(os.path.join(template_dir, "pyrex.ini.sample"), "w") as f:
-            conf.write(f)
-        # Delete the normal pyrex conf file so a new one will be pulled from
-        # TEMPLATECONF
-        os.unlink(self.pyrex_conf)
+        conf.write_conf()
 
         env = os.environ.copy()
         env["TEMPLATECONF"] = template_dir
@@ -793,16 +684,9 @@ class PyrexImageType_oe(PyrexImageType_base):
 
         test_string = "set_by_test.%d" % threading.get_ident()
 
-        # Write out a config template that passes along the TEST_ENV variable.
-        # The variable will only have the correct value in the container if
-        # the template is used
         conf = self.get_config()
         conf["run"]["envvars"] += " TEST_ENV"
-        with open(os.path.join(template_dir, "pyrex.ini.sample"), "w") as f:
-            conf.write(f)
-        # Delete the normal pyrex conf file so a new one will be pulled from
-        # TEMPLATECONF
-        os.unlink(self.pyrex_conf)
+        conf.write_conf()
 
         env = os.environ.copy()
         env["TEMPLATECONF"] = os.path.relpath(
@@ -826,7 +710,6 @@ class PyrexImageType_oe(PyrexImageType_base):
 
         builddir = os.path.join(cwd, "build")
 
-        self.prepare_build_dir(builddir)
         oe_topdir = self.assertSubprocess(
             [
                 "/bin/bash",
@@ -840,7 +723,6 @@ class PyrexImageType_oe(PyrexImageType_base):
 
         shutil.rmtree(builddir)
 
-        self.prepare_build_dir(builddir)
         pyrex_topdir = self.assertPyrexHostCommand(
             "bitbake -e | grep ^TOPDIR=",
             quiet_init=True,
