@@ -42,16 +42,11 @@ def main():
 
     try:
         subprocess.check_call(["docker", "build", "-t", args.tag] + extra_args)
+        subprocess.check_call(["podman", "pull", "docker-daemon:%s" % args.tag])
     except subprocess.CalledProcessError as e:
         return e.returncode
 
-    docker_p = subprocess.Popen(["docker", "save", args.tag], stdout=subprocess.PIPE)
-    podman_p = subprocess.Popen(["podman", "load", args.tag], stdin=docker_p.stdout)
-
-    docker_p.wait()
-    podman_p.wait()
-
-    return docker_p.returncode or podman_p.returncode
+    return 0
 
 
 if __name__ == "__main__":
