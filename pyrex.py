@@ -228,18 +228,7 @@ def build_image(config, build_config):
 
         (_, _, image_type) = config["config"]["dockerimage"].split("-")
 
-        docker_args = [
-            docker_path,
-            "build",
-            "-t",
-            tag,
-            "-f",
-            config["dockerbuild"]["dockerfile"],
-            "--network=host",
-            os.path.join(PYREX_ROOT, "docker"),
-            "--target",
-            "pyrex-%s" % image_type,
-        ]
+        docker_args = shlex.split(config["dockerbuild"]["buildcommand"])
 
         if config["config"]["registry"]:
             docker_args.extend(
@@ -249,9 +238,6 @@ def build_image(config, build_config):
         for e in ("http_proxy", "https_proxy"):
             if e in os.environ:
                 docker_args.extend(["--build-arg", "%s=%s" % (e, os.environ[e])])
-
-        if config["dockerbuild"].get("args", ""):
-            docker_args.extend(shlex.split(config["dockerbuild"]["args"]))
 
         env = os.environ.copy()
         for e in shlex.split(config["dockerbuild"]["env"]):

@@ -58,12 +58,6 @@ class PyrexTest(object):
         cleanup_build()
         os.makedirs(self.build_dir)
 
-        helper = os.path.join(PYREX_ROOT, "ci", "%s-helper.py" % self.docker_provider)
-        if os.path.exists(helper) and os.environ.get("USE_HELPER", "0") == "1":
-            self.dockerpath = helper
-        else:
-            self.dockerpath = self.docker_provider
-
         self.pyrex_conf = os.path.join(self.build_dir, "pyrex.ini")
         conf = self.get_config()
         conf.write_conf()
@@ -122,12 +116,17 @@ class PyrexTest(object):
 
             # Setup the config suitable for testing
             config["config"]["dockerimage"] = self.test_image
-            config["config"]["dockerpath"] = self.dockerpath
+            config["config"]["dockerpath"] = self.docker_provider
             config["config"]["buildlocal"] = "0"
             config["config"]["pyrextag"] = (
                 os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, "") or "ci-test"
             )
             config["run"]["bind"] = self.build_dir
+            config["dockerbuild"]["buildcommand"] = "%s --provider=%s %s" % (
+                os.path.join(PYREX_ROOT, "ci", "build_image.py"),
+                self.docker_provider,
+                self.test_image,
+            )
 
         return config
 
@@ -567,7 +566,7 @@ class PyrexImageType_base(PyrexTest):
 
     def test_default_ini_image(self):
         # Tests that the default image specified in pyrex.ini is valid
-        config = configparser.RawConfigParser()
+        config = pyrex.Config()
         config.read_string(pyrex.read_default_config(True))
 
         self.assertIn(config["config"]["dockerimage"], TEST_IMAGES)
