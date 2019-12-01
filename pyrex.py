@@ -38,7 +38,7 @@ VERSION_TAG_REGEX = re.compile(r"^v([0-9]+\.){2}[0-9]+(-.*)?$")
 
 THIS_SCRIPT = os.path.abspath(__file__)
 PYREX_ROOT = os.path.dirname(THIS_SCRIPT)
-PYREX_CONFVERSION = "1"
+PYREX_CONFVERSION = "2"
 MINIMUM_DOCKER_VERSION = 17
 
 
