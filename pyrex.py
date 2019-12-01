@@ -131,41 +131,40 @@ def stop_coverage():
 
 
 def get_image_id(config, image):
-    docker_args = [
-        config["config"]["dockerpath"],
+    engine_args = [
+        config["config"]["engine"],
         "image",
         "inspect",
         image,
         "--format={{.Id}}",
     ]
     return (
-        subprocess.check_output(docker_args, stderr=subprocess.DEVNULL)
+        subprocess.check_output(engine_args, stderr=subprocess.DEVNULL)
         .decode("utf-8")
         .rstrip()
     )
 
 
-def use_docker(config):
-    return os.environ.get("PYREX_DOCKER", config["run"]["enable"]) == "1"
+def use_container(config):
+    return os.environ.get("PYREX_USE_CONTAINER", config["run"]["enable"]) == "1"
 
 
 def build_image(config, build_config):
     build_config.setdefault("build", {})
 
-    docker_path = config["config"]["dockerpath"]
+    engine = config["config"]["engine"]
 
-    # Check minimum docker version
     try:
-        (provider, version) = get_docker_info(config)
+        (provider, version) = get_engine_info(config)
     except (subprocess.CalledProcessError, FileNotFoundError):
         print(
             textwrap.fill(
                 (
-                    "Unable to run '%s' as docker. Please make sure you have it installed."
+                    "Unable to run '%s'. Please make sure you have it installed."
                     + "For installation instructions, see the docker website. Commonly, "
                     + "one of the following is relevant:"
                 )
-                % docker_path
+                % engine
             )
         )
         print()
@@ -195,13 +194,13 @@ def build_image(config, build_config):
             )
         )
         print()
-        print("  export PYREX_DOCKER=0")
+        print("  export PYREX_USE_CONTAINER=0")
         print("  . init-build-env ...")
         print()
         return None
 
     if provider is None:
-        sys.stderr.write("Could not get docker version!\n")
+        sys.stderr.write("Could not get container engine version!\n")
         return None
 
     if provider == "docker" and int(version.split(".")[0]) < MINIMUM_DOCKER_VERSION:
@@ -211,7 +210,7 @@ def build_image(config, build_config):
         )
         return None
 
-    build_config["docker_provider"] = provider
+    build_config["provider"] = provider
 
     tag = config["config"]["tag"]
 
@@ -226,36 +225,36 @@ def build_image(config, build_config):
 
         print("Getting container image up to date...")
 
-        (_, _, image_type) = config["config"]["dockerimage"].split("-")
+        (_, _, image_type) = config["config"]["image"].split("-")
 
-        docker_args = shlex.split(config["dockerbuild"]["buildcommand"])
+        engine_args = shlex.split(config["imagebuild"]["buildcommand"])
 
         if config["config"]["registry"]:
-            docker_args.extend(
+            engine_args.extend(
                 ["--build-arg", "MY_REGISTRY=%s/" % config["config"]["registry"]]
             )
 
         for e in ("http_proxy", "https_proxy"):
             if e in os.environ:
-                docker_args.extend(["--build-arg", "%s=%s" % (e, os.environ[e])])
+                engine_args.extend(["--build-arg", "%s=%s" % (e, os.environ[e])])
 
         env = os.environ.copy()
-        for e in shlex.split(config["dockerbuild"]["env"]):
+        for e in shlex.split(config["imagebuild"]["env"]):
             name, val = e.split("=", 1)
             env[name] = val
 
         try:
-            if os.environ.get("PYREX_DOCKER_BUILD_QUIET", "1") == "1" and config[
-                "dockerbuild"
+            if os.environ.get("PYREX_BUILD_QUIET", "1") == "1" and config[
+                "imagebuild"
             ].getboolean("quiet"):
-                docker_args.append("-q")
+                engine_args.append("-q")
                 build_config["build"]["buildid"] = (
-                    subprocess.check_output(docker_args, env=env)
+                    subprocess.check_output(engine_args, env=env)
                     .decode("utf-8")
                     .rstrip()
                 )
             else:
-                subprocess.check_call(docker_args, env=env)
+                subprocess.check_call(engine_args, env=env)
                 build_config["build"]["buildid"] = get_image_id(config, tag)
 
             build_config["build"]["runid"] = build_config["build"]["buildid"]
@@ -271,8 +270,8 @@ def build_image(config, build_config):
             build_config["build"]["buildid"] = get_image_id(config, tag)
         except subprocess.CalledProcessError:
             try:
-                docker_args = [docker_path, "pull", tag]
-                subprocess.check_call(docker_args)
+                engine_args = [engine, "pull", tag]
+                subprocess.check_call(engine_args)
 
                 build_config["build"]["buildid"] = get_image_id(config, tag)
             except subprocess.CalledProcessError:
@@ -285,14 +284,14 @@ def build_image(config, build_config):
 
 def get_build_hash(config):
     # Docker doesn't currently have any sort of "dry-run" mechanism that could
-    # be used to determine if the dockerfile has changed and needs a rebuild.
+    # be used to determine if the Dockerfile has changed and needs a rebuild.
     # (See https://github.com/moby/moby/issues/38101).
     #
     # Until one is added, we use a simple hash of the files in the pyrex
-    # "docker" folder to determine when it is out of date.
+    # "image" folder to determine when it is out of date.
 
     h = hashlib.sha256()
-    for (root, dirs, files) in os.walk(os.path.join(PYREX_ROOT, "docker")):
+    for (root, dirs, files) in os.walk(os.path.join(PYREX_ROOT, "image")):
         # Process files and directories in alphabetical order so that hashing
         # is consistent
         dirs.sort()
@@ -318,9 +317,9 @@ def get_build_hash(config):
     return h.hexdigest()
 
 
-def get_docker_info(config):
-    docker_path = config["config"]["dockerpath"]
-    output = subprocess.check_output([docker_path, "--version"]).decode("utf-8")
+def get_engine_info(config):
+    engine = config["config"]["engine"]
+    output = subprocess.check_output([engine, "--version"]).decode("utf-8")
     m = re.match(r"(?P<provider>\S+) +version +(?P<version>[^\s,]+)", output)
     if m is not None:
         return (m.group("provider").lower(), m.group("version"))
@@ -336,7 +335,7 @@ def get_subid_length(filename, name):
     return 0
 
 
-def prep_docker(
+def prep_container(
     config,
     build_config,
     command,
@@ -354,22 +353,24 @@ def prep_docker(
         )
         return []
 
-    docker_path = config["config"]["dockerpath"]
+    engine = config["config"]["engine"]
 
     try:
         buildid = get_image_id(config, runid)
     except subprocess.CalledProcessError as e:
-        print("Cannot verify docker image: %s\n" % e.output)
+        print("Cannot verify container image: %s\n" % e.output)
         return []
 
     if buildid != build_config["build"]["buildid"]:
-        sys.stderr.write("WARNING: buildid for docker image %s has changed\n" % runid)
+        sys.stderr.write(
+            "WARNING: buildid for container image %s has changed\n" % runid
+        )
 
     if config["config"]["buildlocal"] == "1" and build_config["build"][
         "buildhash"
     ] != get_build_hash(config):
         sys.stderr.write(
-            "WARNING: The docker image source has changed and should be rebuilt.\n"
+            "WARNING: The container image source has changed and should be rebuilt.\n"
             "Try running: 'pyrex-rebuild'\n"
         )
 
@@ -389,8 +390,8 @@ def prep_docker(
 
     command_prefix = config["run"].get("commandprefix", "").splitlines()
 
-    docker_args = [
-        docker_path,
+    engine_args = [
+        engine,
         "run",
         "--rm",
         "-i",
@@ -411,14 +412,14 @@ def prep_docker(
         os.getcwd(),
     ]
 
-    docker_envvars = [
+    container_envvars = [
         "PYREX_CLEANUP_EXIT_WAIT",
         "PYREX_CLEANUP_LOG_FILE",
         "PYREX_CLEANUP_LOG_LEVEL",
         "TINI_VERBOSITY",
     ]
 
-    if build_config["docker_provider"] == "podman":
+    if build_config["provider"] == "podman":
         uid_length = get_subid_length("/etc/subuid", username)
         if uid_length < 1:
             sys.stderr.write("subuid name space is too small\n")
@@ -429,7 +430,7 @@ def prep_docker(
             sys.stderr.write("subgid name space is too small\n")
             sys.exit(1)
 
-        docker_args.extend(
+        engine_args.extend(
             [
                 "--security-opt",
                 "label=disable",
@@ -462,9 +463,9 @@ def prep_docker(
             ]
         )
 
-    # Run the docker image with a TTY if this script was run in a tty
+    # Run the container with a TTY if this script was run in a tty
     if os.isatty(1):
-        docker_args.extend(["-t", "-e", "TERM=%s" % os.environ["TERM"]])
+        engine_args.extend(["-t", "-e", "TERM=%s" % os.environ["TERM"]])
 
     # Configure binds
     binds = config["run"]["bind"].split() + extra_bind
@@ -472,9 +473,9 @@ def prep_docker(
         if not os.path.exists(b):
             print("Error: bind source path {b} does not exist".format(b=b))
             continue
-        docker_args.extend(["--mount", "type=bind,src={b},dst={b}".format(b=b)])
+        engine_args.extend(["--mount", "type=bind,src={b},dst={b}".format(b=b)])
 
-    docker_envvars.extend(config["run"]["envvars"].split())
+    container_envvars.extend(config["run"]["envvars"].split())
 
     # Special case: Make the user SSH authentication socket available in container
     if "SSH_AUTH_SOCK" in os.environ:
@@ -482,7 +483,7 @@ def prep_docker(
         if not os.path.exists(socket):
             print("Warning: SSH_AUTH_SOCK {} does not exist".format(socket))
         else:
-            docker_args.extend(
+            engine_args.extend(
                 [
                     "--mount",
                     "type=bind,src=%s,dst=/tmp/%s-ssh-agent-sock" % (socket, username),
@@ -493,27 +494,27 @@ def prep_docker(
 
     # Pass along BB_ENV_EXTRAWHITE and anything it has whitelisted
     if "BB_ENV_EXTRAWHITE" in os.environ:
-        docker_args.extend(["-e", "BB_ENV_EXTRAWHITE"])
-        docker_envvars.extend(os.environ["BB_ENV_EXTRAWHITE"].split())
+        engine_args.extend(["-e", "BB_ENV_EXTRAWHITE"])
+        container_envvars.extend(os.environ["BB_ENV_EXTRAWHITE"].split())
 
     # Pass environment variables. If a variable passed with an argument
     # "-e VAR" is not set in the parent environment, podman passes an
-    # empty value, where as docker doesn't pass it at all. For
+    # empty value, where as Docker doesn't pass it at all. For
     # consistency, manually check if the variables exist before passing
     # them.
-    for e in docker_envvars + preserve_env:
+    for e in container_envvars + preserve_env:
         if e in os.environ:
-            docker_args.extend(["-e", e])
+            engine_args.extend(["-e", e])
 
     for k, v in extra_env.items():
-        docker_args.extend(["-e", "%s=%s" % (k, v)])
+        engine_args.extend(["-e", "%s=%s" % (k, v)])
 
-    docker_args.extend(shlex.split(config["run"].get("args", "")))
+    engine_args.extend(shlex.split(config["run"].get("args", "")))
 
-    docker_args.append("--")
-    docker_args.append(runid)
-    docker_args.extend(command)
-    return docker_args
+    engine_args.append("--")
+    engine_args.append(runid)
+    engine_args.extend(command)
+    return engine_args
 
 
 def create_shims(config, build_config, buildconf):
@@ -602,8 +603,8 @@ def create_shims(config, build_config, buildconf):
 
     # Create bypass command
     bypassfile = os.path.join(shimdir, "pyrex-bypass")
-    docker_args = [
-        config["config"]["dockerpath"],
+    engine_args = [
+        config["config"]["engine"],
         "run",
         "--rm",
         "--entrypoint",
@@ -612,7 +613,7 @@ def create_shims(config, build_config, buildconf):
         "/usr/libexec/pyrex/bypass",
     ]
     with open(bypassfile, "w") as f:
-        subprocess.run(docker_args, check=True, stdout=f)
+        subprocess.run(engine_args, check=True, stdout=f)
     os.chmod(bypassfile, stat.S_IRWXU)
 
     # Create shims
@@ -657,7 +658,7 @@ def main():
             # Startup script are only supposed to run after the initial capture
             env_args["PYREX_SKIP_STARTUP"] = "1"
 
-            docker_args = prep_docker(
+            engine_args = prep_container(
                 config,
                 build_config,
                 ["/usr/libexec/pyrex/capture"] + args.init,
@@ -666,10 +667,10 @@ def main():
                 extra_bind=[f.name] + args.bind,
             )
 
-            if not docker_args:
+            if not engine_args:
                 return 1
 
-            p = subprocess.run(docker_args)
+            p = subprocess.run(engine_args)
             if p.returncode:
                 return 1
 
@@ -723,8 +724,8 @@ def main():
         with open(args.buildconf, "r") as f:
             build_config = json.load(f)
 
-        if use_docker(config):
-            docker_args = prep_docker(
+        if use_container(config):
+            engine_args = prep_container(
                 config,
                 build_config,
                 ["/usr/libexec/pyrex/run"] + args.command,
@@ -733,12 +734,12 @@ def main():
                 allow_test_config=True,
             )
 
-            if not docker_args:
+            if not engine_args:
                 sys.exit(1)
 
             stop_coverage()
-            os.execvp(docker_args[0], docker_args)
-            print("Cannot exec docker!")
+            os.execvp(engine_args[0], engine_args)
+            print("Cannot exec container!")
             sys.exit(1)
         else:
             command = [

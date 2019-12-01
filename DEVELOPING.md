@@ -20,8 +20,8 @@ pass the `--reformat` option:
 
 ## Testing
 Pyrex has a comprehensive test suite that can be used to test all generated
-Docker images. Some external test data is required to perform the test. To
-download this data and prepare your sandbox for testing, run:
+images. Some external test data is required to perform the test. To download
+this data and prepare your sandbox for testing, run:
 
 ```shell
 ./ci/prepare.sh
@@ -49,10 +49,10 @@ non-word characters replaced by `_`.  For example, to test only the
 ```
 
 ## Building images locally
-Pyrex pulls prebuilt Docker containers from DockerHub by default, which should
-be sufficient for most users. However, users that are active developing on
-Pyrex or wish to build images locally instead of using published images can do
-so by making the following changes to `pyrex.ini`:
+Pyrex pulls prebuilt images from DockerHub by default, which should be
+sufficient for most users. However, users that are active developing on Pyrex
+or wish to build images locally instead of using published images can do so by
+making the following changes to `pyrex.ini`:
 
 1. Set `config:buildlocal` to `1`
 2. Change `config:tag` to an alternate tag suffix instead of
@@ -64,7 +64,7 @@ so by making the following changes to `pyrex.ini`:
 
     ```
     [config]
-    tag = ${config:dockerimage}:my-image
+    tag = ${config:image}:my-image
     ```
 
 3. Set `config:dockerfile` to the path where the Dockerfile you wish to build

@@ -194,8 +194,8 @@ wraps locally instead of in the container. This can be done in one of two ways:
 
 1. Set `${run:enable}` to `0` in `pyrex.ini` which will disable using the
    container engine for all commands
-2. Set the environment variable `PYREX_DOCKER` to `0`. Any Pyrex commands run
-   with this variable will not be run in the container.
+2. Set the environment variable `PYREX_USE_CONTAINER` to `0`. Any Pyrex
+   commands run with this variable will not be run in the container.
 
 ## What doesn't work?
 The following items are either known to not work, or haven't been fully tested:
@@ -238,7 +238,7 @@ build the image locally instead. See the [Developer Documentation][].
   chosen because it is one of the [Sanity Tested Distros][] that Yocto
   supports. Pyrex aims to support a vanilla Yocto setup with minimal manual
   configuration.
-* *What's with [cleanup.py](./docker/cleanup.py)?* When a container's main
+* *What's with [cleanup.py](./image/cleanup.py)?* When a container's main
   process exits, any remaining process appears to be sent a `SIGKILL`.  This
   can cause a significant problem with many of the child processes that bitbake
   spawns, since unceremoniously killing them might result in lost data.  The

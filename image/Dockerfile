@@ -301,8 +301,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     g++-multilib \
 # Screen to enable devshell
     screen \
-# Base OS stuff that reasonable workstations have, but which the Docker
-# registry image doesn't
+# Base OS stuff that reasonable workstations have, but which the registry image
+# doesn't
     tzdata \
 && rm -rf /var/lib/apt/lists/*
 
@@ -372,8 +372,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     g++-multilib \
 # Screen to enable devshell
     screen \
-# Base OS stuff that reasonable workstations have, but which the Docker
-# registry image doesn't
+# Base OS stuff that reasonable workstations have, but which the registry image
+# doesn't
     tzdata \
 && rm -rf /var/lib/apt/lists/*
 
@@ -439,8 +439,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-
     g++-multilib \
 # Screen to enable devshell
     screen \
-# Base OS stuff that reasonable workstations have, but which the Docker
-# registry image doesn't
+# Base OS stuff that reasonable workstations have, but which the registry image
+# doesn't
     tzdata \
 && rm -rf /var/lib/apt/lists/*
 
@@ -509,8 +509,8 @@ ENV MY_REGISTRY none
 # Setup Icecream distributed compiling client. The client tries several IPC
 # mechanisms to find the daemon, including connecting to a localhost TCP
 # socket. Since the local Icecream daemon (iceccd) is not started when the
-# docker container starts, the client will not find it and instead connect to
-# the host Icecream daemon (as long as the container is run with --net=host).
+# container starts, the client will not find it and instead connect to the host
+# Icecream daemon (as long as the container is run with --net=host).
 RUN mkdir -p /usr/share/icecc/toolchain && \
     cd /usr/share/icecc/toolchain/ && \
     TC_NAME=$(mktemp) && \

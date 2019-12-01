@@ -34,9 +34,9 @@ def get_var(name):
 
 def main():
     # Block the SIGTSTP signal. We haven't figured out how to do proper job
-    # control inside of docker yet, and if the user accidentally presses CTRL+Z
-    # is will freeze the console without actually stopping the build.  To
-    # prevent this, block SIGTSTP in all child processes. This results in
+    # control inside of the container yet, and if the user accidentally presses
+    # CTRL+Z is will freeze the console without actually stopping the build.
+    # To prevent this, block SIGTSTP in all child processes. This results in
     # CTRL+Z doing nothing.
     signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGTSTP])
 
