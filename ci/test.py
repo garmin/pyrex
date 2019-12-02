@@ -427,25 +427,6 @@ class PyrexImageType_base(PyrexTest):
         conf.write_conf()
         self.assertPyrexHostCommand("true")
 
-    @skipIfPrebuilt
-    def test_bad_registry(self):
-        # Run any command to build the images locally
-        self.assertPyrexHostCommand("true")
-
-        conf = self.get_config()
-
-        # Trying to build with an invalid registry should fail
-        conf["config"]["registry"] = "does.not.exist.invalid"
-        conf["config"]["buildlocal"] = "1"
-        conf.write_conf()
-        self.assertPyrexHostCommand("true", returncode=1)
-
-        # Disable building locally any try again (from the previously cached build)
-        conf["config"]["buildlocal"] = "0"
-        conf.write_conf()
-
-        self.assertPyrexHostCommand("true")
-
     def test_version(self):
         self.assertRegex(
             pyrex.VERSION,

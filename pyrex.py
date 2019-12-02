@@ -229,11 +229,6 @@ def build_image(config, build_config):
 
         engine_args = shlex.split(config["imagebuild"]["buildcommand"])
 
-        if config["config"]["registry"]:
-            engine_args.extend(
-                ["--build-arg", "MY_REGISTRY=%s/" % config["config"]["registry"]]
-            )
-
         for e in ("http_proxy", "https_proxy"):
             if e in os.environ:
                 engine_args.extend(["--build-arg", "%s=%s" % (e, os.environ[e])])

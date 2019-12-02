@@ -13,14 +13,12 @@
 # limitations under the License.
 
 ARG PYREX_BASE=ubuntu-18.04-oe
-ARG MY_REGISTRY=
 
 #
 # Base image for prebuilt static binaries
 #
-FROM ${MY_REGISTRY}alpine:3.9 AS prebuilt-base
+FROM alpine:3.9 AS prebuilt-base
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 
 RUN apk add --update \
     acl-dev \
@@ -56,7 +54,6 @@ COPY patches/0001-Use-pkg-config-to-find-packages.patch /usr/src/
 #
 FROM prebuilt-base AS prebuilt-icecream
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 
 # Use a recent version of Icecream, which has many bug fixes
 ENV ICECREAM_SHA1=1aa08857cb9c2639dbde1c2f6a05212c842581f1
@@ -87,7 +84,6 @@ RUN mkdir -p /usr/src/icecream && \
 #
 FROM prebuilt-base AS prebuilt-setpriv
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 RUN mkdir -p /usr/src/util-linux && \
     cd /usr/src/util-linux && \
     wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.33/util-linux-2.33.1.tar.xz && \
@@ -126,9 +122,8 @@ RUN mkdir -p /usr/src/tini && \
 #
 # Ubuntu 14.04 base
 #
-FROM ${MY_REGISTRY}ubuntu:trusty as ubuntu-14.04-base
+FROM ubuntu:trusty as ubuntu-14.04-base
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to run init scripts.
@@ -153,9 +148,8 @@ COPY --from=prebuilt-tini /dist/tini /
 #
 # Ubuntu 16.04 Base
 #
-FROM ${MY_REGISTRY}ubuntu:xenial as ubuntu-16.04-base
+FROM ubuntu:xenial as ubuntu-16.04-base
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to run init scripts.
@@ -180,9 +174,8 @@ COPY --from=prebuilt-tini /dist/tini /
 #
 # Ubuntu 18.04 Base
 #
-FROM ${MY_REGISTRY}ubuntu:bionic as ubuntu-18.04-base
+FROM ubuntu:bionic as ubuntu-18.04-base
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to run init scripts.
@@ -207,9 +200,8 @@ COPY --from=prebuilt-tini /dist/tini /
 #
 # Centos 7
 #
-FROM ${MY_REGISTRY}centos:7 as centos-7-base
+FROM centos:7 as centos-7-base
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="James Harris <james.harris@garmin.com>"
 RUN set -x && \
       #Install default components
@@ -235,7 +227,6 @@ COPY --from=prebuilt-tini /dist/tini /
 #
 FROM ubuntu-14.04-base as ubuntu-14.04-oe
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
@@ -314,7 +305,6 @@ COPY --from=prebuilt-icecream /dist/icecream /
 #
 FROM ubuntu-16.04-base as ubuntu-16.04-oe
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
@@ -388,7 +378,6 @@ COPY --from=prebuilt-icecream /dist/icecream /
 #
 FROM ubuntu-18.04-base as ubuntu-18.04-oe
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
@@ -458,7 +447,6 @@ COPY --from=prebuilt-icecream /dist/icecream /
 #
 FROM ${PYREX_BASE} as pyrex-base
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 
 # Set Locales
 ENV LANG en_US.UTF-8
@@ -504,7 +492,6 @@ CMD ["/usr/libexec/pyrex/run", "/bin/bash"]
 #
 FROM pyrex-base as pyrex-oe
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 
 # Setup Icecream distributed compiling client. The client tries several IPC
 # mechanisms to find the daemon, including connecting to a localhost TCP
