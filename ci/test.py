@@ -397,6 +397,20 @@ class PyrexImageType_base(PyrexTest):
 
         self.assertPyrexContainerShellCommand("true")
 
+    def test_missing_bind(self):
+        temp_dir = tempfile.mkdtemp("-pyrex")
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        missing_bind = os.path.join(temp_dir, "does-not-exist")
+        conf = self.get_config()
+        conf["run"]["bind"] += " %s" % missing_bind
+        conf.write_conf()
+
+        s = self.assertPyrexContainerShellCommand(
+            "test ! -e %s" % missing_bind, capture=True
+        )
+        self.assertRegex(s, r"Error: bind source path \S+ does not exist")
+
     def test_bad_confversion(self):
         # Verify that a bad config is an error
         conf = self.get_config()
