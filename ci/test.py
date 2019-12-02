@@ -620,6 +620,34 @@ class PyrexImageType_base(PyrexTest):
         )
         self.assertEqual(s, env["TEST_BB_EXTRA"])
 
+    def test_ssh_auth_sock(self):
+        with tempfile.NamedTemporaryFile() as auth_file:
+            env = os.environ.copy()
+            env["SSH_AUTH_SOCK"] = auth_file.name
+            auth_file_stat = os.stat(auth_file.name)
+
+            s = self.assertPyrexContainerShellCommand(
+                "stat --format='%d %i' $SSH_AUTH_SOCK",
+                env=env,
+                quiet_init=True,
+                capture=True,
+            )
+            self.assertEqual(
+                s, "%d %d" % (auth_file_stat.st_dev, auth_file_stat.st_ino)
+            )
+
+        auth_sock_path = os.path.join(self.build_dir, "does-not-exist")
+        env = os.environ.copy()
+        env["SSH_AUTH_SOCK"] = auth_sock_path
+
+        s = self.assertPyrexContainerShellCommand("true", env=env, capture=True)
+        self.assertRegex(s, r"Warning: SSH_AUTH_SOCK \S+ does not exist")
+
+        s = self.assertPyrexContainerShellCommand(
+            "echo $SSH_AUTH_SOCK", env=env, quiet_init=True, capture=True
+        )
+        self.assertEqual(s, "")
+
 
 class PyrexImageType_oe(PyrexImageType_base):
     """
