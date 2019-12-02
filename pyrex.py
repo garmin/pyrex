@@ -55,11 +55,6 @@ class Config(configparser.ConfigParser):
         # All keys are case-sensitive
         self.optionxform = lambda option: option
 
-    def getrawdict(self):
-        """returns a dictionary that doesn't have any interpolation. Useful for
-        merging configs together"""
-        return {section: values for (section, values) in self.items(raw=True)}
-
 
 def read_default_config(keep_defaults):
     with open(os.path.join(PYREX_ROOT, "pyrex.ini"), "r") as f:
