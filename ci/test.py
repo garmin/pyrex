@@ -76,9 +76,9 @@ class PyrexTest(object):
         os.symlink("/usr/bin/python2", os.path.join(self.bin_dir, "python"))
         os.environ["PATH"] = self.bin_dir + ":" + os.environ["PATH"]
         os.environ["PYREX_BUILD_QUIET"] = "0"
-        if "SSH_AUTH_SOCK" in os.environ:
-            del os.environ["SSH_AUTH_SOCK"]
-        self.addCleanup(cleanup_env)
+        for var in ("SSH_AUTH_SOCK", "BB_ENV_EXTRAWHITE"):
+            if var in os.environ:
+                del os.environ[var]
 
         self.thread_dir = os.path.join(
             self.build_dir, "%d.%d" % (os.getpid(), threading.get_ident())
@@ -604,6 +604,21 @@ class PyrexImageType_base(PyrexTest):
             ).split()
         )
         self.assertEqual(groups, {"root", grp.getgrgid(os.getgid()).gr_name})
+
+    def test_bb_env_extrawhite(self):
+        env = os.environ.copy()
+        env["BB_ENV_EXTRAWHITE"] = "TEST_BB_EXTRA"
+        env["TEST_BB_EXTRA"] = "Hello"
+
+        s = self.assertPyrexContainerShellCommand(
+            "echo $BB_ENV_EXTRAWHITE", env=env, quiet_init=True, capture=True
+        )
+        self.assertEqual(s, env["BB_ENV_EXTRAWHITE"])
+
+        s = self.assertPyrexContainerShellCommand(
+            "echo $TEST_BB_EXTRA", env=env, quiet_init=True, capture=True
+        )
+        self.assertEqual(s, env["TEST_BB_EXTRA"])
 
 
 class PyrexImageType_oe(PyrexImageType_base):
