@@ -666,6 +666,29 @@ class PyrexImageType_base(PyrexTest):
     def test_rebuild(self):
         self.assertPyrexHostCommand("pyrex-rebuild")
 
+    def test_pyrex_config(self):
+        conf = self.get_config()
+        conf.add_section("ci")
+        conf["ci"]["foo"] = "ABC"
+        conf["ci"]["bar"] = "${ci:foo}DEF"
+        conf["ci"]["baz"] = "${bar}GHI"
+        conf.write_conf()
+
+        s = self.assertPyrexHostCommand(
+            "pyrex-config get ci:foo", quiet_init=True, capture=True
+        )
+        self.assertEqual(s, "ABC")
+
+        s = self.assertPyrexHostCommand(
+            "pyrex-config get ci:bar", quiet_init=True, capture=True
+        )
+        self.assertEqual(s, "ABCDEF")
+
+        s = self.assertPyrexHostCommand(
+            "pyrex-config get ci:baz", quiet_init=True, capture=True
+        )
+        self.assertEqual(s, "ABCDEFGHI")
+
 
 class PyrexImageType_oe(PyrexImageType_base):
     """
