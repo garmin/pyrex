@@ -648,6 +648,10 @@ class PyrexImageType_base(PyrexTest):
         )
         self.assertEqual(s, "")
 
+    @skipIfPrebuilt
+    def test_rebuild(self):
+        self.assertPyrexHostCommand("pyrex-rebuild")
+
 
 class PyrexImageType_oe(PyrexImageType_base):
     """
