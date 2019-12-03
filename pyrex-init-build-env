@@ -51,6 +51,10 @@ pyrex_cleanup() {
 
 export PYREXCONFFILE
 
+if [ -n "$PYREXCONFFILE" ] && [ "${PYREXCONFFILE#/}" == "$PYREXCONFFILE" ]; then
+    PYREXCONFFILE="$(pwd)/$PYREXCONFFILE"
+fi
+
 $PYREX_ROOT/pyrex.py capture 9 \
 		-a PYREX_OEROOT "$PYREX_OEROOT" \
 		-a PYREX_OEINIT "$PYREX_OEINIT $@" \
