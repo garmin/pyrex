@@ -346,9 +346,8 @@ class PyrexImageType_base(PyrexTest):
 
         # Note: These config variables are intended for testing use only
         conf["run"]["uid"] = "1337"
-        conf["run"]["gid"] = "7331"
         conf["run"]["username"] = "theuser"
-        conf["run"]["groupname"] = "thegroup"
+        conf["run"]["groups"] = "7331:thegroup 7332:othergroup"
         conf["run"]["initcommand"] = ""
         conf.write_conf()
 
@@ -375,7 +374,8 @@ class PyrexImageType_base(PyrexTest):
         thread.start()
         try:
             self.assertPyrexContainerShellCommand(
-                'echo "$(id -u):$(id -g):$(id -un):$(id -gn):$USER:$GROUP" > %s' % fifo
+                'echo "$(id -u):$(id -g):$(id -un):$(id -gn):$USER:$GROUP:$(id -G):$(id -Gn)" > %s'
+                % fifo
             )
         finally:
             thread.join()
@@ -386,6 +386,8 @@ class PyrexImageType_base(PyrexTest):
         self.assertEqual(output[3], "thegroup")
         self.assertEqual(output[4], "theuser")
         self.assertEqual(output[5], "thegroup")
+        self.assertEqual(output[6], "7331 7332")
+        self.assertEqual(output[7], "thegroup othergroup")
 
     def test_duplicate_binds(self):
         temp_dir = tempfile.mkdtemp("-pyrex")
@@ -617,7 +619,12 @@ class PyrexImageType_base(PyrexTest):
                 "getent group | cut -f1 -d:", quiet_init=True, capture=True
             ).split()
         )
-        self.assertEqual(groups, {"root", grp.getgrgid(os.getgid()).gr_name})
+
+        my_groups = {"root", grp.getgrgid(os.getgid()).gr_name}
+        for gid in os.getgroups():
+            my_groups.add(grp.getgrgid(gid).gr_name)
+
+        self.assertEqual(groups, my_groups)
 
     def test_bb_env_extrawhite(self):
         env = os.environ.copy()

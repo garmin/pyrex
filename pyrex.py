@@ -370,14 +370,21 @@ def prep_container(
     username = pwd.getpwuid(uid).pw_name
     groupname = grp.getgrgid(gid).gr_name
 
+    groups = ["%d:%s" % (gid, groupname)]
+
+    for group in grp.getgrall():
+        if group.gr_name == groupname:
+            continue
+        if username in group.gr_mem:
+            groups.append("%d:%s" % (group.gr_gid, group.gr_name))
+
     # These are "hidden" keys in pyrex.ini that aren't publicized, and
     # are primarily used for testing. Use they at your own risk, they
     # may change
     if allow_test_config:
         uid = int(config["run"].get("uid", uid))
-        gid = int(config["run"].get("gid", gid))
         username = config["run"].get("username") or username
-        groupname = config["run"].get("groupname") or groupname
+        groups = config["run"].get("groups", "").split() or groups
 
     command_prefix = config["run"].get("commandprefix", "").splitlines()
 
@@ -392,9 +399,7 @@ def prep_container(
         "-e",
         "PYREX_UID=%d" % uid,
         "-e",
-        "PYREX_GROUP=%s" % groupname,
-        "-e",
-        "PYREX_GID=%d" % gid,
+        "PYREX_GROUPS=%s" % " ".join(groups),
         "-e",
         "PYREX_HOME=%s" % os.environ["HOME"],
         "-e",
