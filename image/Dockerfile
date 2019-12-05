@@ -494,6 +494,19 @@ RUN python3 -m pip install iterfzf
 COPY --from=prebuilt-icecream /dist/icecream /
 
 #
+# Ubuntu 18.04 OE Test Image
+#
+FROM ubuntu-18.04-oe as ubuntu-18.04-oetest
+ENV PYREX_BASE none
+
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    sudo dpkg --add-architecture i386 && \
+    apt-get -y update && apt-get -y install \
+        wine64 \
+        wine32 \
+&& rm -rf /var/lib/apt/lists/*
+
+#
 # Base image target.
 #
 # This stage sets up the minimal image startup and entry points. It also
@@ -560,4 +573,10 @@ RUN mkdir -p /usr/share/icecc/toolchain && \
     rm $TC_NAME
 
 ENV ICECC_VERSION=/usr/share/icecc/toolchain/native-gcc.tar.gz
+
+#
+# OE build image. Includes many additional packages for testing
+#
+FROM pyrex-oe as pyrex-oetest
+ENV PYREX_BASE none
 

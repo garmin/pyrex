@@ -8,6 +8,7 @@ env:
   - TEST_IMAGE=ubuntu-18.04-oe      DOCKER_PROVIDER=podman SH=bash
   - TEST_IMAGE=ubuntu-14.04-oe      DOCKER_PROVIDER=docker SH=bash
   - TEST_IMAGE=ubuntu-16.04-oe      DOCKER_PROVIDER=docker SH=bash
+  - TEST_IMAGE=ubuntu-18.04-oetest  DOCKER_PROVIDER=docker SH=bash
   - TEST_IMAGE=ubuntu-18.04-oe      DOCKER_PROVIDER=docker SH=zsh
   - TEST_IMAGE=centos-7-base        DOCKER_PROVIDER=docker SH=bash
   - TEST_IMAGE=ubuntu-14.04-base    DOCKER_PROVIDER=docker SH=bash

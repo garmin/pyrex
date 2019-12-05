@@ -948,6 +948,15 @@ class PyrexImageType_oe(PyrexImageType_base):
         self.assertEqual(s, 'TEST_BB_EXTRA="foo"')
 
 
+class PyrexImageType_oetest(PyrexImageType_oe):
+    """
+    Tests images designed for building OpenEmbedded Test image
+    """
+
+    def test_wine(self):
+        self.assertPyrexContainerCommand("wine --version")
+
+
 PROVIDERS = ("docker", "podman")
 
 TEST_IMAGES = (
@@ -958,6 +967,7 @@ TEST_IMAGES = (
     "ubuntu-14.04-oe",
     "ubuntu-16.04-oe",
     "ubuntu-18.04-oe",
+    "ubuntu-18.04-oetest",
 )
 
 
