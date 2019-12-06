@@ -110,11 +110,6 @@ PYREX_OEINIT="$(pwd)/oe-init-build-env"
 # correct)
 PYREX_ROOT="$(pwd)/meta-pyrex"
 
-# The location of the pyrex.ini template file to use if the user doesn't
-# already have one. Defaults to "$TEMPLATECONF/pyrex.ini.sample" (the same
-# location that oe-init-build-env will look for local.conf.sample & friends)
-PYREXCONFTEMPLATE="$(pwd)/pyrex.ini.sample"
-
 # Alternatively, if it is desired to always use a fixed config file that users
 # can't change, set the following:
 #PYREXCONFFILE="$(pwd)/pyrex.ini"
@@ -157,10 +152,10 @@ variable called `run:bind` is specified in the config file. Any directory that
 appears in this variable will be bound into the container image at the same
 path (e.g. `/foo/bar` in the host will be bound to `/foo/bar` in the container
 engine. By default, only the Openembedded root directory (a.k.a.
-`$PYREX_OEROOT`, `${build:oeroot}`) is bound. This is the minimum that can be
-bound, and is generally sufficient for most use cases. If additional
-directories need to be accessed by the container image, they can be added to
-this list by the user. Common reasons for adding new paths include:
+`$PYREX_OEROOT`) is bound. This is the minimum that can be bound, and is
+generally sufficient for most use cases. If additional directories need to be
+accessed by the container image, they can be added to this list by the user.
+Common reasons for adding new paths include:
 * Alternate (out of tree) locations for sstate and download caches
 * Alternate (out of tree) build directories
 * Additional layers that are not under the OEROOT directory
@@ -174,10 +169,10 @@ paths might make it difficult to do builds outside of Pyrex if necessary.
 You should **never** map directories like `/usr/bin`, `/etc/`, `/` as these
 will probably just break the container. It is probably also unwise to map your
 entire home directory; although in some cases may be necessary to map
-$HOME/.ssh or other directories to access SSH keys and the like. For user
+`$HOME/.ssh` or other directories to access SSH keys and the like. For user
 convenience, the proxy user created in the container image by default has the
-same $HOME as the user who created the container, so these types of bind can be
-done by simply adding `${env:HOME}/.ssh` to `run:bind`
+same `$HOME` as the user who created the container, so these types of bind can
+be done by simply adding `${env:HOME}/.ssh` to `run:bind`
 
 #### Debugging the container
 In the event that you need to get a shell into the container to run some
@@ -228,6 +223,10 @@ The following items are either known to not work, or haven't been fully tested:
   from causing bad behaviors. It is still possible to pause the container using
   the `docker pause` command, but this doesn't integrate with the parent shells
   job control.
+* **Rootless Docker** This in untested, and probably doesn't work. It shouldn't
+  be too hard since this should be very similar to how `podman` works.
+  Currently however, it is assumed that if the container engine is `docker` it
+  is running as root and if it is `podman` it is running rootless.
 
 ## Developing on Pyrex
  If you are doing development on Pyrex itself, please read the [Developer
