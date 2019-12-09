@@ -16,11 +16,34 @@
 
 INIT_PWD=$PWD
 
+# Prevent some variables from being unset so their value can be captured
+unset() {
+    for var in "$@"; do
+        case "$var" in
+            BITBAKEDIR) ;;
+            OEROOT) ;;
+            *)
+                builtin unset "$var"
+                ;;
+        esac
+    done
+}
+
 # Consume all arguments before sourcing the environment script
 shift $#
 
 . $PYREX_OEINIT
 if [ $? -ne 0 ]; then
+    exit 1
+fi
+
+if [ -z "$BITBAKEDIR" ]; then
+    echo "\$BITBAKEDIR not captured!"
+    exit 1
+fi
+
+if [ -z "$OEROOT" ]; then
+    echo "\$OEROOT not captured!"
     exit 1
 fi
 
@@ -34,11 +57,11 @@ cat > $PYREX_CAPTURE_DEST <<HEREDOC
         "shell": "/bin/bash",
         "commands": {
             "include": [
-                "$PYREX_OEROOT/bitbake/bin/*",
-                "$PYREX_OEROOT/scripts/*"
+                "$BITBAKEDIR/bin/*",
+                "$OEROOT/scripts/*"
             ],
             "exclude": [
-                "$PYREX_OEROOT/scripts/runqemu*"
+                "$OEROOT/scripts/runqemu*"
             ]
         }
     },
@@ -49,7 +72,8 @@ cat > $PYREX_CAPTURE_DEST <<HEREDOC
             "BUILDDIR": "$BUILDDIR"
         },
         "bind": [
-            "$PYREX_OEROOT"
+            "$BITBAKEDIR",
+            "$OEROOT"
         ]
     },
     "bypass": {
