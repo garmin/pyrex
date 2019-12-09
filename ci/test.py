@@ -713,6 +713,26 @@ class PyrexImageType_base(PyrexTest):
 
         self.assertSubprocess(cmd + [out_file], cwd=self.build_dir, returncode=1)
 
+    def test_user_commands(self):
+        conf = self.get_config()
+        conf["config"]["commands"] = "/bin/true !/bin/false"
+        conf.write_conf()
+
+        self.assertPyrexHostCommand("/bin/true")
+        self.assertPyrexHostCommand("/bin/false", returncode=1)
+
+        true_path = self.assertPyrexHostCommand(
+            "which true", capture=True, quiet_init=True
+        )
+        true_link_path = os.readlink(true_path)
+        self.assertEqual(os.path.basename(true_link_path), "exec-shim-pyrex")
+
+        false_path = self.assertPyrexHostCommand(
+            "which false", capture=True, quiet_init=True
+        )
+        false_link_path = os.readlink(false_path)
+        self.assertEqual(os.path.basename(false_link_path), "false")
+
 
 class PyrexImageType_oe(PyrexImageType_base):
     """

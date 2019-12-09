@@ -613,8 +613,14 @@ def create_shims(config, build_config, buildconf):
     os.chmod(bypassfile, stat.S_IRWXU)
 
     # Create shims
-    command_globs = build_config["container"].get("commands", {}).get("include", {})
-    nopyrex_globs = build_config["container"].get("commands", {}).get("exclude", {})
+    user_commands = config["config"].get("commands")
+    if user_commands:
+        user_commands = user_commands.split()
+        command_globs = [c for c in user_commands if not c.startswith("!")]
+        nopyrex_globs = [c[1:] for c in user_commands if c.startswith("!")]
+    else:
+        command_globs = build_config["container"].get("commands", {}).get("include", {})
+        nopyrex_globs = build_config["container"].get("commands", {}).get("exclude", {})
 
     commands = set()
 
