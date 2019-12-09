@@ -166,7 +166,7 @@ class PyrexTest(object):
             return None
 
     def _write_host_command(
-        self, args, quiet_init=False, cwd=PYREX_ROOT, builddir=None
+        self, args, *, quiet_init=False, cwd=PYREX_ROOT, builddir=None, bitbakedir=""
     ):
         if builddir is None:
             builddir = self.build_dir
@@ -175,8 +175,13 @@ class PyrexTest(object):
         with open(cmd_file, "w") as f:
             f.write("PYREXCONFFILE=%s\n" % self.pyrex_conf)
             f.write(
-                ". %s/poky/pyrex-init-build-env%s %s && ("
-                % (PYREX_ROOT, " > /dev/null 2>&1" if quiet_init else "", builddir)
+                ". %s/poky/pyrex-init-build-env%s %s %s && ("
+                % (
+                    PYREX_ROOT,
+                    " > /dev/null 2>&1" if quiet_init else "",
+                    builddir,
+                    bitbakedir,
+                )
             )
             f.write(" && ".join(list(args)))
             f.write(")")
@@ -189,10 +194,20 @@ class PyrexTest(object):
         return cmd_file
 
     def assertPyrexHostCommand(
-        self, *args, quiet_init=False, cwd=PYREX_ROOT, builddir=None, **kwargs
+        self,
+        *args,
+        quiet_init=False,
+        cwd=PYREX_ROOT,
+        builddir=None,
+        bitbakedir="",
+        **kwargs
     ):
         cmd_file = self._write_host_command(
-            args, quiet_init, cwd=cwd, builddir=builddir
+            args,
+            quiet_init=quiet_init,
+            cwd=cwd,
+            builddir=builddir,
+            bitbakedir=bitbakedir,
         )
         return self.assertSubprocess(["/bin/bash", cmd_file], cwd=cwd, **kwargs)
 
@@ -204,11 +219,13 @@ class PyrexTest(object):
         return self.assertPyrexHostCommand("pyrex-run %s" % cmd, **kwargs)
 
     def assertPyrexContainerShellPTY(
-        self, *args, returncode=0, env=None, quiet_init=False
+        self, *args, returncode=0, env=None, quiet_init=False, bitbakedir=""
     ):
         container_cmd_file = self._write_container_command(args)
         host_cmd_file = self._write_host_command(
-            ["pyrex-shell %s" % container_cmd_file], quiet_init
+            ["pyrex-shell %s" % container_cmd_file],
+            quiet_init=quiet_init,
+            bitbakedir=bitbakedir,
         )
         stdout = []
 
@@ -741,6 +758,17 @@ class PyrexImageType_oe(PyrexImageType_base):
 
     def test_bitbake_parse(self):
         self.assertPyrexHostCommand("bitbake -p")
+
+    def test_bitbake_parse_altpath(self):
+        bitbakedir = os.path.join(self.build_dir, "bitbake")
+        shutil.copytree(os.path.join(PYREX_ROOT, "poky/bitbake"), bitbakedir)
+
+        d = self.assertPyrexContainerCommand(
+            "which bitbake", bitbakedir=bitbakedir, quiet_init=True, capture=True
+        )
+        self.assertEqual(d, os.path.join(bitbakedir, "bin", "bitbake"))
+
+        self.assertPyrexHostCommand("bitbake -p", bitbakedir=bitbakedir)
 
     def test_icecc(self):
         self.assertPyrexContainerCommand("icecc --version")
