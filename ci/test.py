@@ -130,7 +130,9 @@ class PyrexTest(object):
 
         return config
 
-    def assertSubprocess(self, *args, capture=False, returncode=0, **kwargs):
+    def assertSubprocess(
+        self, *args, pretty_command=None, capture=False, returncode=0, **kwargs
+    ):
         if capture:
             try:
                 output = subprocess.check_output(
@@ -145,7 +147,8 @@ class PyrexTest(object):
             self.assertEqual(
                 ret,
                 returncode,
-                msg="%s: %s" % (" ".join(*args), output.decode("utf-8")),
+                msg="%s: %s"
+                % (pretty_command or " ".join(*args), output.decode("utf-8")),
             )
             return output.decode("utf-8").rstrip()
         else:
@@ -171,21 +174,26 @@ class PyrexTest(object):
         if builddir is None:
             builddir = self.build_dir
 
+        command = [
+            "PYREXCONFFILE=%s\n" % self.pyrex_conf,
+            ". %s/poky/pyrex-init-build-env%s %s %s && "
+            % (
+                PYREX_ROOT,
+                " > /dev/null 2>&1" if quiet_init else "",
+                builddir,
+                bitbakedir,
+            ),
+            "(",
+            " && ".join(list(args)),
+            ")",
+        ]
+
+        command = "".join(command)
+
         cmd_file = os.path.join(self.thread_dir, "command")
         with open(cmd_file, "w") as f:
-            f.write("PYREXCONFFILE=%s\n" % self.pyrex_conf)
-            f.write(
-                ". %s/poky/pyrex-init-build-env%s %s %s && ("
-                % (
-                    PYREX_ROOT,
-                    " > /dev/null 2>&1" if quiet_init else "",
-                    builddir,
-                    bitbakedir,
-                )
-            )
-            f.write(" && ".join(list(args)))
-            f.write(")")
-        return cmd_file
+            f.write(command)
+        return cmd_file, command
 
     def _write_container_command(self, args):
         cmd_file = os.path.join(self.thread_dir, "container_command")
@@ -202,14 +210,16 @@ class PyrexTest(object):
         bitbakedir="",
         **kwargs
     ):
-        cmd_file = self._write_host_command(
+        cmd_file, command = self._write_host_command(
             args,
             quiet_init=quiet_init,
             cwd=cwd,
             builddir=builddir,
             bitbakedir=bitbakedir,
         )
-        return self.assertSubprocess(["/bin/bash", cmd_file], cwd=cwd, **kwargs)
+        return self.assertSubprocess(
+            ["/bin/bash", cmd_file], pretty_command=command, cwd=cwd, **kwargs
+        )
 
     def assertPyrexContainerShellCommand(self, *args, **kwargs):
         cmd_file = self._write_container_command(args)
@@ -222,7 +232,7 @@ class PyrexTest(object):
         self, *args, returncode=0, env=None, quiet_init=False, bitbakedir=""
     ):
         container_cmd_file = self._write_container_command(args)
-        host_cmd_file = self._write_host_command(
+        host_cmd_file, _ = self._write_host_command(
             ["pyrex-shell %s" % container_cmd_file],
             quiet_init=quiet_init,
             bitbakedir=bitbakedir,
