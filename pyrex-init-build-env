@@ -27,8 +27,10 @@ if [ -z "$ZSH_NAME" ] && [ "$0" = "$THIS_SCRIPT" ]; then
     exit 1
 fi
 
-if [ -z "$PYREX_OEROOT" ]; then
-	PYREX_OEROOT=$(readlink -f $(dirname $THIS_SCRIPT))
+export PYREX_CONFIG_BIND
+
+if [ -z "$PYREX_CONFIG_BIND" ]; then
+	PYREX_CONFIG_BIND="$(readlink -f $(dirname $THIS_SCRIPT))"
 fi
 
 if [ -z "$PYREX_ROOT" ]; then
@@ -36,7 +38,7 @@ if [ -z "$PYREX_ROOT" ]; then
 fi
 
 if [ -z "$PYREX_OEINIT" ]; then
-	PYREX_OEINIT="$PYREX_OEROOT/oe-init-build-env"
+	PYREX_OEINIT="$(pwd)/oe-init-build-env"
 fi
 unset THIS_SCRIPT
 
@@ -46,7 +48,7 @@ fi
 
 pyrex_cleanup() {
 	rm -f "$PYREX_TEMP_ENV_FILE"
-	unset PYREX_OEROOT PYREX_OEINIT PYREX_ROOT PYREX_TEMP_ENV_FILE pyrex_cleanup
+	unset PYREX_OEINIT PYREX_ROOT PYREX_TEMP_ENV_FILE pyrex_cleanup
 }
 
 export PYREXCONFFILE
@@ -55,11 +57,11 @@ if [ -n "$PYREXCONFFILE" ] && [ "${PYREXCONFFILE#/}" == "$PYREXCONFFILE" ]; then
     PYREXCONFFILE="$(pwd)/$PYREXCONFFILE"
 fi
 
-$PYREX_ROOT/pyrex.py capture 9 \
-		-a PYREX_OEROOT "$PYREX_OEROOT" \
-		-a PYREX_OEINIT "$PYREX_OEINIT $*" \
-		--bind $PYREX_OEROOT \
+$PYREX_ROOT/pyrex.py capture \
+		-a PYREX_OEINIT "$PYREX_OEINIT" \
+		-e PYREXCONFFILE \
 		-e TEMPLATECONF \
+		-- 9 "$@" \
 		9> $PYREX_TEMP_ENV_FILE
 if [ $? -ne 0 ]; then
 	pyrex_cleanup

@@ -29,10 +29,39 @@ unset() {
     done
 }
 
+check_bound() {
+    if [ ! -e "$1" ]; then
+        echo "ERROR: $1 not bound in container (File doesn't exist). "
+        echo "Please set either \$PYREX_CONFIG_BIND or 'run:bind' in" \
+             "$PYREXCONFFILE to ensure it is bound into the container."
+        exit 1
+    fi
+
+    local FILE_DEV="$(stat --format "%D" "$1" )"
+    local ROOT_DEV="$(stat --format "%D" "/")"
+
+    if [ "$(findmnt -f -n -o TARGET --target "$1")" == "/" ]; then
+        echo "ERROR: $1 not bound in container (File mount target is root)"
+        echo "Please set either \$PYREX_CONFIG_BIND or 'run:bind' in" \
+             "$PYREXCONFFILE to ensure it is bound into the container."
+        exit 1
+    fi
+}
+
 # Consume all arguments before sourcing the environment script
+declare -a PYREX_ARGS=("$@")
 shift $#
 
-. $PYREX_OEINIT
+# Ensure the init script is bound in the container
+check_bound $PYREX_OEINIT
+
+# If the bitbake directory argument is provided, ensure it is bound in the
+# container
+if [ -n "${PYREX_ARGS[1]}" ]; then
+    check_bound "${PYREX_ARGS[1]}"
+fi
+
+. $PYREX_OEINIT "${PYREX_ARGS[@]}"
 if [ $? -ne 0 ]; then
     exit 1
 fi
@@ -46,6 +75,11 @@ if [ -z "$OEROOT" ]; then
     echo "\$OEROOT not captured!"
     exit 1
 fi
+
+# Ensure the build directory is bound into the container.
+check_bound "$(pwd)"
+
+check_bound $PYREX_CAPTURE_DEST
 
 cat > $PYREX_CAPTURE_DEST <<HEREDOC
 {
@@ -70,15 +104,11 @@ cat > $PYREX_CAPTURE_DEST <<HEREDOC
             "BBPATH": "$BBPATH",
             "PATH": "$PATH",
             "BUILDDIR": "$BUILDDIR"
-        },
-        "bind": [
-            "$BITBAKEDIR",
-            "$OEROOT"
-        ]
+        }
     },
     "bypass": {
         "env": {
-            "PYREX_OEINIT": "$PYREX_OEINIT",
+            "PYREX_OEINIT": "$PYREX_OEINIT ${PYREX_ARGS[@]}",
             "PYREX_OEINIT_DIR": "$INIT_PWD"
         }
     }

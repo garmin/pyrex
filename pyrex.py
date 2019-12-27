@@ -464,7 +464,11 @@ def prep_container(
         engine_args.extend(["-t", "-e", "TERM=%s" % os.environ["TERM"]])
 
     # Configure binds
-    binds = config["run"]["bind"].split() + extra_bind
+    binds = (
+        config["run"]["bind"].split()
+        + os.environ.get("PYREX_CONFIG_BIND", "").split()
+        + extra_bind
+    )
     for b in set(binds):
         if not os.path.exists(b):
             print("Error: bind source path {b} does not exist".format(b=b))
@@ -666,7 +670,7 @@ def main():
                 ["/usr/libexec/pyrex/capture"] + args.init,
                 extra_env=env_args,
                 preserve_env=args.env,
-                extra_bind=[f.name] + args.bind,
+                extra_bind=[f.name],
             )
 
             if not engine_args:
@@ -731,7 +735,6 @@ def main():
                 config,
                 build_config,
                 ["/usr/libexec/pyrex/run"] + args.command,
-                extra_bind=build_config.get("run", {}).get("bind", []),
                 extra_env=build_config.get("run", {}).get("env", {}),
                 allow_test_config=True,
             )
@@ -823,9 +826,6 @@ def main():
         action="append",
         default=[],
         help="Pass additional environment variables if present in parent shell",
-    )
-    capture_parser.add_argument(
-        "--bind", action="append", default=[], help="Additional binds when capturing"
     )
     capture_parser.add_argument(
         "init", nargs="*", help="Initialization arguments", default=[]

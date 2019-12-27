@@ -97,12 +97,15 @@ non-standard layout, you can write your own environment init script that tells
 look like:
 
 ```shell
-# The top level Yocto/OE directory (usually, poky). This variable *must* be
-# specified if writing a custom script.
-PYREX_OEROOT="$(pwd)"
+# Paths that should be bound into the container. If unspecified, defaults to
+# the parent directory of the sourced pyrex-init-build-env script, before
+# it is resolved as a symbolic link. You may need to override the default if
+# your bitbake directory, build directory, or any of your layer directories are
+# not children of the default (and thus, wouldn't be bound into the container).
+PYREX_CONFIG_BIND="$(pwd)"
 
 # The path to the build init script. If unspecified, defaults to
-# "${PYREX_OEROOT}/oe-init-build-env"
+# "$(pwd)/oe-init-build-env"
 PYREX_OEINIT="$(pwd)/oe-init-build-env"
 
 # The location of Pyrex itself. If not specified, pyrex-init-build-env will
@@ -118,6 +121,11 @@ PYREX_ROOT="$(pwd)/meta-pyrex"
 # arguments
 . $(pwd)/meta-pyrex/pyrex-init-build-env "$@"
 ```
+
+*NOTE: While it might be tempting to combine all of these into a one-liner like
+`PYREXCONFFILE="..." . $(pwd)/meta-pyrex/pyrex-init-build-env "$@"`, they must
+be specified on separate lines to remain compatible will all shells (i.e. bash
+in particular won't keep temporary variables specified in this way)*
 
 ### Configuration
 Pyrex is configured using a ini-style configuration file. The location of this
@@ -147,24 +155,34 @@ For more information about specific configuration values, see the default
 
 #### Binding directories into the container
 In order for bitbake running in the container to be able to build, it must have
-access to the data and config files from the host system. To make this easy, a
-variable called `run:bind` is specified in the config file. Any directory that
-appears in this variable will be bound into the container image at the same
-path (e.g. `/foo/bar` in the host will be bound to `/foo/bar` in the container
-engine. By default, only the Openembedded root directory (a.k.a.
-`$PYREX_OEROOT`) is bound. This is the minimum that can be bound, and is
-generally sufficient for most use cases. If additional directories need to be
-accessed by the container image, they can be added to this list by the user.
-Common reasons for adding new paths include:
+access to the data and config files from the host system. There are two
+variables that can be set to specify what is bound into the container, the
+`PYREX_CONFIG_BIND` environment variable and the `run:bind` option specified in
+the config file. Both variables are a whitespace separated list of host paths
+that should be bound into the container at the same path (e.g. `/foo/bar` in
+the host will be bound to `/foo/bar` in the container engine).
+
+The `PYREX_CONFIG_BIND` environment variable is intended to specify the minimal
+set of bound directories required to initialize a default environment, and
+should only be set the by the environment initialization script, not by end
+users. The default value for this variable if unspecified is the parent of the
+sourced Pyrex initialization script. If the sourced script happens to be a
+symbolic link, the parent directory is determined before the symbolic link is
+resolved.
+
+The `run:bind` config file option is intended to allow users to specify
+additional paths that they want to bind. For convenience, the default value of
+this variable allows users to specify binds in the `PYREX_BIND` environment
+variable if they wish.
+
+Common reasons users might need to bind new paths include:
 * Alternate (out of tree) locations for sstate and download caches
 * Alternate (out of tree) build directories
-* Additional layers that are not under the OEROOT directory
+* Additional layers that are not under the default bind directories
 
-It is recommended to use this variable and bind directories in a 1-to-1 fashion
-rather than try to remap them to different paths inside the container image.
-Bitbake tends to encode file paths into some of its internal state (*Note*
-**Not** sstate, which should always be position independent), and remapping the
-paths might make it difficult to do builds outside of Pyrex if necessary.
+When the container environment is setup some basic sanity checks will be
+performed to makes sure that important directories like the bitbake and build
+directories are bound into the container.
 
 You should **never** map directories like `/usr/bin`, `/etc/`, `/` as these
 will probably just break the container. It is probably also unwise to map your

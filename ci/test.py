@@ -76,6 +76,10 @@ class PyrexTest(object):
         os.symlink("/usr/bin/python2", os.path.join(self.bin_dir, "python"))
         os.environ["PATH"] = self.bin_dir + ":" + os.environ["PATH"]
         os.environ["PYREX_BUILD_QUIET"] = "0"
+        os.environ["PYREX_OEINIT"] = os.path.join(
+            PYREX_ROOT, "poky", "oe-init-build-env"
+        )
+        os.environ["PYREX_CONFIG_BIND"] = PYREX_ROOT
         for var in ("SSH_AUTH_SOCK", "BB_ENV_EXTRAWHITE"):
             if var in os.environ:
                 del os.environ[var]
@@ -770,15 +774,49 @@ class PyrexImageType_oe(PyrexImageType_base):
         self.assertPyrexHostCommand("bitbake -p")
 
     def test_bitbake_parse_altpath(self):
-        bitbakedir = os.path.join(self.build_dir, "bitbake")
-        shutil.copytree(os.path.join(PYREX_ROOT, "poky/bitbake"), bitbakedir)
+        # The new bitbake directory is out of the normally bound tree
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bitbakedir = os.path.join(tmpdir, "bitbake")
+            shutil.copytree(os.path.join(PYREX_ROOT, "poky/bitbake"), bitbakedir)
 
-        d = self.assertPyrexContainerCommand(
-            "which bitbake", bitbakedir=bitbakedir, quiet_init=True, capture=True
-        )
-        self.assertEqual(d, os.path.join(bitbakedir, "bin", "bitbake"))
+            # If the bitbake directory is not bound, capture should fail with
+            # an error
+            d = self.assertPyrexHostCommand(
+                "bitbake -p", bitbakedir=bitbakedir, returncode=1, capture=True
+            )
+            self.assertIn("ERROR: %s not bound in container" % bitbakedir, d)
 
-        self.assertPyrexHostCommand("bitbake -p", bitbakedir=bitbakedir)
+            # Binding the build directory in the conf file will allow bitbake
+            # to be found
+            conf = self.get_config()
+            conf["run"]["bind"] = bitbakedir
+            conf.write_conf()
+
+            d = self.assertPyrexContainerCommand(
+                "which bitbake", bitbakedir=bitbakedir, quiet_init=True, capture=True
+            )
+            self.assertEqual(d, os.path.join(bitbakedir, "bin", "bitbake"))
+
+            self.assertPyrexHostCommand("bitbake -p", bitbakedir=bitbakedir)
+
+    def test_unbound_builddir(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            builddir = os.path.join(tmpdir)
+
+            # If the build directory is not bound, capture should fail with an
+            # error
+            d = self.assertPyrexHostCommand(
+                "true", builddir=builddir, returncode=1, capture=True
+            )
+            self.assertIn("ERROR: %s not bound in container" % builddir, d)
+
+            # Binding the build directory in the conf file will allow building
+            # to continue
+            conf = self.get_config()
+            conf["run"]["bind"] = builddir
+            conf.write_conf()
+
+            self.assertPyrexHostCommand("true", builddir=builddir)
 
     def test_icecc(self):
         self.assertPyrexContainerCommand("icecc --version")
