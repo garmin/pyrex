@@ -127,7 +127,9 @@ ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to run init scripts.
-RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install \
         locales \
         lsb-release \
         ncurses-term \
@@ -153,7 +155,9 @@ ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to run init scripts.
-RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install \
         locales \
         lsb-release \
         ncurses-term \
@@ -179,7 +183,9 @@ ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to run init scripts.
-RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install \
         locales \
         lsb-release \
         ncurses-term \
@@ -204,16 +210,17 @@ FROM centos:7 as centos-7-base
 ENV PYREX_BASE none
 LABEL maintainer="James Harris <james.harris@garmin.com>"
 RUN set -x && \
-      #Install default components
-      yum install -y yum-utils \
-          which \
-          sudo \
-          redhat-lsb-core \
-          &&\
-      yum install -y https://centos7.iuscommunity.org/ius-release.rpm &&\
-      yum install -y python36u &&\
-      yum clean all &&\
-      localedef -c -f UTF-8 -i en_US en_US.UTF-8
+    ulimit -n 1024 && \
+    # Install default components
+    yum install -y yum-utils \
+        which \
+        sudo \
+        redhat-lsb-core \
+        &&\
+    yum install -y https://centos7.iuscommunity.org/ius-release.rpm &&\
+    yum install -y python36u &&\
+    yum clean all &&\
+    localedef -c -f UTF-8 -i en_US en_US.UTF-8
 
 # Reset the default useradd options for when the primary user is added
 RUN echo "SHELL=/bin/bash" > /etc/default/useradd
@@ -230,6 +237,7 @@ ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
 # Add a non-ancient version of git
     apt-get -y update && apt-get -y install software-properties-common && \
     add-apt-repository -y ppa:git-core/ppa && \
@@ -308,6 +316,7 @@ ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
 # Add a non-ancient version of git
     apt-get -y update && apt-get -y install software-properties-common && \
     add-apt-repository -y ppa:git-core/ppa && \
@@ -380,7 +389,9 @@ FROM ubuntu-18.04-base as ubuntu-18.04-oe
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
-RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install \
 # Poky 2.7 build dependencies
     gawk \
     wget \
