@@ -103,6 +103,46 @@ RUN mkdir -p /usr/src/util-linux && \
     make install-strip DESTDIR=/dist/setpriv
 
 #
+# Prebuilt util-linux and libcap-ng for Ubuntu 14.04
+#
+FROM ubuntu:trusty AS prebuilt-util-linux-14.04
+ENV PYREX_BASE none
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install \
+        build-essential \
+        wget
+
+RUN set -x && mkdir -p /usr/src/libcap-ng && \
+    cd /usr/src/libcap-ng && \
+    wget http://people.redhat.com/sgrubb/libcap-ng/libcap-ng-0.7.10.tar.gz && \
+    tar -xvf libcap-ng-0.7.10.tar.gz && \
+    cd libcap-ng-0.7.10 && \
+    mkdir build && \
+    cd build && \
+    ../configure --prefix=/usr/local && \
+    make -j$(nproc) LDFLAGS="-lpthread" && \
+    make install-strip
+
+RUN set -x && mkdir -p /usr/src/util-linux && \
+    cd /usr/src/util-linux && \
+    wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.33/util-linux-2.33.1.tar.xz && \
+    tar -xvf util-linux-2.33.1.tar.xz && \
+    cd util-linux-2.33.1 && \
+    wget https://gist.githubusercontent.com/JoshuaWatt/50642701a7d9c1a3288357bbf94f99ce/raw/0f1cbc4e34286ebd6cd3413983d4687f34b6e2c9/0001-Remove-CAP_LAST_CAP-validation.patch && \
+    patch -p1 < 0001-Remove-CAP_LAST_CAP-validation.patch && \
+    mkdir build && \
+    cd build && \
+    ../configure \
+        --disable-doc \
+        --disable-nls \
+        --enable-setpriv \
+        --without-bashcompletion \
+        --prefix=/usr/local && \
+    make -j$(nproc) && \
+    make install-strip
+
+#
 # Prebuilt static tini
 #
 FROM prebuilt-base as prebuilt-tini
@@ -144,8 +184,11 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     (locale -a | tee /dev/stderr | grep -qx en_US.utf8)
 
 # Copy prebuilt items
-COPY --from=prebuilt-setpriv /dist/setpriv /
+COPY --from=prebuilt-util-linux-14.04 /usr/local/ /usr/local/
 COPY --from=prebuilt-tini /dist/tini /
+
+# Rebuild library cache after copying prebuilt utl-linux
+RUN ldconfig -v
 
 #
 # Ubuntu 16.04 Base
