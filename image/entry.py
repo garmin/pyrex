@@ -102,13 +102,18 @@ def main():
         except OSError:
             pass
 
-        # Be a little paranoid about this. Only coerce the home directory if it
-        # happens to be on the same device as the root directory (which should
-        # only be true if it hasn't be bind mounted in the container)
-        root_stat = os.stat("/")
-        home_stat = os.stat(home)
+        # Be a little paranoid about this. Only coerce the home directory if
+        # it's target mount is is the root directory (which should only be true
+        # if it hasn't be bind mounted in the container)
+        target = (
+            subprocess.check_output(
+                ["findmnt", "-f", "-n", "-o", "TARGET", "--target", home]
+            )
+            .decode("utf-8")
+            .strip()
+        )
 
-        if home_stat.st_dev == root_stat.st_dev:
+        if target == "/":
             os.chown(home, uid, primarygid)
 
             try:
