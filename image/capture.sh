@@ -85,7 +85,11 @@ cat > $PYREX_CAPTURE_DEST <<HEREDOC
 {
     "tempdir": "$PWD/pyrex",
     "user" : {
-        "cwd": "$PWD"
+        "cwd": "$PWD",
+        "export": {
+            "BB_ENV_EXTRAWHITE": "$BB_ENV_EXTRAWHITE",
+            "BUILDDIR": "$BUILDDIR"
+        }
     },
     "container": {
         "shell": "/bin/bash",

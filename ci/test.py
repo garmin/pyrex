@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 #
-# Copyright 2019 Garmin Ltd. or its subsidiaries
+# Copyright 2019-2020 Garmin Ltd. or its subsidiaries
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -662,10 +662,12 @@ class PyrexImageType_base(PyrexTest):
         env["BB_ENV_EXTRAWHITE"] = "TEST_BB_EXTRA"
         env["TEST_BB_EXTRA"] = "Hello"
 
-        s = self.assertPyrexContainerShellCommand(
-            "echo $BB_ENV_EXTRAWHITE", env=env, quiet_init=True, capture=True
+        s = set(
+            self.assertPyrexContainerShellCommand(
+                "echo $BB_ENV_EXTRAWHITE", env=env, quiet_init=True, capture=True
+            ).split()
         )
-        self.assertEqual(s, env["BB_ENV_EXTRAWHITE"])
+        self.assertIn(env["BB_ENV_EXTRAWHITE"], s)
 
         s = self.assertPyrexContainerShellCommand(
             "echo $TEST_BB_EXTRA", env=env, quiet_init=True, capture=True
@@ -917,6 +919,33 @@ class PyrexImageType_oe(PyrexImageType_base):
         shutil.rmtree(builddir)
 
         self.assertEqual(oe_topdir, pyrex_topdir)
+
+    def test_env_capture(self):
+        extra_white = set(
+            self.assertPyrexHostCommand(
+                "echo $BB_ENV_EXTRAWHITE", quiet_init=True, capture=True
+            ).split()
+        )
+
+        # The exact values aren't relevant, only that they are correctly
+        # imported from the capture
+        self.assertIn("MACHINE", extra_white)
+        self.assertIn("DISTRO", extra_white)
+
+        builddir = self.assertPyrexHostCommand(
+            "echo $BUILDDIR", quiet_init=True, capture=True
+        )
+        self.assertEqual(builddir, self.build_dir)
+
+    def test_bb_env_extrawhite_parse(self):
+        env = os.environ.copy()
+        env["BB_ENV_EXTRAWHITE"] = "TEST_BB_EXTRA"
+        env["TEST_BB_EXTRA"] = "foo"
+
+        s = self.assertPyrexHostCommand(
+            "bitbake -e | grep ^TEST_BB_EXTRA=", env=env, quiet_init=True, capture=True
+        )
+        self.assertEqual(s, 'TEST_BB_EXTRA="foo"')
 
 
 PROVIDERS = ("docker", "podman")

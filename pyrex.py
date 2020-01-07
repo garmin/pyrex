@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 #
-# Copyright 2019 Garmin Ltd. or its subsidiaries
+# Copyright 2019-2020 Garmin Ltd. or its subsidiaries
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -477,21 +477,6 @@ def prep_container(
 
     container_envvars.extend(config["run"]["envvars"].split())
 
-    # Special case: Make the user SSH authentication socket available in container
-    if "SSH_AUTH_SOCK" in os.environ:
-        socket = os.path.realpath(os.environ["SSH_AUTH_SOCK"])
-        if not os.path.exists(socket):
-            print("Warning: SSH_AUTH_SOCK {} does not exist".format(socket))
-        else:
-            engine_args.extend(
-                [
-                    "--mount",
-                    "type=bind,src=%s,dst=/tmp/%s-ssh-agent-sock" % (socket, username),
-                    "-e",
-                    "SSH_AUTH_SOCK=/tmp/%s-ssh-agent-sock" % username,
-                ]
-            )
-
     # Pass along BB_ENV_EXTRAWHITE and anything it has whitelisted
     if "BB_ENV_EXTRAWHITE" in os.environ:
         engine_args.extend(["-e", "BB_ENV_EXTRAWHITE"])
@@ -502,9 +487,29 @@ def prep_container(
     # empty value, where as Docker doesn't pass it at all. For
     # consistency, manually check if the variables exist before passing
     # them.
-    for e in container_envvars + preserve_env:
-        if e in os.environ:
-            engine_args.extend(["-e", e])
+    env_sock_proxy = config["run"]["envsockproxy"].split()
+    for name in set(container_envvars + preserve_env):
+        if not name in os.environ:
+            continue
+
+        val = os.environ[name]
+
+        if name in env_sock_proxy:
+            socket = os.path.realpath(val)
+            if not os.path.exists(socket):
+                print("Warning: {} {} does not exist".format(name, socket))
+            else:
+                dest = "/tmp/pyrex/sock/%s-%s" % (username, name)
+                engine_args.extend(
+                    [
+                        "--mount",
+                        "type=bind,src=%s,dst=%s" % (socket, dest),
+                        "-e",
+                        "%s=%s" % (name, dest),
+                    ]
+                )
+        else:
+            engine_args.extend(["-e", name])
 
     for k, v in extra_env.items():
         engine_args.extend(["-e", "%s=%s" % (k, v)])
@@ -704,6 +709,9 @@ def main():
             os.write(args.fd, "\n".encode("utf-8"))
 
         write_cmd("PATH=%s:$PATH" % build_config["shimdir"])
+        user_export = capture["user"].get("export", {})
+        for name in sorted(user_export.keys()):
+            write_cmd('export %s="%s"' % (name, user_export[name]))
         if capture["user"].get("cwd"):
             write_cmd('cd "%s"' % capture["user"]["cwd"])
         return 0
