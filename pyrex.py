@@ -32,7 +32,7 @@ import json
 import tempfile
 import contextlib
 
-VERSION = "1.0.0-beta4"
+VERSION = "1.0.0-beta5"
 
 VERSION_REGEX = re.compile(r"^([0-9]+\.){2}[0-9]+(-.*)?$")
 VERSION_TAG_REGEX = re.compile(r"^v([0-9]+\.){2}[0-9]+(-.*)?$")
