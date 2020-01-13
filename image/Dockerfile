@@ -506,6 +506,9 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         wine32 \
 && rm -rf /var/lib/apt/lists/*
 
+# Python modules used for tests
+RUN python3 -m pip install testtools python-subunit
+
 #
 # Base image target.
 #
