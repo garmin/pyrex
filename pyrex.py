@@ -266,7 +266,7 @@ def build_image(config, build_config):
 
                 build_config["build"]["buildid"] = get_image_id(config, tag)
             except subprocess.CalledProcessError:
-                return 1
+                return None
 
         build_config["build"]["runid"] = tag
 
