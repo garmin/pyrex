@@ -857,9 +857,7 @@ class PyrexImageType_oe(PyrexImageType_base):
             self.assertPyrexHostCommand("true", builddir="", init_env=env)
 
     def test_unbound_builddir(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            builddir = os.path.join(tmpdir)
-
+        with tempfile.TemporaryDirectory() as builddir:
             # If the build directory is not bound, capture should fail with an
             # error
             d = self.assertPyrexHostCommand(
