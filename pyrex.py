@@ -516,7 +516,7 @@ def prep_container(
     # them.
     env_sock_proxy = config["run"]["envsockproxy"].split()
     for name in set(container_envvars + preserve_env):
-        if not name in os.environ:
+        if name not in os.environ:
             continue
 
         val = os.environ[name]

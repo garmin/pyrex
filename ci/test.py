@@ -466,7 +466,7 @@ class PyrexImageType_base(PyrexTest):
         conf["run"]["bind"] += " %s,optional" % missing_bind
         conf.write_conf()
 
-        s = self.assertPyrexContainerShellCommand("test ! -e %s" % missing_bind)
+        self.assertPyrexContainerShellCommand("test ! -e %s" % missing_bind)
 
     def test_bad_bind_option(self):
         temp_dir = tempfile.mkdtemp("-pyrex")
