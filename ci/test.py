@@ -173,24 +173,35 @@ class PyrexTest(object):
             return None
 
     def _write_host_command(
-        self, args, *, quiet_init=False, cwd=PYREX_ROOT, builddir=None, bitbakedir=""
+        self,
+        args,
+        *,
+        quiet_init=False,
+        cwd=PYREX_ROOT,
+        builddir=None,
+        bitbakedir="",
+        init_env={}
     ):
         if builddir is None:
             builddir = self.build_dir
 
-        command = [
-            "PYREXCONFFILE=%s\n" % self.pyrex_conf,
-            ". %s/poky/pyrex-init-build-env%s %s %s && "
-            % (
-                PYREX_ROOT,
-                " > /dev/null 2>&1" if quiet_init else "",
-                builddir,
-                bitbakedir,
-            ),
-            "(",
-            " && ".join(list(args)),
-            ")",
-        ]
+        command = ['export %s="%s"\n' % (k, v) for k, v in init_env.items()]
+
+        command.extend(
+            [
+                "PYREXCONFFILE=%s\n" % self.pyrex_conf,
+                ". %s/poky/pyrex-init-build-env%s %s %s && "
+                % (
+                    PYREX_ROOT,
+                    " > /dev/null 2>&1" if quiet_init else "",
+                    builddir,
+                    bitbakedir,
+                ),
+                "(",
+                " && ".join(list(args)),
+                ")",
+            ]
+        )
 
         command = "".join(command)
 
@@ -212,6 +223,7 @@ class PyrexTest(object):
         cwd=PYREX_ROOT,
         builddir=None,
         bitbakedir="",
+        init_env={},
         **kwargs
     ):
         cmd_file, command = self._write_host_command(
@@ -220,6 +232,7 @@ class PyrexTest(object):
             cwd=cwd,
             builddir=builddir,
             bitbakedir=bitbakedir,
+            init_env=init_env,
         )
         return self.assertSubprocess(
             ["/bin/bash", cmd_file], pretty_command=command, cwd=cwd, **kwargs
@@ -775,8 +788,9 @@ class PyrexImageType_oe(PyrexImageType_base):
     def test_bitbake_parse(self):
         self.assertPyrexHostCommand("bitbake -p")
 
-    def test_bitbake_parse_altpath(self):
-        # The new bitbake directory is out of the normally bound tree
+    def test_bitbake_parse_altpath_arg(self):
+        # The new bitbake directory is out of the normally bound tree (passed
+        # as an argument)
         with tempfile.TemporaryDirectory() as tmpdir:
             bitbakedir = os.path.join(tmpdir, "bitbake")
             shutil.copytree(os.path.join(PYREX_ROOT, "poky/bitbake"), bitbakedir)
@@ -800,6 +814,47 @@ class PyrexImageType_oe(PyrexImageType_base):
             self.assertEqual(d, os.path.join(bitbakedir, "bin", "bitbake"))
 
             self.assertPyrexHostCommand("bitbake -p", bitbakedir=bitbakedir)
+
+    def test_bitbake_parse_altpath_env(self):
+        # The new bitbake directory is out of the normally bound tree (passed
+        # as an argument)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bitbakedir = os.path.join(tmpdir, "bitbake")
+            shutil.copytree(os.path.join(PYREX_ROOT, "poky/bitbake"), bitbakedir)
+
+            env = {"BITBAKEDIR": bitbakedir}
+
+            # If the bitbake directory is not bound, capture should fail with
+            # an error
+            d = self.assertPyrexHostCommand(
+                "bitbake -p", returncode=1, capture=True, init_env=env
+            )
+            self.assertIn("ERROR: %s not bound in container" % bitbakedir, d)
+
+            # Binding the build directory in the conf file will allow bitbake
+            # to be found
+            conf = self.get_config()
+            conf["run"]["bind"] = bitbakedir
+            conf.write_conf()
+
+            d = self.assertPyrexContainerCommand(
+                "which bitbake", quiet_init=True, capture=True, init_env=env
+            )
+            self.assertEqual(d, os.path.join(bitbakedir, "bin", "bitbake"))
+
+            self.assertPyrexHostCommand("bitbake -p", init_env=env)
+
+    def test_builddir_alt_env(self):
+        with tempfile.TemporaryDirectory() as builddir:
+            # Binding the build directory in the conf file will allow building
+            # to continue
+            conf = self.get_config()
+            conf["run"]["bind"] = builddir
+            conf.write_conf()
+
+            env = {"BDIR": builddir}
+
+            self.assertPyrexHostCommand("true", builddir="", init_env=env)
 
     def test_unbound_builddir(self):
         with tempfile.TemporaryDirectory() as tmpdir:

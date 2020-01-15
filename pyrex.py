@@ -50,7 +50,7 @@ class Config(configparser.ConfigParser):
             interpolation=configparser.ExtendedInterpolation(),
             comment_prefixes=["#"],
             delimiters=["="],
-            **kwargs
+            **kwargs,
         )
 
         # All keys are case-sensitive
@@ -334,7 +334,8 @@ def prep_container(
     extra_env={},
     preserve_env=[],
     extra_bind=[],
-    allow_test_config=False
+    allow_test_config=False,
+    extra_envvars=[],
 ):
     runid = build_config["build"]["runid"]
 
@@ -476,6 +477,7 @@ def prep_container(
         engine_args.extend(["--mount", "type=bind,src={b},dst={b}".format(b=b)])
 
     container_envvars.extend(config["run"]["envvars"].split())
+    container_envvars.extend(extra_envvars)
 
     # Pass along BB_ENV_EXTRAWHITE and anything it has whitelisted
     if "BB_ENV_EXTRAWHITE" in os.environ:
@@ -676,6 +678,7 @@ def main():
                 extra_env=env_args,
                 preserve_env=args.env,
                 extra_bind=[f.name],
+                extra_envvars=config["capture"]["envvars"].split(),
             )
 
             if not engine_args:
@@ -812,7 +815,7 @@ def main():
         title="subcommands",
         description="Setup subcommands",
         dest="subcommand",
-        **subparser_args
+        **subparser_args,
     )
 
     capture_parser = subparsers.add_parser(
@@ -855,7 +858,7 @@ def main():
         title="subcommands",
         description="Config subcommands",
         dest="config_subcommand",
-        **subparser_args
+        **subparser_args,
     )
 
     config_get_parser = config_subparsers.add_parser(

@@ -55,10 +55,26 @@ shift $#
 # Ensure the init script is bound in the container
 check_bound $PYREX_OEINIT
 
-# If the bitbake directory argument is provided, ensure it is bound in the
-# container
+# If the bitbake directory argument or environment variable is provided, ensure
+# it is bound in the container
 if [ -n "${PYREX_ARGS[1]}" ]; then
     check_bound "${PYREX_ARGS[1]}"
+
+    if [ -n "${PYREX_ARGS[2]}" ]; then
+        check_bound "${PYREX_ARGS[2]}"
+    fi
+fi
+
+if [ -n "$BITBAKEDIR" ]; then
+    check_bound "$BITBAKEDIR"
+fi
+
+if [ -n "$BDIR" ]; then
+    check_bound "$BDIR"
+fi
+
+if [ -n "$OEROOT" ]; then
+    check_bound "$OEROOT"
 fi
 
 . $PYREX_OEINIT "${PYREX_ARGS[@]}"
