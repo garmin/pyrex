@@ -38,7 +38,11 @@ if [ -z "$PYREX_ROOT" ]; then
 fi
 
 if [ -z "$PYREX_OEINIT" ]; then
-	PYREX_OEINIT="$(pwd)/oe-init-build-env"
+	if [ -z "$OEROOT" ]; then
+		PYREX_OEINIT="$(pwd)/oe-init-build-env"
+	else
+		PYREX_OEINIT="$OEROOT/oe-init-build-env"
+	fi
 fi
 unset THIS_SCRIPT
 

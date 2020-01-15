@@ -105,7 +105,7 @@ look like:
 PYREX_CONFIG_BIND="$(pwd)"
 
 # The path to the build init script. If unspecified, defaults to
-# "$(pwd)/oe-init-build-env"
+# "$OEROOT/oe-init-build-env" or "$(pwd)/oe-init-build-env"
 PYREX_OEINIT="$(pwd)/oe-init-build-env"
 
 # The location of Pyrex itself. If not specified, pyrex-init-build-env will
