@@ -4,6 +4,60 @@ Containerize your bitbake
 [![Build Status](https://travis-ci.com/garmin/pyrex.svg?branch=master)](https://travis-ci.com/garmin/pyrex)
 [![Coverage Status](https://coveralls.io/repos/github/garmin/pyrex/badge.svg?branch=master)](https://coveralls.io/github/garmin/pyrex?branch=master)
 
+## Quickstart Guide (default layout)
+Use this quickstart guide if your project uses the default (poky-style) layout
+where bitbake and layers are subdirectories of oe-core:
+
+```shell
+# Clone down Pyrex
+git clone https://github.com/garmin/pyrex.git meta-pyrex
+
+# Create the pyrex environment initialization script symbolic link
+ln -s meta-pyrex/pyrex-init-build-env
+
+# Create a default pyrex.ini config file
+meta-pyrex/mkconfig > ./pyrex.ini
+
+# Set PYREXCONFFILE to the location of the newly created config file
+PYREXCONFFILE=./pyrex.ini
+
+# Initialize the build environment
+. pyrex-init-build-env
+
+# Everything is setup. OpenEmbedded build commands (e.g. `bitbake`) will now
+# run in Pyrex
+```
+
+## Quickstart Guide (alternate layout)
+Use this quickstart guide if your project uses a different layout where bitbake
+and oe-core are disjointed. In the example, it is assumed that oe-core and
+bitbake are both subdirectories of the current working directory, so you will
+need to change it to match your actual layout:
+
+```shell
+# Clone down Pyrex
+git clone https://github.com/garmin/pyrex.git pyrex
+
+# Create the pyrex environment initialization script symbolic link
+ln -s pyrex/pyrex-init-build-env
+
+# Create a default pyrex.ini config file
+pyrex/mkconfig > ./pyrex.ini
+
+# Set PYREXCONFFILE to the location of the newly created config file
+PYREXCONFFILE=./pyrex.ini
+
+# Tell Pyrex where bitbake and oe-core live
+BITBAKEDIR=$(pwd)/bitbake
+OEROOT=$(pwd)/oe-core
+
+# Initialize the build environment
+. pyrex-init-build-env
+
+# Everything is setup. OpenEmbedded build commands (e.g. `bitbake`) will now
+# run in Pyrex
+```
+
 ## What is Pyrex?
 At its core, Pyrex is an attempt to provided a consistent environment in which
 developers can run Yocto and bitbake commands. Pyrex is targeted at development
