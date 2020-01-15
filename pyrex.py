@@ -31,6 +31,7 @@ import hashlib
 import json
 import tempfile
 import contextlib
+import types
 
 VERSION = "1.0.0-beta5"
 
@@ -326,6 +327,22 @@ def get_subid_length(filename, name):
     return 0
 
 
+def parse_bind_options(bind):
+    options = types.SimpleNamespace(optional=False)
+    bad_options = []
+
+    if "," in bind:
+        s = bind.split(",")
+        bind = s[0]
+        for opt in s[1:]:
+            if opt == "optional":
+                options.optional = True
+            else:
+                bad_options.append(opt)
+
+    return bind, options, bad_options
+
+
 def prep_container(
     config,
     build_config,
@@ -471,9 +488,17 @@ def prep_container(
         + extra_bind
     )
     for b in set(binds):
+        b, options, bad_options = parse_bind_options(b)
+        if bad_options:
+            print("Error: bad option(s) '%s' for bind %s" % (" ".join(bad_options), b))
+            return []
+
         if not os.path.exists(b):
+            if options.optional:
+                continue
             print("Error: bind source path {b} does not exist".format(b=b))
-            continue
+            return []
+
         engine_args.extend(["--mount", "type=bind,src={b},dst={b}".format(b=b)])
 
     container_envvars.extend(config["run"]["envvars"].split())

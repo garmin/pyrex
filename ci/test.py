@@ -453,9 +453,34 @@ class PyrexImageType_base(PyrexTest):
         conf.write_conf()
 
         s = self.assertPyrexContainerShellCommand(
-            "test ! -e %s" % missing_bind, capture=True
+            "test -e %s" % missing_bind, capture=True, returncode=1
         )
         self.assertRegex(s, r"Error: bind source path \S+ does not exist")
+
+    def test_optional_bind(self):
+        temp_dir = tempfile.mkdtemp("-pyrex")
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        missing_bind = os.path.join(temp_dir, "does-not-exist")
+        conf = self.get_config()
+        conf["run"]["bind"] += " %s,optional" % missing_bind
+        conf.write_conf()
+
+        s = self.assertPyrexContainerShellCommand("test ! -e %s" % missing_bind)
+
+    def test_bad_bind_option(self):
+        temp_dir = tempfile.mkdtemp("-pyrex")
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        missing_bind = os.path.join(temp_dir, "does-not-exist")
+        conf = self.get_config()
+        conf["run"]["bind"] += " %s,bad-option" % missing_bind
+        conf.write_conf()
+
+        s = self.assertPyrexContainerShellCommand(
+            "test ! -e %s" % missing_bind, capture=True, returncode=1
+        )
+        self.assertIn("Error: bad option(s) 'bad-option' for bind", s)
 
     def test_bad_confversion(self):
         # Verify that a bad config is an error
