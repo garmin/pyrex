@@ -470,8 +470,18 @@ def prep_container(
         + extra_bind
     )
     for b in set(binds):
+        # Separate out into the directory itself and trailing options.
+        options = b.split(',')[1:]
+        b = b.split(',')[0]
+        optional = False
+        for o in options:
+            if o == 'optional':
+                optional = True
+            else:
+                print("Warning: unrecognized option {o} in bind source path b".format(o=o, b=b))
         if not os.path.exists(b):
-            print("Error: bind source path {b} does not exist".format(b=b))
+            if not optional:
+                print("Warning: bind source path {b} does not exist".format(b=b))
             continue
         engine_args.extend(["--mount", "type=bind,src={b},dst={b}".format(b=b)])
 
