@@ -142,10 +142,6 @@ def get_image_id(config, image):
     )
 
 
-def use_container(config):
-    return os.environ.get("PYREX_USE_CONTAINER", config["run"]["enable"]) == "1"
-
-
 def build_image(config, build_config):
     build_config.setdefault("build", {})
 
@@ -633,21 +629,6 @@ def create_shims(config, build_config, buildconf):
         )
     os.chmod(rebuildfile, stat.S_IRWXU)
 
-    # Create bypass command
-    bypassfile = os.path.join(shimdir, "pyrex-bypass")
-    engine_args = [
-        config["config"]["engine"],
-        "run",
-        "--rm",
-        "--entrypoint",
-        "cat",
-        build_config["build"]["runid"],
-        "/usr/libexec/pyrex/bypass",
-    ]
-    with open(bypassfile, "w") as f:
-        subprocess.run(engine_args, check=True, stdout=f)
-    os.chmod(bypassfile, stat.S_IRWXU)
-
     # Create shims
     user_commands = config["config"].get("commands")
     if user_commands:
@@ -718,7 +699,6 @@ def main():
         build_config["run"] = capture["run"]
         build_config["container"] = capture["container"]
         build_config["tempdir"] = capture["tempdir"]
-        build_config["bypass"] = capture["bypass"]
 
         try:
             os.makedirs(build_config["tempdir"])
@@ -766,35 +746,21 @@ def main():
         with open(args.buildconf, "r") as f:
             build_config = json.load(f)
 
-        if use_container(config):
-            engine_args = prep_container(
-                config,
-                build_config,
-                ["/usr/libexec/pyrex/run"] + args.command,
-                extra_env=build_config.get("run", {}).get("env", {}),
-                allow_test_config=True,
-            )
+        engine_args = prep_container(
+            config,
+            build_config,
+            ["/usr/libexec/pyrex/run"] + args.command,
+            extra_env=build_config.get("run", {}).get("env", {}),
+            allow_test_config=True,
+        )
 
-            if not engine_args:
-                sys.exit(1)
-
-            stop_coverage()
-            os.execvp(engine_args[0], engine_args)
-            print("Cannot exec container!")
+        if not engine_args:
             sys.exit(1)
-        else:
-            command = [
-                os.path.join(build_config["shimdir"], "pyrex-bypass")
-            ] + args.command
 
-            env = os.environ.copy()
-            for k, v in build_config.get("bypass", {}).get("env", {}).items():
-                env[k] = v
-
-            stop_coverage()
-            os.execve(command[0], command, env)
-            print("Cannot exec command!")
-            sys.exit(1)
+        stop_coverage()
+        os.execvp(engine_args[0], engine_args)
+        print("Cannot exec container!")
+        sys.exit(1)
 
     def config_get(args):
         config = load_config()

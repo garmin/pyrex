@@ -128,12 +128,6 @@ cat > $PYREX_CAPTURE_DEST <<HEREDOC
             "PATH": "$PATH",
             "BUILDDIR": "$BUILDDIR"
         }
-    },
-    "bypass": {
-        "env": {
-            "PYREX_OEINIT": "$PYREX_OEINIT ${PYREX_ARGS[@]}",
-            "PYREX_OEINIT_DIR": "$INIT_PWD"
-        }
     }
 }
 HEREDOC

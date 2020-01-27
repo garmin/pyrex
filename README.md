@@ -263,15 +263,6 @@ Pyrex environment setup you created. This will setup up the current shell to
 run the commands listed in `${config:command}` inside of Pyrex. Once this is
 done, you can simply run those commands and they will be executed in Pyrex.
 
-### Bypassing Pyrex
-In some cases, it may be desirable to bypass Pyrex and run the commands it
-wraps locally instead of in the container. This can be done in one of two ways:
-
-1. Set `${run:enable}` to `0` in `pyrex.ini` which will disable using the
-   container engine for all commands
-2. Set the environment variable `PYREX_USE_CONTAINER` to `0`. Any Pyrex
-   commands run with this variable will not be run in the container.
-
 ## What doesn't work?
 The following items are either known to not work, or haven't been fully tested:
 * **Bitbake Server** Since the container starts and stops each time a command

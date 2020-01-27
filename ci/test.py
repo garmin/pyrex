@@ -305,7 +305,7 @@ class PyrexImageType_base(PyrexTest):
     def test_pyrex_run(self):
         self.assertPyrexContainerCommand("/bin/false", returncode=1)
 
-    def test_disable_pyrex(self):
+    def test_in_container(self):
         def capture_pyrex_state(*args, **kwargs):
             capture_file = os.path.join(self.thread_dir, "pyrex_capture")
 
@@ -336,11 +336,6 @@ class PyrexImageType_base(PyrexTest):
 
         pyrex_state = capture_pyrex_state()
         self.assertNotEqual(local_state, pyrex_state)
-
-        env = os.environ.copy()
-        env["PYREX_USE_CONTAINER"] = "0"
-        pyrex_state = capture_pyrex_state(env=env)
-        self.assertEqual(local_state, pyrex_state)
 
     def test_quiet_build(self):
         env = os.environ.copy()
