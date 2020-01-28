@@ -27,8 +27,10 @@ if [ -z "$ZSH_NAME" ] && [ "$0" = "$THIS_SCRIPT" ]; then
     exit 1
 fi
 
-if [ -z "$PYREX_OEROOT" ]; then
-	PYREX_OEROOT=$(readlink -f $(dirname $THIS_SCRIPT))
+export PYREX_CONFIG_BIND
+
+if [ -z "$PYREX_CONFIG_BIND" ]; then
+	PYREX_CONFIG_BIND="$(readlink -f $(dirname $THIS_SCRIPT))"
 fi
 
 if [ -z "$PYREX_ROOT" ]; then
@@ -36,63 +38,41 @@ if [ -z "$PYREX_ROOT" ]; then
 fi
 
 if [ -z "$PYREX_OEINIT" ]; then
-	PYREX_OEINIT="$PYREX_OEROOT/oe-init-build-env"
+	if [ -z "$OEROOT" ]; then
+		PYREX_OEINIT="$(pwd)/oe-init-build-env"
+	else
+		PYREX_OEINIT="$OEROOT/oe-init-build-env"
+	fi
 fi
 unset THIS_SCRIPT
 
-if [ -z "$PYREX_TEMP_FILE" ]; then
-	PYREX_TEMP_FILE=$(mktemp -t pyrex.XXXXXX)
+if [ -z "$PYREX_TEMP_ENV_FILE" ]; then
+	PYREX_TEMP_ENV_FILE=$(mktemp -t pyrex-env.XXXXXX)
 fi
 
 pyrex_cleanup() {
-	rm -f "$PYREX_TEMP_FILE"
-	unset PYREX_OEROOT PYREX_OEINIT PYREX_OEINIT_DIR PYREX_ROOT PYREX_TEMPCONFFILE PYREX_TEMP_FILE pyrex_cleanup
+	rm -f "$PYREX_TEMP_ENV_FILE"
+	unset PYREX_OEINIT PYREX_ROOT PYREX_TEMP_ENV_FILE pyrex_cleanup
 }
 
-# Capture OE Build environment
-(
-	PYREX_OEINIT_DIR="$PWD"
+export PYREXCONFFILE
 
-	. $PYREX_OEINIT "$@"
-	if [ $? -ne 0 ]; then
-		exit 1
-	fi
-
-	if [ -z "${PYREXCONFTEMPLATE}" ]; then
-		PYREXCONFTEMPLATE="$(cat "$BUILDDIR/conf/templateconf.cfg")/pyrex.ini.sample"
-		case $PYREXCONFTEMPLATE in
-			"/"*) ;;
-			*) PYREXCONFTEMPLATE="$PYREX_OEROOT/$PYREXCONFTEMPLATE"
-		esac
-	fi
-
-	export PYREX_OEROOT PYREX_OEINIT PYREX_OEINIT_DIR PYREX_ROOT PYREXCONFTEMPLATE
-
-	# Instruct pyrex.py to output the name of the configuration file to
-	# file descriptor 9
-	$PYREX_ROOT/pyrex.py capture 9 -- "$@" 9> $PYREX_TEMP_FILE
-)
-if [ $? -ne 0 ]; then
-	pyrex_cleanup
-	return 1
+if [ -n "$PYREXCONFFILE" ] && [ "${PYREXCONFFILE#/}" == "$PYREXCONFFILE" ]; then
+    PYREXCONFFILE="$(pwd)/$PYREXCONFFILE"
 fi
-PYREX_TEMPCONFFILE=$(cat $PYREX_TEMP_FILE)
 
-# Build Pyrex images
-$PYREX_ROOT/pyrex.py build "$PYREX_TEMPCONFFILE"
+$PYREX_ROOT/pyrex.py capture \
+		-a PYREX_OEINIT "$PYREX_OEINIT" \
+		-e PYREXCONFFILE \
+		-e TEMPLATECONF \
+		-- 9 "$@" \
+		9> $PYREX_TEMP_ENV_FILE
 if [ $? -ne 0 ]; then
 	pyrex_cleanup
 	return 1
 fi
 
-# Setup build environment
-$PYREX_ROOT/pyrex.py env "$PYREX_TEMPCONFFILE" 9 9> $PYREX_TEMP_FILE
-if [ $? -ne 0 ]; then
-	pyrex_cleanup
-	return 1
-fi
-
-. $PYREX_TEMP_FILE
+. $PYREX_TEMP_ENV_FILE
 if [ $? -ne 0 ]; then
 	pyrex_cleanup
 	return 1

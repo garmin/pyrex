@@ -37,8 +37,8 @@ def main():
     (_, _, image_type) = args.image.split("-")
 
     this_dir = os.path.abspath(os.path.dirname(__file__))
-    docker_dir = os.path.join(this_dir, "..", "docker")
-    docker_file = os.path.join(docker_dir, "Dockerfile")
+    image_dir = os.path.join(this_dir, "..", "image")
+    docker_file = os.path.join(image_dir, "Dockerfile")
 
     helper = os.path.join(THIS_DIR, "%s-helper.py" % args.provider)
     if os.path.exists(helper) and os.environ.get("USE_HELPER", "0") == "1":
@@ -47,7 +47,7 @@ def main():
     else:
         provider = args.provider
 
-    docker_args = [
+    engine_args = [
         provider,
         "build",
         "-t",
@@ -57,14 +57,14 @@ def main():
         "--network=host",
         "--build-arg",
         "PYREX_BASE=%s" % args.image,
-        docker_dir,
+        image_dir,
         "--target",
         "pyrex-%s" % image_type,
     ]
 
     if args.quiet:
         p = subprocess.Popen(
-            docker_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            engine_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
         while True:
             try:
@@ -80,7 +80,7 @@ def main():
 
         return p.returncode
     else:
-        subprocess.check_call(docker_args)
+        subprocess.check_call(engine_args)
 
 
 if __name__ == "__main__":

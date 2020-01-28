@@ -9,7 +9,7 @@ import sys
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Deploy docker images")
+    parser = argparse.ArgumentParser(description="Deploy container images to Dockerhub")
     parser.add_argument(
         "--login",
         action="store_true",
@@ -22,7 +22,7 @@ def main():
     args = parser.parse_args()
 
     this_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
-    docker_dir = os.path.join(this_dir, "..", "docker")
+    image_dir = os.path.join(this_dir, "..", "image")
 
     image = args.image
     if ":" in image:
@@ -70,7 +70,7 @@ def main():
 
     print("Deploying %s..." % name)
 
-    # Get a login token for the docker registry and download the manifest
+    # Get a login token for the Docker registry and download the manifest
     token = requests.get(
         "https://auth.docker.io/token?service=registry.docker.io&scope=repository:%s:pull"
         % repo,
@@ -91,11 +91,11 @@ def main():
 
     print("Building", name)
     # Construct the arguments for the build command.
-    docker_build_args = [
+    build_args = [
         "-t",
         name,
         "-f",
-        "%s/Dockerfile" % docker_dir,
+        "%s/Dockerfile" % image_dir,
         "--build-arg",
         "PYREX_BASE=%s" % image,
         "--target",
@@ -103,10 +103,10 @@ def main():
     ]
 
     # Add the build context directory to our arguments.
-    docker_build_args.extend(["--", docker_dir])
+    build_args.extend(["--", image_dir])
 
     try:
-        subprocess.check_call(["docker", "build"] + docker_build_args)
+        subprocess.check_call(["docker", "build"] + build_args)
     except subprocess.CalledProcessError:
         print("Building failed!")
         return 1

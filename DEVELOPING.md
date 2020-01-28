@@ -2,10 +2,11 @@
 Pyrex development information and processes
 
 ## Linting
-Pyrex conforms to [PEP8](https://pep8.org/) for all Python code, and also make
-use of [flake8](https://pypi.org/project/flake8/) as a linter. Please ensure
-all code conforms to this. There is helpful tool that will report any places
-where the code is non-conformant in the project root:
+Pyrex conforms to [black](https://black.readthedocs.io/en/stable/) for all
+Python code, and also makes use of [flake8](https://pypi.org/project/flake8/)
+as a linter. Please ensure all code conforms to this. There is helpful tool
+that will report any places where the code is non-conformant in the project
+root:
 
 ```shell
 ./lint
@@ -20,8 +21,8 @@ pass the `--reformat` option:
 
 ## Testing
 Pyrex has a comprehensive test suite that can be used to test all generated
-Docker images. Some external test data is required to perform the test. To
-download this data and prepare your sandbox for testing, run:
+images. Some external test data is required to perform the test. To download
+this data and prepare your sandbox for testing, run:
 
 ```shell
 ./ci/prepare.sh
@@ -40,36 +41,38 @@ available.
 The test suite will build all Pyrex image locally and run a set of tests
 against them. If you would like to limit which images are tested, additional
 arguments can be passed to filter the tests. Each image is tested using a test
-class named `PyrexImage_IMAGE` where `IMAGE` is the test image name will all
-non-word characters replaced by `_`.  For example, to test only the
-`ubuntu-18.04-oe` image, run:
+class named `PyrexImage_ENGINE_IMAGE` where `ENGINE` is the container engine
+(docker or podman) and `IMAGE` is the test image name will all non-word
+characters replaced by `_`.  For example, to test only the `ubuntu-18.04-oe`
+image under docker, run:
 
 ```shell
-./ci/test.py -vb PyrexImage_ubuntu_18_04_oe
+./ci/test.py -vb PyrexImage_docker_ubuntu_18_04_oe
 ```
 
 ## Building images locally
-Pyrex pulls prebuilt Docker containers from DockerHub by default, which should
-be sufficient for most users. However, users that are active developing on
-Pyrex or wish to build images locally instead of using published images can do
-so by making the following changes to `pyrex.ini`:
+Pyrex pulls prebuilt images from DockerHub by default, which should be
+sufficient for most users. However, users that are active developing on Pyrex
+or wish to build images locally instead of using published images can do so by
+making the following changes to `pyrex.ini`:
 
 1. Set `config:buildlocal` to `1`
-2. Change `config:tag` to an alternate tag suffix instead of
-   `:${config:pyrextag}`. While not strictly necessary, this step will help
-   prevent confusion if you want to switch back to prebuilt images. If you
-   choose not to change this, realize that your locally built images will
-   overwrite your local container cache tags for the prebuilt images. As an
-   example, you might add the following to `pyrex.ini`:
+2. Change `config:pyrextag` to an alternate tag instead of referencing the
+   released version.  While not strictly necessary, this step will help prevent
+   confusion if you want to switch back to prebuilt images. If you choose not
+   to change this, realize that your locally built images will overwrite your
+   local container cache tags for the prebuilt images. As an example, you might
+   add the following to `pyrex.ini`:
 
     ```
     [config]
-    tag = ${config:dockerimage}:my-image
+    pyrextag = my-image
     ```
 
-3. Set `config:dockerfile` to the path where the Dockerfile you wish to build
-   is located. Alternatively, you can leave it as the default to build the
-   standard Pyrex images locally.
+3. Set `imagebuild:buildcommand` to adjust any of the build options (e.g. the
+   path where the Dockerfile you wish to build is located).
+4. You may also want to set `imagebuild:quiet` to `false` if you want to see
+   the images being built for debugging purposes
 
 ## Making a release
 To make a release of Pyrex:

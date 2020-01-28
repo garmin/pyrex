@@ -13,14 +13,12 @@
 # limitations under the License.
 
 ARG PYREX_BASE=ubuntu-18.04-oe
-ARG MY_REGISTRY=
 
 #
 # Base image for prebuilt static binaries
 #
-FROM ${MY_REGISTRY}alpine:3.9 AS prebuilt-base
+FROM alpine:3.9 AS prebuilt-base
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 
 RUN apk add --update \
     acl-dev \
@@ -56,7 +54,6 @@ COPY patches/0001-Use-pkg-config-to-find-packages.patch /usr/src/
 #
 FROM prebuilt-base AS prebuilt-icecream
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 
 # Use a recent version of Icecream, which has many bug fixes
 ENV ICECREAM_SHA1=1aa08857cb9c2639dbde1c2f6a05212c842581f1
@@ -87,7 +84,6 @@ RUN mkdir -p /usr/src/icecream && \
 #
 FROM prebuilt-base AS prebuilt-setpriv
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 RUN mkdir -p /usr/src/util-linux && \
     cd /usr/src/util-linux && \
     wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.33/util-linux-2.33.1.tar.xz && \
@@ -105,6 +101,46 @@ RUN mkdir -p /usr/src/util-linux && \
         --prefix=/usr/local && \
     make -j$(nproc) LDFLAGS="--static" && \
     make install-strip DESTDIR=/dist/setpriv
+
+#
+# Prebuilt util-linux and libcap-ng for Ubuntu 14.04
+#
+FROM ubuntu:trusty AS prebuilt-util-linux-14.04
+ENV PYREX_BASE none
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install \
+        build-essential \
+        wget
+
+RUN set -x && mkdir -p /usr/src/libcap-ng && \
+    cd /usr/src/libcap-ng && \
+    wget http://people.redhat.com/sgrubb/libcap-ng/libcap-ng-0.7.10.tar.gz && \
+    tar -xvf libcap-ng-0.7.10.tar.gz && \
+    cd libcap-ng-0.7.10 && \
+    mkdir build && \
+    cd build && \
+    ../configure --prefix=/usr/local && \
+    make -j$(nproc) LDFLAGS="-lpthread" && \
+    make install-strip
+
+RUN set -x && mkdir -p /usr/src/util-linux && \
+    cd /usr/src/util-linux && \
+    wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.33/util-linux-2.33.1.tar.xz && \
+    tar -xvf util-linux-2.33.1.tar.xz && \
+    cd util-linux-2.33.1 && \
+    wget https://gist.githubusercontent.com/JoshuaWatt/50642701a7d9c1a3288357bbf94f99ce/raw/0f1cbc4e34286ebd6cd3413983d4687f34b6e2c9/0001-Remove-CAP_LAST_CAP-validation.patch && \
+    patch -p1 < 0001-Remove-CAP_LAST_CAP-validation.patch && \
+    mkdir build && \
+    cd build && \
+    ../configure \
+        --disable-doc \
+        --disable-nls \
+        --enable-setpriv \
+        --without-bashcompletion \
+        --prefix=/usr/local && \
+    make -j$(nproc) && \
+    make install-strip
 
 #
 # Prebuilt static tini
@@ -126,13 +162,14 @@ RUN mkdir -p /usr/src/tini && \
 #
 # Ubuntu 14.04 base
 #
-FROM ${MY_REGISTRY}ubuntu:trusty as ubuntu-14.04-base
+FROM ubuntu:trusty as ubuntu-14.04-base
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to run init scripts.
-RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install \
         locales \
         lsb-release \
         ncurses-term \
@@ -147,19 +184,23 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-
     (locale -a | tee /dev/stderr | grep -qx en_US.utf8)
 
 # Copy prebuilt items
-COPY --from=prebuilt-setpriv /dist/setpriv /
+COPY --from=prebuilt-util-linux-14.04 /usr/local/ /usr/local/
 COPY --from=prebuilt-tini /dist/tini /
+
+# Rebuild library cache after copying prebuilt utl-linux
+RUN ldconfig -v
 
 #
 # Ubuntu 16.04 Base
 #
-FROM ${MY_REGISTRY}ubuntu:xenial as ubuntu-16.04-base
+FROM ubuntu:xenial as ubuntu-16.04-base
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to run init scripts.
-RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install \
         locales \
         lsb-release \
         ncurses-term \
@@ -180,13 +221,14 @@ COPY --from=prebuilt-tini /dist/tini /
 #
 # Ubuntu 18.04 Base
 #
-FROM ${MY_REGISTRY}ubuntu:bionic as ubuntu-18.04-base
+FROM ubuntu:bionic as ubuntu-18.04-base
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 # Install software required to run init scripts.
-RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install \
         locales \
         lsb-release \
         ncurses-term \
@@ -207,21 +249,21 @@ COPY --from=prebuilt-tini /dist/tini /
 #
 # Centos 7
 #
-FROM ${MY_REGISTRY}centos:7 as centos-7-base
+FROM centos:7 as centos-7-base
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="James Harris <james.harris@garmin.com>"
 RUN set -x && \
-      #Install default components
-      yum install -y yum-utils \
-          which \
-          sudo \
-          redhat-lsb-core \
-          &&\
-      yum install -y https://centos7.iuscommunity.org/ius-release.rpm &&\
-      yum install -y python36u &&\
-      yum clean all &&\
-      localedef -c -f UTF-8 -i en_US en_US.UTF-8
+    ulimit -n 1024 && \
+    # Install default components
+    yum install -y yum-utils \
+        which \
+        sudo \
+        redhat-lsb-core \
+        &&\
+    yum install -y https://centos7.iuscommunity.org/ius-release.rpm &&\
+    yum install -y python36u &&\
+    yum clean all &&\
+    localedef -c -f UTF-8 -i en_US en_US.UTF-8
 
 # Reset the default useradd options for when the primary user is added
 RUN echo "SHELL=/bin/bash" > /etc/default/useradd
@@ -235,10 +277,10 @@ COPY --from=prebuilt-tini /dist/tini /
 #
 FROM ubuntu-14.04-base as ubuntu-14.04-oe
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
 # Add a non-ancient version of git
     apt-get -y update && apt-get -y install software-properties-common && \
     add-apt-repository -y ppa:git-core/ppa && \
@@ -301,8 +343,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     g++-multilib \
 # Screen to enable devshell
     screen \
-# Base OS stuff that reasonable workstations have, but which the Docker
-# registry image doesn't
+# Base OS stuff that reasonable workstations have, but which the registry image
+# doesn't
     tzdata \
 && rm -rf /var/lib/apt/lists/*
 
@@ -314,10 +356,10 @@ COPY --from=prebuilt-icecream /dist/icecream /
 #
 FROM ubuntu-16.04-base as ubuntu-16.04-oe
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
 # Add a non-ancient version of git
     apt-get -y update && apt-get -y install software-properties-common && \
     add-apt-repository -y ppa:git-core/ppa && \
@@ -372,8 +414,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     g++-multilib \
 # Screen to enable devshell
     screen \
-# Base OS stuff that reasonable workstations have, but which the Docker
-# registry image doesn't
+# Base OS stuff that reasonable workstations have, but which the registry image
+# doesn't
     tzdata \
 && rm -rf /var/lib/apt/lists/*
 
@@ -388,10 +430,11 @@ COPY --from=prebuilt-icecream /dist/icecream /
 #
 FROM ubuntu-18.04-base as ubuntu-18.04-oe
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
-RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-get -y install \
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install \
 # Poky 2.7 build dependencies
     gawk \
     wget \
@@ -439,8 +482,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && apt-get -y update && apt-
     g++-multilib \
 # Screen to enable devshell
     screen \
-# Base OS stuff that reasonable workstations have, but which the Docker
-# registry image doesn't
+# Base OS stuff that reasonable workstations have, but which the registry image
+# doesn't
     tzdata \
 && rm -rf /var/lib/apt/lists/*
 
@@ -451,6 +494,22 @@ RUN python3 -m pip install iterfzf
 COPY --from=prebuilt-icecream /dist/icecream /
 
 #
+# Ubuntu 18.04 OE Test Image
+#
+FROM ubuntu-18.04-oe as ubuntu-18.04-oetest
+ENV PYREX_BASE none
+
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    sudo dpkg --add-architecture i386 && \
+    apt-get -y update && apt-get -y install \
+        wine64 \
+        wine32 \
+&& rm -rf /var/lib/apt/lists/*
+
+# Python modules used for tests
+RUN python3 -m pip install testtools python-subunit
+
+#
 # Base image target.
 #
 # This stage sets up the minimal image startup and entry points. It also
@@ -458,25 +517,26 @@ COPY --from=prebuilt-icecream /dist/icecream /
 #
 FROM ${PYREX_BASE} as pyrex-base
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 
 # Set Locales
 ENV LANG en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
 # Add startup scripts
-COPY ./startup.sh /usr/libexec/tini/startup.sh
-COPY ./entry.py /usr/libexec/tini/entry.py
-COPY ./cleanup.py /usr/libexec/tini/cleanup.py
-RUN chmod +x /usr/libexec/tini/cleanup.py \
-    /usr/libexec/tini/entry.py \
-    /usr/libexec/tini/startup.sh
+COPY ./run.sh /usr/libexec/pyrex/run
+COPY ./capture.sh /usr/libexec/pyrex/capture
+COPY ./entry.py /usr/libexec/pyrex/entry.py
+COPY ./cleanup.py /usr/libexec/pyrex/cleanup.py
+RUN chmod +x /usr/libexec/pyrex/cleanup.py \
+    /usr/libexec/pyrex/entry.py \
+    /usr/libexec/pyrex/run \
+    /usr/libexec/pyrex/capture
 
 # Add startup script directory & test script.
 COPY ./test_startup.sh /usr/libexec/pyrex/startup.d/
 
 # Precompile python files for improved startup time
-RUN python3 -m py_compile /usr/libexec/tini/*.py
+RUN python3 -m py_compile /usr/libexec/pyrex/*.py
 
 # Remove all non-root users and groups so that there are no conflicts when the
 # user is added
@@ -485,11 +545,11 @@ RUN getent group | cut -f1 -d: | grep -v '^root$' | xargs -L 1 groupdel
 
 # Use tini as the init process and instruct it to invoke the cleanup script
 # once the primary command dies
-ENTRYPOINT ["/usr/local/bin/tini", "-P", "/usr/libexec/tini/cleanup.py", "{}", ";", "--", "/usr/libexec/tini/entry.py", "/usr/libexec/tini/startup.sh"]
+ENTRYPOINT ["/usr/local/bin/tini", "-P", "/usr/libexec/pyrex/cleanup.py", "{}", ";", "--", "/usr/libexec/pyrex/entry.py"]
 
 # The startup script is expected to chain along to some other
 # command. By default, we'll use an interactive shell.
-CMD ["/bin/bash"]
+CMD ["/usr/libexec/pyrex/run", "/bin/bash"]
 
 #
 # Yocto compatible target image.
@@ -500,13 +560,12 @@ CMD ["/bin/bash"]
 #
 FROM pyrex-base as pyrex-oe
 ENV PYREX_BASE none
-ENV MY_REGISTRY none
 
 # Setup Icecream distributed compiling client. The client tries several IPC
 # mechanisms to find the daemon, including connecting to a localhost TCP
 # socket. Since the local Icecream daemon (iceccd) is not started when the
-# docker container starts, the client will not find it and instead connect to
-# the host Icecream daemon (as long as the container is run with --net=host).
+# container starts, the client will not find it and instead connect to the host
+# Icecream daemon (as long as the container is run with --net=host).
 RUN mkdir -p /usr/share/icecc/toolchain && \
     cd /usr/share/icecc/toolchain/ && \
     TC_NAME=$(mktemp) && \
@@ -515,4 +574,10 @@ RUN mkdir -p /usr/share/icecc/toolchain && \
     rm $TC_NAME
 
 ENV ICECC_VERSION=/usr/share/icecc/toolchain/native-gcc.tar.gz
+
+#
+# OE build image. Includes many additional packages for testing
+#
+FROM pyrex-oe as pyrex-oetest
+ENV PYREX_BASE none
 

@@ -4,6 +4,60 @@ Containerize your bitbake
 [![Build Status](https://travis-ci.com/garmin/pyrex.svg?branch=master)](https://travis-ci.com/garmin/pyrex)
 [![Coverage Status](https://coveralls.io/repos/github/garmin/pyrex/badge.svg?branch=master)](https://coveralls.io/github/garmin/pyrex?branch=master)
 
+## Quickstart Guide (default layout)
+Use this quickstart guide if your project uses the default (poky-style) layout
+where bitbake and layers are subdirectories of oe-core:
+
+```shell
+# Clone down Pyrex
+git clone https://github.com/garmin/pyrex.git meta-pyrex
+
+# Create the pyrex environment initialization script symbolic link
+ln -s meta-pyrex/pyrex-init-build-env
+
+# Create a default pyrex.ini config file
+meta-pyrex/mkconfig > ./pyrex.ini
+
+# Set PYREXCONFFILE to the location of the newly created config file
+PYREXCONFFILE=./pyrex.ini
+
+# Initialize the build environment
+. pyrex-init-build-env
+
+# Everything is setup. OpenEmbedded build commands (e.g. `bitbake`) will now
+# run in Pyrex
+```
+
+## Quickstart Guide (alternate layout)
+Use this quickstart guide if your project uses a different layout where bitbake
+and oe-core are disjointed. In the example, it is assumed that oe-core and
+bitbake are both subdirectories of the current working directory, so you will
+need to change it to match your actual layout:
+
+```shell
+# Clone down Pyrex
+git clone https://github.com/garmin/pyrex.git pyrex
+
+# Create the pyrex environment initialization script symbolic link
+ln -s pyrex/pyrex-init-build-env
+
+# Create a default pyrex.ini config file
+pyrex/mkconfig > ./pyrex.ini
+
+# Set PYREXCONFFILE to the location of the newly created config file
+PYREXCONFFILE=./pyrex.ini
+
+# Tell Pyrex where bitbake and oe-core live
+BITBAKEDIR=$(pwd)/bitbake
+OEROOT=$(pwd)/oe-core
+
+# Initialize the build environment
+. pyrex-init-build-env
+
+# Everything is setup. OpenEmbedded build commands (e.g. `bitbake`) will now
+# run in Pyrex
+```
+
 ## What is Pyrex?
 At its core, Pyrex is an attempt to provided a consistent environment in which
 developers can run Yocto and bitbake commands. Pyrex is targeted at development
@@ -97,23 +151,21 @@ non-standard layout, you can write your own environment init script that tells
 look like:
 
 ```shell
-# The top level Yocto/OE directory (usually, poky). This variable *must* be
-# specified if writing a custom script.
-PYREX_OEROOT="$(pwd)"
+# Paths that should be bound into the container. If unspecified, defaults to
+# the parent directory of the sourced pyrex-init-build-env script, before
+# it is resolved as a symbolic link. You may need to override the default if
+# your bitbake directory, build directory, or any of your layer directories are
+# not children of the default (and thus, wouldn't be bound into the container).
+PYREX_CONFIG_BIND="$(pwd)"
 
 # The path to the build init script. If unspecified, defaults to
-# "${PYREX_OEROOT}/oe-init-build-env"
+# "$OEROOT/oe-init-build-env" or "$(pwd)/oe-init-build-env"
 PYREX_OEINIT="$(pwd)/oe-init-build-env"
 
 # The location of Pyrex itself. If not specified, pyrex-init-build-env will
 # assume it is the directory where it is currently located (which is probably
 # correct)
 PYREX_ROOT="$(pwd)/meta-pyrex"
-
-# The location of the pyrex.ini template file to use if the user doesn't
-# already have one. Defaults to "$TEMPLATECONF/pyrex.ini.sample" (the same
-# location that oe-init-build-env will look for local.conf.sample & friends)
-PYREXCONFTEMPLATE="$(pwd)/pyrex.ini.sample"
 
 # Alternatively, if it is desired to always use a fixed config file that users
 # can't change, set the following:
@@ -124,26 +176,23 @@ PYREXCONFTEMPLATE="$(pwd)/pyrex.ini.sample"
 . $(pwd)/meta-pyrex/pyrex-init-build-env "$@"
 ```
 
-### Configuration
-Pyrex is configured using a ini-style configuration file and uses the following
-precedence to determine where this file is located:
-1. The file specified in the environment variable `PYREXCONFFILE`.
-2. The `pyrex.ini` file in the bitbake conf directory (e.g.
-   `${OEROOT}/build/conf/pyrex.ini`, if it exists and has a version number
-   specified in `${config:confversion}`. For further rules, this file will
-   be known as `PYREX_USER_CONF`
-3. If the file specified in the environment variable `$PYREXCONFTEMPLATE` exists,
-   is copied to `PYREX_USER_CONF`, then `PYREX_USER_CONF` is used
-4. If the file `$TEMPLATECONF/pyrex.ini.sample` exists, it is copied to
-   `PYREX_USER_CONF`, the `PYREX_USER_CONF` is used. This is the same rules
-   that bitbake uses for `local.conf.sample`, allowing you to easily put a
-   `pyrex.conf.sample` file along side the other default config files. See
-   [TEMPLATECONF][].
-5. The internal default config file provided by Pyrex is coped to
-   `PYREX_USER_CONF`, then `PYREX_USER_CONF` is used.
+*NOTE: While it might be tempting to combine all of these into a one-liner like
+`PYREXCONFFILE="..." . $(pwd)/meta-pyrex/pyrex-init-build-env "$@"`, they must
+be specified on separate lines to remain compatible will all shells (i.e. bash
+in particular won't keep temporary variables specified in this way)*
 
-**Note:** The config file is only populated when Pyrex initializes the
-environment (e.g. when the init script is sourced).
+### Configuration
+Pyrex is configured using a ini-style configuration file. The location of this
+file is specified by the `PYREXCONFFILE` environment variable. This environment
+variable must be set before the environment is initialized.
+
+If you do not yet have a config file, you can use the `mkconfig` command to use
+the default one and assign the `PYREXCONFFILE` variable in a single command
+like so:
+
+```shell
+$ export PYREXCONFFILE=`./meta-pyrex/mkconfig ./pyrex.ini`
+```
 
 The configuration file is the ini file format supported by Python's
 [configparser](https://docs.python.org/3/library/configparser.html) class, with
@@ -160,32 +209,42 @@ For more information about specific configuration values, see the default
 
 #### Binding directories into the container
 In order for bitbake running in the container to be able to build, it must have
-access to the data and config files from the host system. To make this easy, a
-variable called `run:bind` is specified in the config file. Any directory that
-appears in this variable will be bound into the container image at the same
-path (e.g. `/foo/bar` in the host will be bound to `/foo/bar` in the container
-engine. By default, only the Openembedded root directory (a.k.a.
-`$PYREX_OEROOT`, `${build:oeroot}`) is bound. This is the minimum that can be
-bound, and is generally sufficient for most use cases. If additional
-directories need to be accessed by the container image, they can be added to
-this list by the user. Common reasons for adding new paths include:
+access to the data and config files from the host system. There are two
+variables that can be set to specify what is bound into the container, the
+`PYREX_CONFIG_BIND` environment variable and the `run:bind` option specified in
+the config file. Both variables are a whitespace separated list of host paths
+that should be bound into the container at the same path (e.g. `/foo/bar` in
+the host will be bound to `/foo/bar` in the container engine).
+
+The `PYREX_CONFIG_BIND` environment variable is intended to specify the minimal
+set of bound directories required to initialize a default environment, and
+should only be set the by the environment initialization script, not by end
+users. The default value for this variable if unspecified is the parent of the
+sourced Pyrex initialization script. If the sourced script happens to be a
+symbolic link, the parent directory is determined before the symbolic link is
+resolved.
+
+The `run:bind` config file option is intended to allow users to specify
+additional paths that they want to bind. For convenience, the default value of
+this variable allows users to specify binds in the `PYREX_BIND` environment
+variable if they wish.
+
+Common reasons users might need to bind new paths include:
 * Alternate (out of tree) locations for sstate and download caches
 * Alternate (out of tree) build directories
-* Additional layers that are not under the OEROOT directory
+* Additional layers that are not under the default bind directories
 
-It is recommended to use this variable and bind directories in a 1-to-1 fashion
-rather than try to remap them to different paths inside the container image.
-Bitbake tends to encode file paths into some of its internal state (*Note*
-**Not** sstate, which should always be position independent), and remapping the
-paths might make it difficult to do builds outside of Pyrex if necessary.
+When the container environment is setup some basic sanity checks will be
+performed to makes sure that important directories like the bitbake and build
+directories are bound into the container.
 
 You should **never** map directories like `/usr/bin`, `/etc/`, `/` as these
 will probably just break the container. It is probably also unwise to map your
 entire home directory; although in some cases may be necessary to map
-$HOME/.ssh or other directories to access SSH keys and the like. For user
+`$HOME/.ssh` or other directories to access SSH keys and the like. For user
 convenience, the proxy user created in the container image by default has the
-same $HOME as the user who created the container, so these types of bind can be
-done by simply adding `${env:HOME}/.ssh` to `run:bind`
+same `$HOME` as the user who created the container, so these types of bind can
+be done by simply adding `${env:HOME}/.ssh` to `run:bind`
 
 #### Debugging the container
 In the event that you need to get a shell into the container to run some
@@ -203,15 +262,6 @@ Once Pyrex is configured, using it is very straight forward. First, source the
 Pyrex environment setup you created. This will setup up the current shell to
 run the commands listed in `${config:command}` inside of Pyrex. Once this is
 done, you can simply run those commands and they will be executed in Pyrex.
-
-### Bypassing Pyrex
-In some cases, it may be desirable to bypass Pyrex and run the commands it
-wraps locally instead of in the container. This can be done in one of two ways:
-
-1. Set `${run:enable}` to `0` in `pyrex.ini` which will disable using the
-   container engine for all commands
-2. Set the environment variable `PYREX_DOCKER` to `0`. Any Pyrex commands run
-   with this variable will not be run in the container.
 
 ## What doesn't work?
 The following items are either known to not work, or haven't been fully tested:
@@ -236,6 +286,10 @@ The following items are either known to not work, or haven't been fully tested:
   from causing bad behaviors. It is still possible to pause the container using
   the `docker pause` command, but this doesn't integrate with the parent shells
   job control.
+* **Rootless Docker** This in untested, and probably doesn't work. It shouldn't
+  be too hard since this should be very similar to how `podman` works.
+  Currently however, it is assumed that if the container engine is `docker` it
+  is running as root and if it is `podman` it is running rootless.
 
 ## Developing on Pyrex
  If you are doing development on Pyrex itself, please read the [Developer
@@ -254,7 +308,7 @@ build the image locally instead. See the [Developer Documentation][].
   chosen because it is one of the [Sanity Tested Distros][] that Yocto
   supports. Pyrex aims to support a vanilla Yocto setup with minimal manual
   configuration.
-* *What's with [cleanup.py](./docker/cleanup.py)?* When a container's main
+* *What's with [cleanup.py](./image/cleanup.py)?* When a container's main
   process exits, any remaining process appears to be sent a `SIGKILL`.  This
   can cause a significant problem with many of the child processes that bitbake
   spawns, since unceremoniously killing them might result in lost data.  The

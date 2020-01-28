@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/sh
 #
 # Copyright 2019 Garmin Ltd. or its subsidiaries
 #
@@ -14,15 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-declare -a COMMAND=("$@")
 
-# Consume all arguments before sourcing the environment script
-shift $#
-
-if [ -n "$PYREX_INIT_DIR" ] && [ -n "$PYREX_INIT_COMMAND" ]; then
-    pushd "$PYREX_INIT_DIR" > /dev/null
-    source $PYREX_INIT_COMMAND > /dev/null
-    popd > /dev/null
-fi
-
-exec $PYREX_COMMAND_PREFIX "${COMMAND[@]}"
+"$(dirname "$0")/pyrex.py" mkconfig "$@"

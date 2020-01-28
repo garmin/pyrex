@@ -14,16 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if ! which black > /dev/null 2>&1; then
-    echo "black not found!"
-    exit 1
-fi
-
-cd "$(readlink -f $(dirname $0))"
-if [ "$1" == "-r" ] || [ "$1" == "--reformat" ]; then
-    black $(git ls-files '*.py')
-else
-    black --check $(git ls-files '*.py')
-fi
-
-flake8 $(git ls-files '*.py')
+exec $PYREX_COMMAND_PREFIX "$@"
