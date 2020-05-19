@@ -1,15 +1,13 @@
-dist: xenial
+dist: bionic
 language: python
 python:
 - '3.6'
 env:
   matrix:
-  # podman builds are longer. Start them first
-  - TEST_IMAGE=ubuntu-20.04-oe      DOCKER_PROVIDER=podman SH=bash
   - TEST_IMAGE=ubuntu-14.04-oe      DOCKER_PROVIDER=docker SH=bash
   - TEST_IMAGE=ubuntu-16.04-oe      DOCKER_PROVIDER=docker SH=bash
-  - TEST_IMAGE=ubuntu-18.04-oe      DOCKER_PROVIDER=docker SH=bash
-  - TEST_IMAGE=ubuntu-20.04-oe      DOCKER_PROVIDER=docker SH=zsh
+  - TEST_IMAGE=ubuntu-18.04-oe      DOCKER_PROVIDER=docker SH=zsh
+  - TEST_IMAGE=ubuntu-20.04-oe      DOCKER_PROVIDER=podman SH=bash
   - TEST_IMAGE=ubuntu-18.04-oetest  DOCKER_PROVIDER=docker SH=bash
   - TEST_IMAGE=ubuntu-20.04-oetest  DOCKER_PROVIDER=docker SH=bash
   - TEST_IMAGE=ubuntu-14.04-base    DOCKER_PROVIDER=docker SH=bash
@@ -24,11 +22,12 @@ before_install:
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
   sudo add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
   sudo add-apt-repository -y ppa:projectatomic/ppa
+  sudo add-apt-repository -y ppa:luke-yeager/fuse-overlayfs
   sudo apt-get update
   sudo mkdir -p /etc/containers/
   echo -e "[registries.search]\nregistries = ['docker.io']\n" | sudo tee /etc/containers/registries.conf
   echo '{ "features": { "buildkit": true } }' | sudo tee /etc/docker/daemon.json
-  sudo apt-get -y -o Dpkg::Options::=--force-confnew -o Dpkg::Options::=--force-overwrite install docker-ce podman buildah zsh chrpath diffstat texinfo
+  sudo apt-get -y -o Dpkg::Options::=--force-confnew -o Dpkg::Options::=--force-overwrite install docker-ce podman buildah zsh chrpath diffstat texinfo fuse-overlayfs
 - docker info
 - podman info
 install:
