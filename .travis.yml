@@ -44,8 +44,9 @@ script:
 - black --check $(git ls-files '*.py')
 - flake8 $(git ls-files '*.py')
 # Pre build the image. This prevents long delays with no output in test cases
-- ./ci/build_image.py $TEST_IMAGE --provider=$DOCKER_PROVIDER --quiet
-- COVERAGE_PROCESS_START=${TRAVIS_BUILD_DIR}/.coveragerc $SH -c "ci/test.py -vb PyrexImage_${DOCKER_PROVIDER}_$(echo $TEST_IMAGE | sed 's/\W/_/g')"
+- |
+  ./ci/build_image.py $TEST_IMAGE --provider=$DOCKER_PROVIDER --quiet &&
+  COVERAGE_PROCESS_START=${TRAVIS_BUILD_DIR}/.coveragerc $SH -c "ci/test.py -vb PyrexImage_${DOCKER_PROVIDER}_$(echo $TEST_IMAGE | sed 's/\W/_/g')"
 after_success:
 - coverage3 combine
 - coveralls
