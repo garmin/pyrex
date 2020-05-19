@@ -171,7 +171,9 @@ class PyrexTest(object):
 
                 ret = proc.poll()
 
-            self.assertEqual(ret, returncode, msg="%s failed" % " ".join(*args))
+            self.assertEqual(
+                ret, returncode, msg="%s failed" % (pretty_command or " ".join(*args))
+            )
             return None
 
     def _write_host_command(
