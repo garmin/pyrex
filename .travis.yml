@@ -4,10 +4,12 @@ python:
 - '3.6'
 env:
   matrix:
+  # Note: podman builds aren't deployed to dockerhub
+  - TEST_IMAGE=ubuntu-20.04-oe      DOCKER_PROVIDER=podman SH=bash
   - TEST_IMAGE=ubuntu-14.04-oe      DOCKER_PROVIDER=docker SH=bash
   - TEST_IMAGE=ubuntu-16.04-oe      DOCKER_PROVIDER=docker SH=bash
   - TEST_IMAGE=ubuntu-18.04-oe      DOCKER_PROVIDER=docker SH=zsh
-  - TEST_IMAGE=ubuntu-20.04-oe      DOCKER_PROVIDER=podman SH=bash
+  - TEST_IMAGE=ubuntu-20.04-oe      DOCKER_PROVIDER=docker SH=bash
   - TEST_IMAGE=ubuntu-18.04-oetest  DOCKER_PROVIDER=docker SH=bash
   - TEST_IMAGE=ubuntu-20.04-oetest  DOCKER_PROVIDER=docker SH=bash
   - TEST_IMAGE=ubuntu-14.04-base    DOCKER_PROVIDER=docker SH=bash
