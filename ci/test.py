@@ -1044,7 +1044,6 @@ TEST_IMAGES = (
     ("ubuntu-16.04-base", "2.6"),
     ("ubuntu-18.04-base", "2.6"),
     ("ubuntu-20.04-base", "3.1"),
-    ("centos-7-base", "2.6"),
     ("ubuntu-14.04-oe", "2.6"),
     ("ubuntu-16.04-oe", "2.6"),
     ("ubuntu-18.04-oe", "2.6"),

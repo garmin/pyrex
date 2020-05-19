@@ -274,32 +274,6 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
 COPY --from=prebuilt-tini /dist/tini /
 
 #
-# Centos 7
-#
-FROM centos:7 as centos-7-base
-ENV PYREX_BASE none
-LABEL maintainer="James Harris <james.harris@garmin.com>"
-RUN set -x && \
-    ulimit -n 1024 && \
-    # Install default components
-    yum install -y yum-utils \
-        which \
-        sudo \
-        redhat-lsb-core \
-        &&\
-    yum install -y https://centos7.iuscommunity.org/ius-release.rpm &&\
-    yum install -y python36u &&\
-    yum clean all &&\
-    localedef -c -f UTF-8 -i en_US en_US.UTF-8
-
-# Reset the default useradd options for when the primary user is added
-RUN echo "SHELL=/bin/bash" > /etc/default/useradd
-
-# Copy prebuilt items
-COPY --from=prebuilt-setpriv /dist/setpriv /
-COPY --from=prebuilt-tini /dist/tini /
-
-#
 # Ubuntu 14.04 Yocto Base
 #
 FROM ubuntu-14.04-base as ubuntu-14.04-oe
