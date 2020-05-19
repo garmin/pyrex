@@ -602,6 +602,11 @@ class PyrexImageType_base(PyrexTest):
                 )
                 self.assertNotIn("$TERM has an unrecognized value", output)
 
+                output = self.assertPyrexContainerShellCommand(
+                    "echo $TERM", env=env, quiet_init=True, capture=True
+                )
+                self.assertEqual(output, t, msg="Bad $TERM found in container!")
+
     def test_tini(self):
         self.assertPyrexContainerCommand("tini --version")
 

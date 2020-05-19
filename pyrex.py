@@ -427,6 +427,7 @@ def prep_container(
         "PYREX_CLEANUP_LOG_FILE",
         "PYREX_CLEANUP_LOG_LEVEL",
         "TINI_VERBOSITY",
+        "TERM",
     ]
 
     if build_config["provider"] == "podman":
@@ -475,7 +476,7 @@ def prep_container(
 
     # Run the container with a TTY if this script was run in a tty
     if os.isatty(1):
-        engine_args.extend(["-t", "-e", "TERM=%s" % os.environ["TERM"]])
+        engine_args.append("-t")
 
     # Configure binds
     binds = (
