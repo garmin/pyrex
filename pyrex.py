@@ -14,23 +14,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import configparser
 import argparse
-import os
-import shutil
-import sys
-import subprocess
-import re
-import pwd
-import grp
-import shlex
+import configparser
+import contextlib
 import glob
-import textwrap
-import stat
+import grp
 import hashlib
 import json
+import os
+import pwd
+import re
+import resource
+import shlex
+import shutil
+import stat
+import subprocess
+import sys
 import tempfile
-import contextlib
+import textwrap
 import types
 
 VERSION = "1.0.0"
@@ -441,6 +442,8 @@ def prep_container(
             sys.stderr.write("subgid name space is too small\n")
             sys.exit(1)
 
+        (soft, hard) = resource.getrlimit(resource.RLIMIT_NOFILE)
+
         engine_args.extend(
             [
                 "--security-opt",
@@ -471,6 +474,13 @@ def prep_container(
                 "%d:0:1" % gid,
                 "--gidmap",
                 "%d:%d:%d" % (gid + 1, gid + 1, gid_length - gid),
+                # Set the rlimit for the number of open files to be the maximum
+                # hard limit, otherwise the hard limit will be pinned to the
+                # current soft limit (usually 1024), which is too low. The
+                # fuse-overlayfs driver does this from version 0.3 onward, see:
+                # https://github.com/containers/fuse-overlayfs/commit/d3729baa932bae444586ce9343bae59147ab2efb
+                "--ulimit",
+                "nofile=%d:%d" % (hard, hard),
             ]
         )
 

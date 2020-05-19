@@ -17,15 +17,16 @@
 import configparser
 import grp
 import os
+import pty
 import pwd
 import re
+import resource
 import shutil
 import subprocess
 import sys
 import tempfile
 import threading
 import unittest
-import pty
 
 PYREX_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(PYREX_ROOT)
@@ -431,6 +432,20 @@ class PyrexImageType_base(PyrexTest):
         self.assertEqual(output[5], "thegroup")
         self.assertEqual(output[6], "7331 7332")
         self.assertEqual(output[7], "thegroup othergroup")
+
+    def test_rlimit_nofile(self):
+        if self.provider != "podman":
+            self.skipTest("Only podman needs rlimit changes")
+
+        (soft, hard) = resource.getrlimit(resource.RLIMIT_NOFILE)
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (hard / 2, hard))
+            s = self.assertPyrexContainerShellCommand(
+                "ulimit -n && ulimit -Hn", capture=True, quiet_init=True
+            )
+            self.assertEqual(tuple(int(lim) for lim in s.split()), (hard, hard))
+        finally:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (soft, hard))
 
     def test_duplicate_binds(self):
         temp_dir = tempfile.mkdtemp("-pyrex")
