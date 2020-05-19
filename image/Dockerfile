@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG PYREX_BASE=ubuntu-18.04-oe
+ARG PYREX_BASE=ubuntu-20.04-oe
 
 #
 # Base image for prebuilt static binaries
@@ -55,8 +55,7 @@ COPY patches/0001-Use-pkg-config-to-find-packages.patch /usr/src/
 FROM prebuilt-base AS prebuilt-icecream
 ENV PYREX_BASE none
 
-# Use a recent version of Icecream, which has many bug fixes
-ENV ICECREAM_SHA1=1aa08857cb9c2639dbde1c2f6a05212c842581f1
+ENV ICECREAM_SHA1=6eec038c11a821b1d2848e8197cbc5b6bca6b3a0
 RUN mkdir -p /usr/src/icecream && \
     cd /usr/src/icecream && \
     wget -O icecream.tar.gz https://github.com/icecc/icecream/archive/${ICECREAM_SHA1}.tar.gz && \
@@ -235,6 +234,34 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         python \
         python3 \
         setpriv \
+        sudo \
+    && \
+# Clean up apt-cache
+    rm -rf /var/lib/apt/lists/* && \
+# generate utf8 locale
+    locale-gen en_US.UTF-8 && \
+    (locale -a | tee /dev/stderr | grep -qx en_US.utf8)
+
+# Copy prebuilt items
+COPY --from=prebuilt-tini /dist/tini /
+
+#
+# Ubuntu 20.04 Base
+#
+FROM ubuntu:focal as ubuntu-20.04-base
+ENV PYREX_BASE none
+LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
+
+# Install software required to run init scripts.
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install \
+        locales \
+        lsb-release \
+        ncurses-term \
+        python \
+        python3 \
+        util-linux \
         sudo \
     && \
 # Clean up apt-cache
@@ -494,9 +521,94 @@ RUN python3 -m pip install iterfzf
 COPY --from=prebuilt-icecream /dist/icecream /
 
 #
+# Ubuntu 20.04 Base
+#
+FROM ubuntu-20.04-base as ubuntu-20.04-oe
+ENV PYREX_BASE none
+LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
+
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install \
+# Poky 3.1 build dependencies
+    gawk \
+    wget \
+    git-core \
+    diffstat \
+    unzip \
+    texinfo \
+    gcc-multilib \
+    build-essential \
+    chrpath \
+    socat \
+    cpio \
+    python \
+    python3 \
+    python3-pip \
+    python3-pexpect \
+    xz-utils \
+    debianutils \
+    iputils-ping \
+    python3-git \
+    python3-jinja2 \
+    libegl1-mesa \
+    libsdl1.2-dev \
+    pylint3 \
+    xterm \
+    coreutils \
+# Testing dependencies
+    iproute2 \
+    sysstat \
+# Dependencies for "bitbake -c menuconfig"
+    libncurses5-dev \
+    libtinfo-dev \
+# Not listed, but required dependencies (from ASSUME_PROVIDED)
+    bzip2 \
+    libbz2-dev \
+    sed \
+    findutils \
+# Required for some poorly written 3rd party recipes :(
+    python-crypto \
+    python-six \
+    python3-six \
+# Useful tools for debugging Pyrex images
+    curl \
+# Corollary to the core Yocto gcc-multilib package. Allows various
+# prebuilt native tools to work
+    g++-multilib \
+# Screen to enable devshell
+    screen \
+# Base OS stuff that reasonable workstations have, but which the registry image
+# doesn't
+    tzdata \
+&& rm -rf /var/lib/apt/lists/*
+
+# Python modules used by resulttool
+RUN python3 -m pip install iterfzf
+
+# Copy prebuilt items
+COPY --from=prebuilt-icecream /dist/icecream /
+
+#
 # Ubuntu 18.04 OE Test Image
 #
 FROM ubuntu-18.04-oe as ubuntu-18.04-oetest
+ENV PYREX_BASE none
+
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    sudo dpkg --add-architecture i386 && \
+    apt-get -y update && apt-get -y install \
+        wine64 \
+        wine32 \
+&& rm -rf /var/lib/apt/lists/*
+
+# Python modules used for tests
+RUN python3 -m pip install testtools python-subunit
+
+#
+# Ubuntu 20.04 OE Test Image
+#
+FROM ubuntu-20.04-oe as ubuntu-20.04-oetest
 ENV PYREX_BASE none
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \

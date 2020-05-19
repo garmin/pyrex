@@ -47,6 +47,10 @@ built_images = set()
 
 
 class PyrexTest(object):
+    @property
+    def pokyroot(self):
+        return os.path.join(PYREX_ROOT, "poky", self.pokyver)
+
     def setUp(self):
         self.build_dir = os.path.join(PYREX_ROOT, "build", "%d" % os.getpid())
 
@@ -76,9 +80,7 @@ class PyrexTest(object):
         os.symlink("/usr/bin/python2", os.path.join(self.bin_dir, "python"))
         os.environ["PATH"] = self.bin_dir + ":" + os.environ["PATH"]
         os.environ["PYREX_BUILD_QUIET"] = "0"
-        os.environ["PYREX_OEINIT"] = os.path.join(
-            PYREX_ROOT, "poky", "oe-init-build-env"
-        )
+        os.environ["PYREX_OEINIT"] = os.path.join(self.pokyroot, "oe-init-build-env")
         os.environ["PYREX_CONFIG_BIND"] = PYREX_ROOT
         for var in ("SSH_AUTH_SOCK", "BB_ENV_EXTRAWHITE"):
             if var in os.environ:
@@ -190,9 +192,9 @@ class PyrexTest(object):
         command.extend(
             [
                 "PYREXCONFFILE=%s\n" % self.pyrex_conf,
-                ". %s/poky/pyrex-init-build-env%s %s %s && "
+                ". %s/pyrex-init-build-env%s %s %s && "
                 % (
-                    PYREX_ROOT,
+                    self.pokyroot,
                     " > /dev/null 2>&1" if quiet_init else "",
                     builddir,
                     bitbakedir,
@@ -630,7 +632,7 @@ class PyrexImageType_base(PyrexTest):
         config = pyrex.Config()
         config.read_string(pyrex.read_default_config(True))
 
-        self.assertIn(config["config"]["image"], TEST_IMAGES)
+        self.assertIn(config["config"]["image"], (image for (image, _) in TEST_IMAGES))
 
     def test_envvars(self):
         conf = self.get_config()
@@ -813,7 +815,7 @@ class PyrexImageType_oe(PyrexImageType_base):
         # as an argument)
         with tempfile.TemporaryDirectory() as tmpdir:
             bitbakedir = os.path.join(tmpdir, "bitbake")
-            shutil.copytree(os.path.join(PYREX_ROOT, "poky/bitbake"), bitbakedir)
+            shutil.copytree(os.path.join(self.pokyroot, "bitbake"), bitbakedir)
 
             # If the bitbake directory is not bound, capture should fail with
             # an error
@@ -840,7 +842,7 @@ class PyrexImageType_oe(PyrexImageType_base):
         # as an argument)
         with tempfile.TemporaryDirectory() as tmpdir:
             bitbakedir = os.path.join(tmpdir, "bitbake")
-            shutil.copytree(os.path.join(PYREX_ROOT, "poky/bitbake"), bitbakedir)
+            shutil.copytree(os.path.join(self.pokyroot, "bitbake"), bitbakedir)
 
             env = {"BITBAKEDIR": bitbakedir}
 
@@ -903,11 +905,11 @@ class PyrexImageType_oe(PyrexImageType_base):
         self.assertTrue(os.path.isabs(template_dir))
 
         shutil.copyfile(
-            os.path.join(PYREX_ROOT, "poky/meta-poky/conf/local.conf.sample"),
+            os.path.join(self.pokyroot, "meta-poky/conf/local.conf.sample"),
             os.path.join(template_dir, "local.conf.sample"),
         )
         shutil.copyfile(
-            os.path.join(PYREX_ROOT, "poky/meta-poky/conf/bblayers.conf.sample"),
+            os.path.join(self.pokyroot, "meta-poky/conf/bblayers.conf.sample"),
             os.path.join(template_dir, "bblayers.conf.sample"),
         )
 
@@ -933,11 +935,11 @@ class PyrexImageType_oe(PyrexImageType_base):
         self.assertTrue(os.path.isabs(template_dir))
 
         shutil.copyfile(
-            os.path.join(PYREX_ROOT, "poky/meta-poky/conf/local.conf.sample"),
+            os.path.join(self.pokyroot, "meta-poky/conf/local.conf.sample"),
             os.path.join(template_dir, "local.conf.sample"),
         )
         shutil.copyfile(
-            os.path.join(PYREX_ROOT, "poky/meta-poky/conf/bblayers.conf.sample"),
+            os.path.join(self.pokyroot, "meta-poky/conf/bblayers.conf.sample"),
             os.path.join(template_dir, "bblayers.conf.sample"),
         )
 
@@ -948,9 +950,7 @@ class PyrexImageType_oe(PyrexImageType_base):
         conf.write_conf()
 
         env = os.environ.copy()
-        env["TEMPLATECONF"] = os.path.relpath(
-            template_dir, os.path.join(PYREX_ROOT, "poky")
-        )
+        env["TEMPLATECONF"] = os.path.relpath(template_dir, self.pokyroot)
         env["TEST_ENV"] = test_string
 
         s = self.assertPyrexContainerShellCommand(
@@ -974,7 +974,7 @@ class PyrexImageType_oe(PyrexImageType_base):
                 "/bin/bash",
                 "-c",
                 ". %s/oe-init-build-env > /dev/null && (bitbake -e | grep ^TOPDIR=)"
-                % os.path.relpath(os.path.join(PYREX_ROOT, "poky"), cwd),
+                % os.path.relpath(self.pokyroot, cwd),
             ],
             capture=True,
             cwd=cwd,
@@ -1033,21 +1033,24 @@ class PyrexImageType_oetest(PyrexImageType_oe):
 PROVIDERS = ("docker", "podman")
 
 TEST_IMAGES = (
-    "ubuntu-14.04-base",
-    "ubuntu-16.04-base",
-    "ubuntu-18.04-base",
-    "centos-7-base",
-    "ubuntu-14.04-oe",
-    "ubuntu-16.04-oe",
-    "ubuntu-18.04-oe",
-    "ubuntu-18.04-oetest",
+    ("ubuntu-14.04-base", "2.6"),
+    ("ubuntu-16.04-base", "2.6"),
+    ("ubuntu-18.04-base", "2.6"),
+    ("ubuntu-20.04-base", "3.1"),
+    ("centos-7-base", "2.6"),
+    ("ubuntu-14.04-oe", "2.6"),
+    ("ubuntu-16.04-oe", "2.6"),
+    ("ubuntu-18.04-oe", "2.6"),
+    ("ubuntu-20.04-oe", "3.1"),
+    ("ubuntu-18.04-oetest", "2.6"),
+    ("ubuntu-20.04-oetest", "3.1"),
 )
 
 
 def add_image_tests():
     self = sys.modules[__name__]
     for provider in PROVIDERS:
-        for image in TEST_IMAGES:
+        for (image, pokyver) in TEST_IMAGES:
             (_, _, image_type) = image.split("-")
 
             parent = getattr(self, "PyrexImageType_" + image_type)
@@ -1059,7 +1062,7 @@ def add_image_tests():
                 type(
                     name,
                     (parent, unittest.TestCase),
-                    {"test_image": image, "provider": provider},
+                    {"test_image": image, "provider": provider, "pokyver": pokyver},
                 ),
             )
 
