@@ -408,7 +408,6 @@ def prep_container(
         "run",
         "--rm",
         "-i",
-        "--net=host",
         "-e",
         "PYREX_USER=%s" % username,
         "-e",
@@ -422,6 +421,31 @@ def prep_container(
         "--workdir",
         os.getcwd(),
     ]
+
+    # Use host networking. This is mainly to support simple integration
+    # of IceCream's daemon.
+    #
+    # Use a bind-mounted copy of the host's resolv.conf to ensure that
+    # hostname lookup in the container stays in sync as the host's networking
+    # configuration changes on-the-fly.
+    #
+    # Docker documentation at [1] indicates that the dns settings are
+    # inherited from the Docker daemon itself, but if you launch
+    # your vpn (hence changing /etc/resolv.conf) you will have a mismatch
+    # causing an issue.
+    #
+    # Further evidence supporting explicitly bind mounting /etc/resolv.conf
+    # can be seen at [2]:
+    #
+    # [1] https://docs.docker.com/config/containers/container-networking/
+    # [2] https://github.com/docker/docker-ce/blob/master/components/cli/docs/reference/commandline/service_create.md
+    engine_args.extend(
+        [
+            "--net=host",
+            "--mount",
+            "type=bind,src=/etc/resolv.conf,dst=/etc/resolv.conf",
+        ]
+    )
 
     container_envvars = [
         "PYREX_CLEANUP_EXIT_WAIT",
