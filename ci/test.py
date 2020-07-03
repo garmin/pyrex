@@ -128,7 +128,7 @@ class PyrexTest(object):
             config["config"]["pyrextag"] = (
                 os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, "") or "ci-test"
             )
-            config["run"]["bind"] = self.build_dir
+            config["run"]["bind"] += " " + self.build_dir
             config["imagebuild"]["buildcommand"] = "%s --provider=%s %s" % (
                 os.path.join(PYREX_ROOT, "ci", "build_image.py"),
                 self.provider,
@@ -446,6 +446,20 @@ class PyrexImageType_base(PyrexTest):
             self.assertEqual(tuple(int(lim) for lim in s.split()), (hard, hard))
         finally:
             resource.setrlimit(resource.RLIMIT_NOFILE, (soft, hard))
+
+    def test_bind_from_PYREX_BIND(self):
+        temp_dir = tempfile.mkdtemp("-pyrex")
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        temp_file = os.path.join(temp_dir, "data")
+
+        env = os.environ.copy()
+        env["PYREX_BIND"] = temp_dir
+
+        self.assertPyrexContainerShellCommand("echo 123 > %s" % temp_file, env=env)
+
+        with open(temp_file, "r") as f:
+            self.assertEqual(f.read(), "123\n")
 
     def test_duplicate_binds(self):
         temp_dir = tempfile.mkdtemp("-pyrex")
