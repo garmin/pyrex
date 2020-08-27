@@ -656,6 +656,44 @@ class PyrexImageType_base(PyrexTest):
                 )
                 self.assertEqual(output, t, msg="Bad $TERM found in container!")
 
+    def test_term_enabled(self):
+        env = os.environ.copy()
+        env["TERM"] = "dumb"
+        output = self.assertPyrexContainerShellPTY(
+            "test -t 1; echo $?",
+            env=env,
+            quiet_init=True,
+        )
+        self.assertEqual(output, "0", msg="Stdout is not a TTY")
+
+        del env["TERM"]
+        output = self.assertPyrexContainerShellPTY(
+            "test -t 1; echo $?",
+            env=env,
+            quiet_init=True,
+        )
+        self.assertEqual(output, "0", msg="Stdout is not a TTY")
+
+    def test_term_disabled(self):
+        env = os.environ.copy()
+        env["TERM"] = "dumb"
+        output = self.assertPyrexContainerShellCommand(
+            "test -t 1; echo $?",
+            env=env,
+            quiet_init=True,
+            capture=True,
+        )
+        self.assertEqual(output, "1", msg="Stdout is a TTY when terminal is not a TTY")
+
+        del env["TERM"]
+        output = self.assertPyrexContainerShellCommand(
+            "test -t 1; echo $?",
+            env=env,
+            quiet_init=True,
+            capture=True,
+        )
+        self.assertEqual(output, "1", msg="Stdout is a TTY when terminal is not a TTY")
+
     def test_tini(self):
         self.assertPyrexContainerCommand("tini --version")
 
