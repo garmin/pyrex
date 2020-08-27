@@ -292,7 +292,7 @@ class PyrexTest(object):
         self.assertEqual(
             os.WEXITSTATUS(status), returncode, msg="%s failed" % " ".join(args)
         )
-        return b"".join(stdout)
+        return (b"".join(stdout)).decode("utf-8").rstrip()
 
 
 class PyrexImageType_base(PyrexTest):
@@ -596,9 +596,7 @@ class PyrexImageType_base(PyrexTest):
         bad_term = "this-is-not-a-valid-term"
         env = os.environ.copy()
         env["TERM"] = bad_term
-        output = (
-            self.assertPyrexContainerShellPTY("true", env=env).decode("utf-8").strip()
-        )
+        output = self.assertPyrexContainerShellPTY("true", env=env)
         self.assertIn('$TERM has an unrecognized value of "%s"' % bad_term, output)
         self.assertPyrexContainerShellPTY(
             "/usr/bin/infocmp %s > /dev/null" % bad_term,
@@ -615,21 +613,13 @@ class PyrexImageType_base(PyrexTest):
         for t in REQUIRED_TERMS:
             with self.subTest(term=t):
                 env["TERM"] = t
-                output = (
-                    self.assertPyrexContainerShellPTY(
-                        "echo $TERM", env=env, quiet_init=True
-                    )
-                    .decode("utf-8")
-                    .strip()
+                output = self.assertPyrexContainerShellPTY(
+                    "echo $TERM", env=env, quiet_init=True
                 )
                 self.assertEqual(output, t, msg="Bad $TERM found in container!")
 
-                output = (
-                    self.assertPyrexContainerShellPTY(
-                        "/usr/bin/infocmp %s > /dev/null" % t, env=env
-                    )
-                    .decode("utf-8")
-                    .strip()
+                output = self.assertPyrexContainerShellPTY(
+                    "/usr/bin/infocmp %s > /dev/null" % t, env=env
                 )
                 self.assertNotIn("$TERM has an unrecognized value", output)
 
