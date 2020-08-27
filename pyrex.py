@@ -509,7 +509,7 @@ def prep_container(
         )
 
     # Run the container with a TTY if this script was run in a tty
-    if os.isatty(1):
+    if os.isatty(1) and "TERM" in os.environ and os.environ["TERM"]:
         engine_args.append("-t")
 
     # Configure binds

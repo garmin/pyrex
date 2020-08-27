@@ -628,6 +628,54 @@ class PyrexImageType_base(PyrexTest):
                 )
                 self.assertEqual(output, t, msg="Bad $TERM found in container!")
 
+    def test_term_enabled(self):
+        # Tests that stdout is a terminal in the container when TERM is set and
+        # the parent is a TTY
+        env = os.environ.copy()
+        env["TERM"] = "dumb"
+        output = self.assertPyrexContainerShellPTY(
+            "test -t 1; echo $?",
+            env=env,
+            quiet_init=True,
+        )
+        self.assertEqual(output, "0", msg="Stdout is not a TTY")
+
+    def test_term_disabled_env(self):
+        # Tests that stdout is not a terminal if TERM is not set in the
+        # environment, but the parent terminal is a TTY
+        env = os.environ.copy()
+        if "TERM" in env:
+            del env["TERM"]
+        output = self.assertPyrexContainerShellPTY(
+            "test -t 1; echo $?",
+            env=env,
+            quiet_init=True,
+        )
+        self.assertEqual(output, "1", msg="Stdout is a TTY when $TERM is not set")
+
+        # Tests that stdout is not a terminal if TERM is set but empty in the
+        # environment, but the parent terminal is a TTY
+        env["TERM"] = ""
+        output = self.assertPyrexContainerShellPTY(
+            "test -t 1; echo $?",
+            env=env,
+            quiet_init=True,
+        )
+        self.assertEqual(output, "1", msg="Stdout is a TTY when $TERM is empty")
+
+    def test_term_disabled_tty(self):
+        # Tests that stdout is not a terminal if TERM is set in the
+        # environment, but the parent terminal is not a TTY
+        env = os.environ.copy()
+        env["TERM"] = "dumb"
+        output = self.assertPyrexContainerShellCommand(
+            "test -t 1; echo $?",
+            env=env,
+            quiet_init=True,
+            capture=True,
+        )
+        self.assertEqual(output, "1", msg="Stdout is a TTY when terminal is not a TTY")
+
     def test_tini(self):
         self.assertPyrexContainerCommand("tini --version")
 
