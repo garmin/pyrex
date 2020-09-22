@@ -727,33 +727,58 @@ def create_shims(config, build_config, buildconf):
     os.chmod(rebuildfile, stat.S_IRWXU)
 
     # Create shims
-    user_commands = config["config"].get("commands")
-    if user_commands:
-        user_commands = user_commands.split()
-        command_globs = [c for c in user_commands if not c.startswith("!")]
-        nopyrex_globs = [c[1:] for c in user_commands if c.startswith("!")]
-    else:
-        command_globs = build_config["container"].get("commands", {}).get("include", {})
-        nopyrex_globs = build_config["container"].get("commands", {}).get("exclude", {})
-
     commands = set()
 
-    def add_commands(globs, target):
+    def glob_commands(globs):
         for g in globs:
             for cmd in glob.iglob(g):
-                norm_cmd = os.path.normpath(cmd)
+                base = os.path.basename(cmd)
                 if (
-                    norm_cmd not in commands
+                    base not in commands
                     and os.path.isfile(cmd)
                     and os.access(cmd, os.X_OK)
                 ):
-                    commands.add(norm_cmd)
-                    name = os.path.basename(cmd)
+                    commands.add(base)
+                    shim = os.path.join(shimdir, base)
+                    yield cmd, shim
 
-                    os.symlink(target.format(command=cmd), os.path.join(shimdir, name))
+    # User commands
+    user_commands = config["config"].get("commands", "").split()
 
-    add_commands(nopyrex_globs, "{command}")
-    add_commands(command_globs, "exec-shim-pyrex")
+    user_excludes = [c[1:] for c in user_commands if c.startswith("!")]
+    for cmd, shim in glob_commands(user_excludes):
+        os.symlink(cmd, shim)
+
+    user_includes = [c for c in user_commands if not c.startswith("!")]
+    for cmd, shim in glob_commands(user_includes):
+        # User commands need dedicates shims that execute with the full path,
+        # since we don't know if they are in $PATH
+        with open(shim, "w") as f:
+            f.write(
+                textwrap.dedent(
+                    """\
+                #! /bin/sh
+                exec {runfile} "{cmd}" "$@"
+                """.format(
+                        runfile=runfile,
+                        cmd=cmd,
+                    )
+                )
+            )
+        os.chmod(shim, stat.S_IRWXU)
+
+    # Container commands
+    container_excludes = (
+        build_config["container"].get("commands", {}).get("exclude", [])
+    )
+    for cmd, shim in glob_commands(container_excludes):
+        os.symlink(cmd, shim)
+
+    container_includes = (
+        build_config["container"].get("commands", {}).get("include", [])
+    )
+    for _, shim in glob_commands(container_includes):
+        os.symlink("exec-shim-pyrex", shim)
 
     return shimdir
 
