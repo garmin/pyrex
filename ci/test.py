@@ -344,6 +344,20 @@ class PyrexImageType_base(PyrexTest):
     from this class
     """
 
+    def capture_local_state(self):
+        if self.provider == "podman":
+            with open("/proc/1/cmdline", "rb") as f:
+                return f.read().decode("utf-8")
+
+        with open("/proc/self/cgroup", "rb") as f:
+            return f.read().decode("utf-8")
+
+    def assertStateInContainer(self, pyrex_state):
+        self.assertNotEqual(self.capture_local_state(), pyrex_state)
+
+    def assertStateNotInContainer(self, pyrex_state):
+        self.assertEqual(self.capture_local_state(), pyrex_state)
+
     def test_init(self):
         self.assertPyrexHostCommand("true")
 
@@ -356,34 +370,20 @@ class PyrexImageType_base(PyrexTest):
     def test_in_container(self):
         def capture_pyrex_state(*args, **kwargs):
             capture_file = os.path.join(self.thread_dir, "pyrex_capture")
+            self.assertPyrexContainerCommand(
+                "%s %s %s"
+                % (
+                    os.path.join(PYREX_ROOT, "ci", "bin", "pyrex-capture-state"),
+                    self.provider,
+                    capture_file,
+                ),
+                *args,
+                **kwargs,
+            )
+            with open(capture_file, "rb") as f:
+                return f.read().decode("utf-8")
 
-            if self.provider == "podman":
-                self.assertPyrexContainerShellCommand(
-                    "cp --no-preserve=all /proc/1/cmdline %s" % capture_file,
-                    *args,
-                    **kwargs,
-                )
-                with open(capture_file, "rb") as f:
-                    return f.read()
-            else:
-                self.assertPyrexContainerShellCommand(
-                    "cat /proc/self/cgroup > %s" % capture_file, *args, **kwargs
-                )
-                with open(capture_file, "r") as f:
-                    return f.read()
-
-        def capture_local_state():
-            if self.provider == "podman":
-                with open("/proc/1/cmdline", "rb") as f:
-                    return f.read()
-            else:
-                with open("/proc/self/cgroup", "r") as f:
-                    return f.read()
-
-        local_state = capture_local_state()
-
-        pyrex_state = capture_pyrex_state()
-        self.assertNotEqual(local_state, pyrex_state)
+        self.assertStateInContainer(capture_pyrex_state())
 
     def test_quiet_build(self):
         env = os.environ.copy()
@@ -999,9 +999,32 @@ class PyrexImageType_base(PyrexTest):
         self.assertSubprocess(cmd + [out_file], cwd=self.build_dir, returncode=1)
 
     def test_user_commands(self):
+        def capture_pyrex_state(command, *args, **kwargs):
+            capture_file = os.path.join(self.thread_dir, "pyrex_capture")
+            self.assertPyrexHostCommand(
+                "%s %s %s" % (command, self.provider, capture_file), *args, **kwargs
+            )
+            with open(capture_file, "rb") as f:
+                return f.read().decode("utf-8")
+
         conf = self.get_config()
-        conf["config"]["commands"] = "/bin/true !/bin/false"
+        conf["config"][
+            "commands"
+        ] = """\
+                ${env:PYREX_CONFIG_BIND}/ci/bin/*
+                !${env:PYREX_CONFIG_BIND}/ci/bin/exclude-pyrex-capture-state
+                /bin/true
+                !/bin/false
+            """
+        conf["config"].setdefault("envimport", "")
+        conf["config"]["envimport"] += " PYREX_CONFIG_BIND"
+
         conf.write_conf()
+
+        self.assertStateInContainer(capture_pyrex_state("pyrex-capture-state"))
+        self.assertStateNotInContainer(
+            capture_pyrex_state("exclude-pyrex-capture-state")
+        )
 
         self.assertPyrexHostCommand("/bin/true")
         self.assertPyrexHostCommand("/bin/false", returncode=1)
@@ -1013,14 +1036,14 @@ class PyrexImageType_base(PyrexTest):
         true_path = self.assertPyrexHostCommand(
             *(prefix + ["which true"]), capture=True, quiet_init=True
         )
-        true_link_path = os.readlink(true_path)
-        self.assertEqual(os.path.basename(true_link_path), "exec-shim-pyrex")
+        self.assertFalse(os.path.islink(true_path))
+        self.assertNotEqual(true_path, "/bin/true")
 
         false_path = self.assertPyrexHostCommand(
             *(prefix + ["which false"]), capture=True, quiet_init=True
         )
         false_link_path = os.readlink(false_path)
-        self.assertEqual(os.path.basename(false_link_path), "false")
+        self.assertEqual(false_link_path, "/bin/false")
 
     def test_lets_encrypt_root_ca(self):
         # Tests that root Let's Encrypt certficiate still works. The older X3
