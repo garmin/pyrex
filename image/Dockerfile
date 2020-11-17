@@ -587,7 +587,9 @@ ENV PYREX_BASE none
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     sudo dpkg --add-architecture i386 && \
-    apt-get -y update && apt-get -y install \
+    apt -y update && \
+    apt -y upgrade apt && \
+    apt -y install \
         wine64 \
         wine32 \
 && rm -rf /var/lib/apt/lists/*
