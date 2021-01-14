@@ -153,11 +153,25 @@ def main():
                     sys.stderr.write("%s exited with %d\n" % (path, e.returncode))
                     sys.exit(e.returncode)
 
+    # prepare all capabilities, read all of them instead of use 'all' as this
+    # might be an issue if /proc/sys/kernel/cap_last_cap and CAP_LAST_CAP from
+    # /usr/include/linux/capability.h are not matching
+    # see https://github.com/SinusBot/docker/issues/39
+    inh_cap = "-all"   # legacy value
+    with open("/proc/sys/kernel/cap_last_cap", "r") as cap_file:
+        last_cap = int(cap_file.readline().strip())
+
+        if not last_cap:
+            sys.stderr.write("Unable to read last_cap from /proc\n")
+            sys.exit(-1)
+
+        inh_cap = ",".join([f"-cap_{x}" for x in range(0, last_cap + 1)])
+
     # Invoke setpriv to drop root privileges.
     os.execlp(
         "setpriv",
         "setpriv",
-        "--inh-caps=-all",  # Drop all root capabilities
+        f"--inh-caps={inh_cap}",  # Drop all root capabilities
         "--reuid",
         "%d" % uid,
         "--regid",
@@ -168,7 +182,7 @@ def main():
     )
 
     # If we get here, it is an error
-    sys.syderr.write("Unable to exec setpriv\n")
+    sys.stderr.write("Unable to exec setpriv\n")
     sys.exit(1)
 
 
