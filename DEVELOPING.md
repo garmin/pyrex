@@ -84,7 +84,10 @@ To make a release of Pyrex:
    `MAJOR.MINOR.MICRO` without any suffix. Push this change to the master
    branch.
 2. Wait for [Travis](https://travis-ci.org/garmin/pyrex/branches) to finish the
-   CI build and verify it passes
+   CI build and verify it passes, or manually test it with
+    ```shell
+    ./ci/test.py -vbf`
+    ```
 3. Create a new [GitHub Release](https://github.com/garmin/pyrex/releases). The
    release must be tagged with the version in `pyrex.py`, prefixed with `v`.
    For example, the `1.0.0` release would be tagged `v1.0.0`
@@ -93,7 +96,11 @@ To make a release of Pyrex:
    [dockerhub](https://cloud.docker.com/u/garminpyrex/repository/list) using
    the same tag that was created for the release. Verify that the CI build
    passes and the container images are pushed. In the unlikely event this
-   fails, delete the release, fix the issue, and try again.
+   fails, delete the release, fix the issue, and try again. To manually deploy
+   a release, run:
+    ```shell
+    ./ci/deploy_docker.py all
+    ```
 
 ## When to release
 At a minimum, releases should be made whenever changes are made to one of the
