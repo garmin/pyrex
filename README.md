@@ -330,6 +330,19 @@ build the image locally instead. See the [Developer Documentation][].
 * *Were you aware of
   [Pyrex](http://www.cosc.canterbury.ac.nz/greg.ewing/python/Pyrex/)?* Oops.
   Hopefully there isn't too much confusion; that Pyrex looks abandoned anyway
+* *I can't access SSH or authenticated HTTP sources inside the container!* This
+  happens because the container doesn't bind in any of your personal
+  authentication files (e.g. `~/.ssh/config`) by default. If you need support
+  for this, you can the lines shown below to the `run:bind` in `pyrex.ini`,
+  which should cover most fetching cases:
+
+    [run]
+    bind =
+        ${env:PYREX_BIND}
+        ${env:HOME}/.ssh
+        ${env:HOME}/.netrc,optional
+        ${env:HOME}/.gitconfig,optional
+        ${env:HOME}/.config/git,optional
 
 [OE_TERMINAL]: https://www.yoctoproject.org/docs/current/mega-manual/mega-manual.html#var-OE_TERMINAL
 [CROPS]: https://github.com/crops
