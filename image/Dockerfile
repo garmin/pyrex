@@ -85,9 +85,11 @@ FROM prebuilt-base AS prebuilt-setpriv
 ENV PYREX_BASE none
 RUN mkdir -p /usr/src/util-linux && \
     cd /usr/src/util-linux && \
-    wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.33/util-linux-2.33.1.tar.xz && \
-    tar -xvf util-linux-2.33.1.tar.xz && \
-    cd util-linux-2.33.1 && \
+    wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.36/util-linux-2.36.1.tar.xz && \
+    tar -xvf util-linux-2.36.1.tar.xz && \
+    cd util-linux-2.36.1 && \
+    wget https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git/patch/?id=8bf68f78d8a3c470e5a326989aa3e78385e1e79b -O setpriv_all_cap.patch && \
+    patch -p1 < setpriv_all_cap.patch && \
     mkdir build && \
     cd build && \
     ../configure \
@@ -114,9 +116,9 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
 
 RUN set -x && mkdir -p /usr/src/libcap-ng && \
     cd /usr/src/libcap-ng && \
-    wget http://people.redhat.com/sgrubb/libcap-ng/libcap-ng-0.7.10.tar.gz && \
-    tar -xvf libcap-ng-0.7.10.tar.gz && \
-    cd libcap-ng-0.7.10 && \
+    wget http://people.redhat.com/sgrubb/libcap-ng/libcap-ng-0.8.2.tar.gz && \
+    tar -xvf libcap-ng-0.8.2.tar.gz && \
+    cd libcap-ng-0.8.2 && \
     mkdir build && \
     cd build && \
     ../configure --prefix=/usr/local && \
@@ -125,11 +127,11 @@ RUN set -x && mkdir -p /usr/src/libcap-ng && \
 
 RUN set -x && mkdir -p /usr/src/util-linux && \
     cd /usr/src/util-linux && \
-    wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.33/util-linux-2.33.1.tar.xz && \
-    tar -xvf util-linux-2.33.1.tar.xz && \
-    cd util-linux-2.33.1 && \
-    wget https://gist.githubusercontent.com/JoshuaWatt/50642701a7d9c1a3288357bbf94f99ce/raw/0f1cbc4e34286ebd6cd3413983d4687f34b6e2c9/0001-Remove-CAP_LAST_CAP-validation.patch && \
-    patch -p1 < 0001-Remove-CAP_LAST_CAP-validation.patch && \
+    wget https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.36/util-linux-2.36.1.tar.xz && \
+    tar -xvf util-linux-2.36.1.tar.xz && \
+    cd util-linux-2.36.1 && \
+    wget https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git/patch/?id=8bf68f78d8a3c470e5a326989aa3e78385e1e79b -O setpriv_all_cap.patch && \
+    patch -p1 < setpriv_all_cap.patch && \
     mkdir build && \
     cd build && \
     ../configure \
@@ -243,6 +245,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     (locale -a | tee /dev/stderr | grep -qx en_US.utf8)
 
 # Copy prebuilt items
+COPY --from=prebuilt-setpriv /dist/setpriv /
 COPY --from=prebuilt-tini /dist/tini /
 
 #
@@ -271,6 +274,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     (locale -a | tee /dev/stderr | grep -qx en_US.utf8)
 
 # Copy prebuilt items
+COPY --from=prebuilt-setpriv /dist/setpriv /
 COPY --from=prebuilt-tini /dist/tini /
 
 #
