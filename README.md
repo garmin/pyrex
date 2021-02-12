@@ -336,6 +336,7 @@ build the image locally instead. See the [Developer Documentation][].
   for this, you can the lines shown below to the `run:bind` in `pyrex.ini`,
   which should cover most fetching cases:
 
+    ```
     [run]
     bind =
         ${env:PYREX_BIND}
@@ -343,6 +344,7 @@ build the image locally instead. See the [Developer Documentation][].
         ${env:HOME}/.netrc,optional
         ${env:HOME}/.gitconfig,optional
         ${env:HOME}/.config/git,optional
+    ```
 
 [OE_TERMINAL]: https://www.yoctoproject.org/docs/current/mega-manual/mega-manual.html#var-OE_TERMINAL
 [CROPS]: https://github.com/crops
