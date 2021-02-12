@@ -86,7 +86,7 @@ To make a release of Pyrex:
 2. Wait for [Travis](https://travis-ci.org/garmin/pyrex/branches) to finish the
    CI build and verify it passes, or manually test it with
     ```shell
-    ./ci/test.py -vbf`
+    ./ci/test.py -vbf
     ```
 3. Create a new [GitHub Release](https://github.com/garmin/pyrex/releases). The
    release must be tagged with the version in `pyrex.py`, prefixed with `v`.
