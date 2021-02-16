@@ -461,7 +461,7 @@ def prep_container(
             sys.stderr.write("subuid name space is too small\n")
             sys.exit(1)
 
-        gid_length = get_subid_length("/etc/subgid", groupname)
+        gid_length = get_subid_length("/etc/subgid", username)
         if gid_length < 1:
             sys.stderr.write("subgid name space is too small\n")
             sys.exit(1)
