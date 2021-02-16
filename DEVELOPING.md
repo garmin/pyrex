@@ -83,18 +83,19 @@ To make a release of Pyrex:
    intended for general consumption should always be in the form
    `MAJOR.MINOR.MICRO` without any suffix. Push this change to the master
    branch.
-2. Wait for [Travis](https://travis-ci.org/garmin/pyrex/branches) to finish the
-   CI build and verify it passes, or manually test it with
+2. Wait for the [CI build](https://github.com/garmin/pyrex/actions?query=workflow%3Abuild)
+   to finish and verify it passes, or manually test it with
     ```shell
     ./ci/test.py -vbf
     ```
 3. Create a new [GitHub Release](https://github.com/garmin/pyrex/releases). The
    release must be tagged with the version in `pyrex.py`, prefixed with `v`.
    For example, the `1.0.0` release would be tagged `v1.0.0`
-4. Tagging the repository will trigger a new Travis CI build. This build will
+4. Tagging the repository will trigger a new CI build. This build will
    automatically push the container images to
    [dockerhub](https://cloud.docker.com/u/garminpyrex/repository/list) using
-   the same tag that was created for the release. Verify that the CI build
+   the same tag that was created for the release. Verify that the
+   [Release build](https://github.com/garmin/pyrex/actions?query=workflow%3Arelease)
    passes and the container images are pushed. In the unlikely event this
    fails, delete the release, fix the issue, and try again. To manually deploy
    a release, run:

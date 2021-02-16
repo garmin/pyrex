@@ -549,8 +549,8 @@ class PyrexImageType_base(PyrexTest):
 
     def test_version_tag(self):
         tag = None
-        if os.environ.get("TRAVIS_TAG"):
-            tag = os.environ["TRAVIS_TAG"]
+        if os.environ.get("RELEASE_TAG"):
+            tag = os.environ["RELEASE_TAG"]
         else:
             try:
                 tags = (

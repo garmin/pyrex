@@ -1,7 +1,7 @@
 # Pyrex
 Containerize your bitbake
 
-[![Build Status](https://travis-ci.com/garmin/pyrex.svg?branch=master)](https://travis-ci.com/garmin/pyrex)
+[![Build Status](https://github.com/garmin/pyrex/workflows/build/badge.svg?event=push&branch=master)](https://github.com/garmin/pyrex/actions?query=workflow%3Abuild+event%3Apush+branch%3Amaster)
 [![Coverage Status](https://coveralls.io/repos/github/garmin/pyrex/badge.svg?branch=master)](https://coveralls.io/github/garmin/pyrex?branch=master)
 
 ## Quickstart Guide (default layout)

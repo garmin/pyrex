@@ -1,6 +1,6 @@
 [run]
 include =
-    ${TRAVIS_BUILD_DIR}/pyrex.py
+    ${GITHUB_WORKSPACE}/pyrex.py
 parallel = True
-data_file = ${TRAVIS_BUILD_DIR}/.coverage
+data_file = ${GITHUB_WORKSPACE}/.coverage
 

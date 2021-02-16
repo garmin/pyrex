@@ -1,0 +1,59 @@
+name: release
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu-14.04-base
+          - image: ubuntu-14.04-oe
+          - image: ubuntu-16.04-base
+          - image: ubuntu-16.04-oe
+          - image: ubuntu-18.04-base
+          - image: ubuntu-18.04-oe
+          - image: ubuntu-18.04-oetest
+          - image: ubuntu-20.04-base
+          - image: ubuntu-20.04-oe
+          - image: ubuntu-20.04-oetest
+
+    runs-on: ubuntu-20.04
+
+    env:
+      USE_HELPER: "1"
+      DOCKER_BUILDKIT: "1"
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+
+      - name: Prepare build
+        run: ./ci/prepare.sh
+
+      - name: Install packages
+        run: |
+          sudo apt install -y diffstat
+
+      - name: Install python packages
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install requests
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Deploy image
+        run: |
+          export RELEASE_TAG="${GITHUB_REF##*/}"
+          ./ci/deploy_docker.py "${{ matrix.image }}:$RELEASE_TAG"
+
