@@ -4,6 +4,16 @@ Containerize your bitbake
 [![Build Status](https://github.com/garmin/pyrex/workflows/build/badge.svg?event=push&branch=master)](https://github.com/garmin/pyrex/actions?query=workflow%3Abuild+event%3Apush+branch%3Amaster)
 [![Coverage Status](https://coveralls.io/repos/github/garmin/pyrex/badge.svg?branch=master)](https://coveralls.io/github/garmin/pyrex?branch=master)
 
+## Requirements
+
+Pyrex has the following system requirements:
+ * `docker` or `podman`
+ * `python` 3.6 or later
+
+*NOTE: Pyrex will not function properly if `docker` is installed as snap since
+it bind mounts files that the snap is not allowed to access. Please install a
+non-snap version of docker, e.g. `apt install docker.io`*
+
 ## Quickstart Guide (default layout)
 Use this quickstart guide if your project uses the default (poky-style) layout
 where bitbake and layers are subdirectories of oe-core:
