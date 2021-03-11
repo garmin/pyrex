@@ -496,6 +496,34 @@ class PyrexImageType_base(PyrexTest):
 
         self.assertPyrexContainerShellCommand("test ! -e %s" % missing_bind)
 
+    def test_readonly_bind(self):
+        temp_dir = tempfile.mkdtemp("-pyrex")
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        temp_file = "%s/test.txt" % temp_dir
+        with open(temp_file, "w") as f:
+            f.write("foo\n")
+
+        conf = self.get_config(defaults=True)
+        conf["run"]["bind"] += " %s" % temp_dir
+        conf.write_conf()
+
+        self.assertPyrexContainerShellCommand("echo bar1 > %s" % temp_file)
+
+        with open(temp_file, "r") as f:
+            self.assertEqual(f.read(), "bar1\n", "Temporary file was overwritten")
+
+        conf = self.get_config(defaults=True)
+        conf["run"]["bind"] += " %s,readonly" % temp_dir
+        conf.write_conf()
+
+        self.assertPyrexContainerShellCommand(
+            "echo bar2 > %s" % temp_file, returncode=1
+        )
+
+        with open(temp_file, "r") as f:
+            self.assertEqual(f.read(), "bar1\n", "Temporary file was overwritten")
+
     def test_bad_bind_option(self):
         temp_dir = tempfile.mkdtemp("-pyrex")
         self.addCleanup(shutil.rmtree, temp_dir)
