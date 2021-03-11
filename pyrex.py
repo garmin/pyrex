@@ -325,15 +325,15 @@ def get_subid_length(filename, name):
 
 
 def parse_bind_options(bind):
-    options = types.SimpleNamespace(optional=False)
+    options = types.SimpleNamespace(optional=False, readonly=False)
     bad_options = []
 
     if "," in bind:
         s = bind.split(",")
         bind = s[0]
         for opt in s[1:]:
-            if opt == "optional":
-                options.optional = True
+            if hasattr(options, opt):
+                setattr(options, opt, True)
             else:
                 bad_options.append(opt)
 
@@ -530,7 +530,14 @@ def prep_container(
             print("Error: bind source path {b} does not exist".format(b=b))
             return []
 
-        engine_args.extend(["--mount", "type=bind,src={b},dst={b}".format(b=b)])
+        engine_args.extend(
+            [
+                "--mount",
+                "type=bind,src={b},dst={b}{ro}".format(
+                    b=b, ro=",readonly" if options.readonly else ""
+                ),
+            ]
+        )
 
     container_envvars.extend(config["run"]["envvars"].split())
     container_envvars.extend(extra_envvars)
