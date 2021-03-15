@@ -350,10 +350,10 @@ build the image locally instead. See the [Developer Documentation][].
     [run]
     bind =
         ${env:PYREX_BIND}
-        ${env:HOME}/.ssh
-        ${env:HOME}/.netrc,optional
-        ${env:HOME}/.gitconfig,optional
-        ${env:HOME}/.config/git,optional
+        ${env:HOME}/.ssh,readonly
+        ${env:HOME}/.netrc,optional,readonly
+        ${env:HOME}/.gitconfig,optional,readonly
+        ${env:HOME}/.config/git,optional,readonly
     ```
 
 [OE_TERMINAL]: https://www.yoctoproject.org/docs/current/mega-manual/mega-manual.html#var-OE_TERMINAL
