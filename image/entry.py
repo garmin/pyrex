@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import grp
 import os
+import pwd
 import sys
 import subprocess
 import signal
@@ -68,6 +70,29 @@ def main():
     if not os.path.exists(check_file):
         with open(check_file, "w") as f:
             f.write("%d %d %s %s\n" % (uid, primarygid, user, primarygroup))
+
+            # Remove all non-root users and groups so that there are no conflicts
+            # when the user is added.
+            for p in pwd.getpwall():
+
+                if p[2] == 0:
+                    continue
+
+                subprocess.check_call(
+                    [
+                        "userdel",
+                        p[0],
+                    ],
+                )
+
+            for g in grp.getgrall():
+
+                if g[2] == 0:
+                    continue
+
+                subprocess.check_call(
+                    ["groupdel", g[0]],
+                )
 
             # Create user and groups
             for (gid, group) in groups:

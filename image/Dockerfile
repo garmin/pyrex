@@ -630,11 +630,6 @@ COPY ./test_startup.sh /usr/libexec/pyrex/startup.d/
 # Precompile python files for improved startup time
 RUN python3 -m py_compile /usr/libexec/pyrex/*.py
 
-# Remove all non-root users and groups so that there are no conflicts when the
-# user is added
-RUN getent passwd | cut -f1 -d: | grep -v '^root$' | xargs -r -L 1 userdel
-RUN getent group | cut -f1 -d: | grep -v '^root$' | xargs -r -L 1 groupdel
-
 # Use tini as the init process and instruct it to invoke the cleanup script
 # once the primary command dies
 ENTRYPOINT ["/usr/local/bin/tini", "-P", "/usr/libexec/pyrex/cleanup.py", "{}", ";", "--", "/usr/libexec/pyrex/entry.py"]
