@@ -116,7 +116,8 @@ jobs:
           export PYTHONPATH=${GITHUB_WORKSPACE}/ci/site/:$PYTHONPATH
           export COVERAGE_PROCESS_START=${GITHUB_WORKSPACE}/.coveragerc
           rm -f .coverage-report.*
-          ${{ matrix.sh }} -c "./ci/test.py -vb PyrexImage_${{ matrix.provider }}_$(echo ${{ matrix.image }} | sed 's/\W/_/g')"
+          export SHELL=${{ matrix.sh }}
+          $SHELL -c "./ci/test.py -vb PyrexImage_${{ matrix.provider }}_$(echo ${{ matrix.image }} | sed 's/\W/_/g')"
 
       - name: Combine coverage
         run: |
