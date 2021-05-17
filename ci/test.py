@@ -240,7 +240,10 @@ class PyrexTest(object):
             init_env=init_env,
         )
         return self.assertSubprocess(
-            ["/bin/bash", cmd_file], pretty_command=command, cwd=cwd, **kwargs
+            [os.environ.get("SHELL", "/bin/bash"), cmd_file],
+            pretty_command=command,
+            cwd=cwd,
+            **kwargs
         )
 
     def assertPyrexContainerShellCommand(self, *args, **kwargs):
@@ -843,14 +846,18 @@ class PyrexImageType_base(PyrexTest):
         self.assertPyrexHostCommand("/bin/true")
         self.assertPyrexHostCommand("/bin/false", returncode=1)
 
+        prefix = []
+        if "zsh" in os.environ.get("SHELL", ""):
+            prefix = ["disable true false"]
+
         true_path = self.assertPyrexHostCommand(
-            "which true", capture=True, quiet_init=True
+            *(prefix + ["which true"]), capture=True, quiet_init=True
         )
         true_link_path = os.readlink(true_path)
         self.assertEqual(os.path.basename(true_link_path), "exec-shim-pyrex")
 
         false_path = self.assertPyrexHostCommand(
-            "which false", capture=True, quiet_init=True
+            *(prefix + ["which false"]), capture=True, quiet_init=True
         )
         false_link_path = os.readlink(false_path)
         self.assertEqual(os.path.basename(false_link_path), "false")
