@@ -30,11 +30,11 @@ fi
 export PYREX_CONFIG_BIND
 
 if [ -z "$PYREX_CONFIG_BIND" ]; then
-	PYREX_CONFIG_BIND="$(readlink -f $(dirname $THIS_SCRIPT))"
+	PYREX_CONFIG_BIND=$(readlink -f "$(dirname "$THIS_SCRIPT")")
 fi
 
 if [ -z "$PYREX_ROOT" ]; then
-	PYREX_ROOT=$(dirname $(readlink -f $THIS_SCRIPT))
+	PYREX_ROOT=$(dirname "$(readlink -f "$THIS_SCRIPT")")
 fi
 
 if [ -z "$PYREX_OEINIT" ]; then
@@ -61,18 +61,18 @@ if [ -n "$PYREXCONFFILE" ] && [ "${PYREXCONFFILE#/}" == "$PYREXCONFFILE" ]; then
     PYREXCONFFILE="$(pwd)/$PYREXCONFFILE"
 fi
 
-$PYREX_ROOT/pyrex.py capture \
+"$PYREX_ROOT/pyrex.py" capture \
 		-a PYREX_OEINIT "$PYREX_OEINIT" \
 		-e PYREXCONFFILE \
 		-e TEMPLATECONF \
 		-- 9 "$@" \
-		9> $PYREX_TEMP_ENV_FILE
+		9> "$PYREX_TEMP_ENV_FILE"
 if [ $? -ne 0 ]; then
 	pyrex_cleanup
 	return 1
 fi
 
-. $PYREX_TEMP_ENV_FILE
+. "$PYREX_TEMP_ENV_FILE"
 if [ $? -ne 0 ]; then
 	pyrex_cleanup
 	return 1
