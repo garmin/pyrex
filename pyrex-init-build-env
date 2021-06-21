@@ -57,7 +57,7 @@ pyrex_cleanup() {
 
 export PYREXCONFFILE
 
-if [ -n "$PYREXCONFFILE" ] && [ "${PYREXCONFFILE#/}" == "$PYREXCONFFILE" ]; then
+if [ -n "$PYREXCONFFILE" ] && [ "${PYREXCONFFILE#/}" = "$PYREXCONFFILE" ]; then
     PYREXCONFFILE="$(pwd)/$PYREXCONFFILE"
 fi
 
