@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-INIT_PWD=$PWD
-
 # Prevent some variables from being unset so their value can be captured
 unset() {
     for var in "$@"; do
@@ -36,9 +34,6 @@ check_bound() {
              "$PYREXCONFFILE to ensure it is bound into the container."
         exit 1
     fi
-
-    local FILE_DEV="$(stat --format "%D" "$1" )"
-    local ROOT_DEV="$(stat --format "%D" "/")"
 
     if [ "$(findmnt -f -n -o TARGET --target "$1")" == "/" ]; then
         echo "ERROR: $1 not bound in container (File mount target is root)"
