@@ -53,7 +53,7 @@ declare -a PYREX_ARGS=("$@")
 shift $#
 
 # Ensure the init script is bound in the container
-check_bound $PYREX_OEINIT
+check_bound "$PYREX_OEINIT"
 
 # If the bitbake directory argument or environment variable is provided, ensure
 # it is bound in the container
@@ -77,7 +77,7 @@ if [ -n "$OEROOT" ]; then
     check_bound "$OEROOT"
 fi
 
-. $PYREX_OEINIT "${PYREX_ARGS[@]}"
+. "$PYREX_OEINIT" "${PYREX_ARGS[@]}"
 if [ $? -ne 0 ]; then
     exit 1
 fi
@@ -95,9 +95,9 @@ fi
 # Ensure the build directory is bound into the container.
 check_bound "$(pwd)"
 
-check_bound $PYREX_CAPTURE_DEST
+check_bound "$PYREX_CAPTURE_DEST"
 
-cat > $PYREX_CAPTURE_DEST <<HEREDOC
+cat > "$PYREX_CAPTURE_DEST" <<HEREDOC
 {
     "tempdir": "$PWD/pyrex",
     "user" : {

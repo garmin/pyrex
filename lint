@@ -19,11 +19,14 @@ if ! which black > /dev/null 2>&1; then
     exit 1
 fi
 
-cd "$(readlink -f $(dirname $0))"
+cd "$(readlink -f "$(dirname "$0")")"
 if [ "$1" == "-r" ] || [ "$1" == "--reformat" ]; then
+    # shellcheck disable=SC2046
     black $(git ls-files '*.py')
 else
+    # shellcheck disable=SC2046
     black --check $(git ls-files '*.py')
 fi
 
+# shellcheck disable=SC2046
 flake8 $(git ls-files '*.py')

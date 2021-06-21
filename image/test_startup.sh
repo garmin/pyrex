@@ -5,4 +5,4 @@ if [ -z "${PYREX_TEST_STARTUP_SCRIPT+isset}" ]; then
 fi
 
 echo "Startup script test"
-exit $PYREX_TEST_STARTUP_SCRIPT
+exit "$PYREX_TEST_STARTUP_SCRIPT"
