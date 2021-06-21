@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if [ -n "$BASH_SOURCE" ]; then
+if [ -n "${BASH_SOURCE[*]}" ]; then
 	THIS_SCRIPT=$BASH_SOURCE
 elif [ -n "$ZSH_NAME" ]; then
 	THIS_SCRIPT=$0
