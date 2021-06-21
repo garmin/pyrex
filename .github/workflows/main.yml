@@ -11,6 +11,27 @@ on:
   workflow_dispatch:
 
 jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run ShellCheck for host scripts (POSIX)
+        uses: ludeeus/action-shellcheck@1.1.0
+        with:
+          additional_files: 'lint mkconfig pyrex-init-build-env'
+          ignore: 'image'
+        env:
+          SHELLCHECK_OPTS: -s sh -e SC1090 -e SC2181 -e SC3054
+
+      - name: Run ShellCheck for container scripts (bash)
+        uses: ludeeus/action-shellcheck@1.1.0
+        with:
+          scandir: 'image'
+        env:
+          SHELLCHECK_OPTS: -s bash -e SC1090 -e SC2181
+
   check:
     runs-on: ubuntu-20.04
     steps:
