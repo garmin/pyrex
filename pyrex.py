@@ -259,7 +259,11 @@ def build_image(config, build_config):
             build_config["build"]["buildid"] = get_image_id(config, tag)
         except subprocess.CalledProcessError:
             try:
-                engine_args = [engine, "pull", tag]
+                registry = config["config"]["registry"]
+                if registry and not registry.endswith("/"):
+                    registry = registry + "/"
+
+                engine_args = [engine, "pull", registry + tag]
                 subprocess.check_call(engine_args)
 
                 build_config["build"]["buildid"] = get_image_id(config, tag)
