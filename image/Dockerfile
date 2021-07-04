@@ -20,7 +20,7 @@ ARG PYREX_BASE=ubuntu-20.04-oe
 FROM alpine:3.9 AS prebuilt-base
 ENV PYREX_BASE none
 
-RUN apk add --update \
+RUN apk add --no-cache \
     acl-dev \
     alpine-sdk \
     autoconf \
@@ -110,7 +110,7 @@ FROM ubuntu:trusty AS prebuilt-util-linux-14.04
 ENV PYREX_BASE none
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     ulimit -n 1024 && \
-    apt-get -y update && apt-get -y install \
+    apt-get -y update && apt-get -y install --no-install-recommends \
         build-essential \
         wget
 
@@ -170,7 +170,7 @@ LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 # Install software required to run init scripts.
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     ulimit -n 1024 && \
-    apt-get -y update && apt-get -y install \
+    apt-get -y update && apt-get -y install --no-install-recommends \
         locales \
         lsb-release \
         ncurses-term \
@@ -201,7 +201,7 @@ LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 # Install software required to run init scripts.
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     ulimit -n 1024 && \
-    apt-get -y update && apt-get -y install \
+    apt-get -y update && apt-get -y install --no-install-recommends \
         locales \
         lsb-release \
         ncurses-term \
@@ -229,7 +229,7 @@ LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 # Install software required to run init scripts.
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     ulimit -n 1024 && \
-    apt-get -y update && apt-get -y install \
+    apt-get -y update && apt-get -y install --no-install-recommends \
         locales \
         lsb-release \
         ncurses-term \
@@ -258,7 +258,7 @@ LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 # Install software required to run init scripts.
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     ulimit -n 1024 && \
-    apt-get -y update && apt-get -y install \
+    apt-get -y update && apt-get -y install --no-install-recommends \
         locales \
         lsb-release \
         ncurses-term \
@@ -287,9 +287,9 @@ LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     ulimit -n 1024 && \
 # Add a non-ancient version of git
-    apt-get -y update && apt-get -y install software-properties-common && \
+    apt-get -y update && apt-get -y install --no-install-recommends software-properties-common && \
     add-apt-repository -y ppa:git-core/ppa && \
-    apt-get -y update && apt-get -y install \
+    apt-get -y update && apt-get -y install --no-install-recommends \
 # Poky 2.0 build dependencies
     gawk \
     wget \
@@ -366,9 +366,9 @@ LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     ulimit -n 1024 && \
 # Add a non-ancient version of git
-    apt-get -y update && apt-get -y install software-properties-common && \
+    apt-get -y update && apt-get -y install --no-install-recommends software-properties-common && \
     add-apt-repository -y ppa:git-core/ppa && \
-    apt-get -y update && apt-get -y install \
+    apt-get -y update && apt-get -y install --no-install-recommends \
 # Poky 2.7 build dependencies
     gawk \
     wget \
@@ -439,7 +439,7 @@ LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     ulimit -n 1024 && \
-    apt-get -y update && apt-get -y install \
+    apt-get -y update && apt-get -y install --no-install-recommends \
 # Poky 2.7 build dependencies
     gawk \
     wget \
@@ -507,7 +507,7 @@ LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     ulimit -n 1024 && \
-    apt-get -y update && apt-get -y install \
+    apt-get -y update && apt-get -y install --no-install-recommends \
 # Poky 3.1 build dependencies
     gawk \
     wget \
@@ -575,7 +575,7 @@ ENV PYREX_BASE none
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     sudo dpkg --add-architecture i386 && \
-    apt-get -y update && apt-get -y install \
+    apt-get -y update && apt-get -y install --no-install-recommends \
         wine64 \
         wine32 \
 && rm -rf /var/lib/apt/lists/*
@@ -593,7 +593,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     sudo dpkg --add-architecture i386 && \
     apt -y update && \
     apt -y upgrade apt && \
-    apt -y install \
+    apt -y install --no-install-recommends \
         wine64 \
         wine32 \
 && rm -rf /var/lib/apt/lists/*
@@ -653,7 +653,8 @@ ENV PYREX_BASE none
 # socket. Since the local Icecream daemon (iceccd) is not started when the
 # container starts, the client will not find it and instead connect to the host
 # Icecream daemon (as long as the container is run with --net=host).
-RUN mkdir -p /usr/share/icecc/toolchain && \
+RUN apt-get update -y && apt-get install -y --no-install-recommends file && \
+    mkdir -p /usr/share/icecc/toolchain && \
     cd /usr/share/icecc/toolchain/ && \
     TC_NAME=$(mktemp) && \
     /usr/local/libexec/icecc/icecc-create-env --gcc $(which gcc) $(which g++) 5> $TC_NAME && \
