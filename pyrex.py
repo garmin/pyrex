@@ -316,11 +316,14 @@ def get_engine_info(config):
 
 
 def get_subid_length(filename, name):
+    r = re.compile(r"{}:\d+:(\d+)".format(re.escape(name)))
+
     with open(filename, "r") as f:
         for line in f:
-            (ident, _, id_length) = line.rstrip().split(":")
-            if ident == name:
-                return int(id_length)
+            m = r.match(line)
+            if m is not None:
+                return int(m.group(1))
+
     return 0
 
 
