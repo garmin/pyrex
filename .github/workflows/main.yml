@@ -111,6 +111,9 @@ jobs:
         run: |
           ./ci/build_image.py ${{ matrix.image }} --provider=${{ matrix.provider }}
 
+      - name: ${{ matrix.provider }} images
+        run: ${{ matrix.provider }} images
+
       - name: Test image
         run:  |
           export PYTHONPATH=${GITHUB_WORKSPACE}/ci/site/:$PYTHONPATH

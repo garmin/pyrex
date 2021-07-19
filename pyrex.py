@@ -253,17 +253,19 @@ def build_image(config, build_config):
 
         build_config["build"]["buildhash"] = get_build_hash(build_config)
     else:
+        registry = config["config"].get("registry")
+        if registry:
+            if not registry.endswith("/"):
+                registry = registry + "/"
+            tag = registry + tag
+
         try:
             # Try to get the image This will fail if the image doesn't
             # exist locally
             build_config["build"]["buildid"] = get_image_id(config, tag)
         except subprocess.CalledProcessError:
             try:
-                registry = config["config"]["registry"]
-                if registry and not registry.endswith("/"):
-                    registry = registry + "/"
-
-                engine_args = [engine, "pull", registry + tag]
+                engine_args = [engine, "pull", tag]
                 subprocess.check_call(engine_args)
 
                 build_config["build"]["buildid"] = get_image_id(config, tag)
