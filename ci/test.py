@@ -125,9 +125,13 @@ class PyrexTest(object):
             config["config"]["image"] = self.test_image
             config["config"]["engine"] = self.provider
             config["config"]["buildlocal"] = "0"
-            config["config"]["pyrextag"] = (
-                os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, "") or "ci-test"
-            )
+            tag = os.environ.get(TEST_PREBUILT_TAG_ENV_VAR, "")
+            if tag:
+                config["config"]["pyrextag"] = tag
+            else:
+                config["config"]["pyrextag"] = "ci-test"
+                config["config"]["registry"] = ""
+
             config["run"]["bind"] += " " + self.build_dir
             config["imagebuild"]["buildcommand"] = "%s --provider=%s %s" % (
                 os.path.join(PYREX_ROOT, "ci", "build_image.py"),
