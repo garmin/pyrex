@@ -508,10 +508,10 @@ LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     ulimit -n 1024 && \
     apt-get -y update && apt-get -y install \
-# Poky 3.1 build dependencies
+# Poky 3.3 build dependencies
     gawk \
     wget \
-    git-core \
+    git \
     diffstat \
     unzip \
     texinfo \
@@ -534,6 +534,10 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     pylint3 \
     xterm \
     coreutils \
+    python3-subunit \
+    mesa-common-dev \
+    zstd \
+    liblz4-tool \
 # Testing dependencies
     iproute2 \
     sysstat \
