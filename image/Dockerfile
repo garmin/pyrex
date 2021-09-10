@@ -563,6 +563,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
 # Base OS stuff that reasonable workstations have, but which the registry image
 # doesn't
     tzdata \
+# Dependencies for other layers
+    xxd \
 && rm -rf /var/lib/apt/lists/*
 
 # Python modules used by resulttool
