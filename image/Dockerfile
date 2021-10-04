@@ -114,6 +114,10 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         build-essential \
         wget
 
+# Work around Let's Encrypt certificate expiration September 2021
+RUN sed -i 's/mozilla\/DST_Root_CA_X3.crt/!mozilla\/DST_Root_CA_X3.crt/g' /etc/ca-certificates.conf && \
+    update-ca-certificates
+
 RUN set -x && mkdir -p /usr/src/libcap-ng && \
     cd /usr/src/libcap-ng && \
     wget http://people.redhat.com/sgrubb/libcap-ng/libcap-ng-0.8.2.tar.gz && \
@@ -177,12 +181,17 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         python \
         python3 \
         sudo \
+        curl \
     && \
 # Clean up apt-cache
     rm -rf /var/lib/apt/lists/* &&\
 # generate utf8 locale
     locale-gen en_US.UTF-8 && \
     (locale -a | tee /dev/stderr | grep -qx en_US.utf8)
+
+# Work around Let's Encrypt certificate expiration September 2021
+RUN sed -i 's/mozilla\/DST_Root_CA_X3.crt/!mozilla\/DST_Root_CA_X3.crt/g' /etc/ca-certificates.conf && \
+    update-ca-certificates
 
 # Copy prebuilt items
 COPY --from=prebuilt-util-linux-14.04 /usr/local/ /usr/local/
@@ -208,6 +217,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         python \
         python3 \
         sudo \
+        curl \
     && \
 # Clean up apt-cache
     rm -rf /var/lib/apt/lists/* &&\
@@ -237,6 +247,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         python3 \
         setpriv \
         sudo \
+        curl \
     && \
 # Clean up apt-cache
     rm -rf /var/lib/apt/lists/* && \
@@ -266,6 +277,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         python3 \
         util-linux \
         sudo \
+        curl \
     && \
 # Clean up apt-cache
     rm -rf /var/lib/apt/lists/* && \
@@ -337,8 +349,6 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     python-crypto \
     python-six \
     python3-six \
-# Useful tools for debugging Pyrex images
-    curl \
 # An updated version of Git (from the PPA source above)
 # that supports doing Yocto externalsrc recipes against free-
 # standing working copies that use Git worktrees.
@@ -408,8 +418,6 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     python-crypto \
     python-six \
     python3-six \
-# Useful tools for debugging Pyrex images
-    curl \
 # An updated version of Git (from the PPA source above)
 # that supports doing Yocto externalsrc recipes against free-
 # standing working copies that use Git worktrees.
@@ -480,8 +488,6 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     python-crypto \
     python-six \
     python3-six \
-# Useful tools for debugging Pyrex images
-    curl \
 # Corollary to the core Yocto gcc-multilib package. Allows various
 # prebuilt native tools to work
     g++-multilib \
@@ -553,8 +559,6 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     python-crypto \
     python-six \
     python3-six \
-# Useful tools for debugging Pyrex images
-    curl \
 # Corollary to the core Yocto gcc-multilib package. Allows various
 # prebuilt native tools to work
     g++-multilib \
