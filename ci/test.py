@@ -866,6 +866,12 @@ class PyrexImageType_base(PyrexTest):
         false_link_path = os.readlink(false_path)
         self.assertEqual(os.path.basename(false_link_path), "false")
 
+    def test_lets_encrypt_root_ca(self):
+        # Tests that root Let's Encrypt certficiate still works. The older X3
+        # certificate expired in September 2021 and a bug in older versions of
+        # OpenSSL prevents clients from seeing the new one
+        self.assertPyrexContainerShellCommand("curl https://letsencrypt.org/")
+
 
 class PyrexImageType_oe(PyrexImageType_base):
     """
