@@ -223,7 +223,7 @@ def build_image(config, build_config):
 
         engine_args = shlex.split(config["imagebuild"]["buildcommand"])
 
-        for e in ("http_proxy", "https_proxy"):
+        for e in ("http_proxy", "https_proxy", "no_proxy"):
             if e in os.environ:
                 engine_args.extend(["--build-arg", "%s=%s" % (e, os.environ[e])])
 
