@@ -612,6 +612,30 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
 RUN python3 -m pip install testtools python-subunit
 
 #
+# Ubuntu 14.04 Base, customized with Garmin internal LAN configuration.
+#
+FROM ubuntu-14.04-oe AS ubuntu-14.04-oegarmin
+ENV PYREX_BASE none
+
+#
+# Ubuntu 16.04 Base, customized with Garmin internal LAN configuration.
+#
+FROM ubuntu-16.04-oe AS ubuntu-16.04-oegarmin
+ENV PYREX_BASE none
+
+#
+# Ubuntu 18.04 Base, customized with Garmin internal LAN configuration.
+#
+FROM ubuntu-18.04-oe AS ubuntu-18.04-oegarmin
+ENV PYREX_BASE none
+
+#
+# Ubuntu 20.04 Base, customized with Garmin internal LAN configuration.
+#
+FROM ubuntu-20.04-oe AS ubuntu-20.04-oegarmin
+ENV PYREX_BASE none
+
+#
 # Base image target.
 #
 # This stage sets up the minimal image startup and entry points. It also
@@ -678,3 +702,22 @@ ENV ICECC_VERSION=/usr/share/icecc/toolchain/native-gcc.tar.gz
 FROM pyrex-oe as pyrex-oetest
 ENV PYREX_BASE none
 
+#
+# Garmin developer image. Same as regular Yocto-compatible target image except
+# it has additional Garmin-internal TLS root certificates installed into the
+# trust store to facilitate using internal Garmin hosts whose certificate chain
+# does not extend up to publicly registered CA's.
+FROM pyrex-oe as pyrex-oegarmin
+ENV PYREX_BASE none
+
+RUN mkdir -p /usr/share/ca-certificates/garmin
+
+# Root certificate that issued the cert for firewall TLS inspection.
+# Certificate originally obtained from https://pki.garmin.com/crl/Garmin%20Root%20CA%20-%202018.cer
+COPY garmin/Garmin_Root_CA_-_2018.cer /tmp/
+RUN openssl x509 -inform DER -in /tmp/Garmin_Root_CA_-_2018.cer -out /usr/share/ca-certificates/garmin/Garmin_Root_CA_-_2018.crt
+RUN echo garmin/Garmin_Root_CA_-_2018.crt >> /etc/ca-certificates.conf
+RUN rm /tmp/Garmin_Root_CA_-_2018.cer
+
+# Rebuild the CA database
+RUN update-ca-certificates
