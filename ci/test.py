@@ -1092,6 +1092,15 @@ class PyrexImageType_oe(PyrexImageType_base):
         self.assertEqual(s, 'TEST_BB_EXTRA="foo"')
 
 
+class PyrexImageType_oegarmin(PyrexImageType_oe):
+    """
+    Tests images designed for building OpenEmbedded, from inside the Garmin
+    corporate LAN.
+    """
+
+    pass
+
+
 class PyrexImageType_oetest(PyrexImageType_oe):
     """
     Tests images designed for building OpenEmbedded Test image
@@ -1112,6 +1121,10 @@ TEST_IMAGES = (
     ("ubuntu-16.04-oe", "2.6"),
     ("ubuntu-18.04-oe", "2.6"),
     ("ubuntu-20.04-oe", "3.1"),
+    ("ubuntu-14.04-oegarmin", "2.6"),
+    ("ubuntu-16.04-oegarmin", "2.6"),
+    ("ubuntu-18.04-oegarmin", "2.6"),
+    ("ubuntu-20.04-oegarmin", "3.1"),
     ("ubuntu-18.04-oetest", "2.6"),
     ("ubuntu-20.04-oetest", "3.1"),
 )
