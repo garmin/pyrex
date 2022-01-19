@@ -44,6 +44,19 @@ def skipIfPrebuilt(func):
     return wrapper
 
 
+def skipIfOS(os, version):
+    def decorator(func):
+        def wrapper(self, *args, **kwargs):
+            (image_os, image_version, _) = self.test_image.split("-")
+            if image_os == os and image_version == version:
+                self.skipTest("Test does not apply to %s-%s" % (os, version))
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
 built_images = set()
 
 
@@ -1091,6 +1104,11 @@ class PyrexImageType_oe(PyrexImageType_base):
         )
         self.assertEqual(s, 'TEST_BB_EXTRA="foo"')
 
+    @skipIfOS("ubuntu", "14.04")
+    @skipIfOS("ubuntu", "16.04")
+    def test_wine(self):
+        self.assertPyrexContainerCommand("wine --version")
+
 
 class PyrexImageType_oegarmin(PyrexImageType_oe):
     """
@@ -1106,8 +1124,7 @@ class PyrexImageType_oetest(PyrexImageType_oe):
     Tests images designed for building OpenEmbedded Test image
     """
 
-    def test_wine(self):
-        self.assertPyrexContainerCommand("wine --version")
+    pass
 
 
 PROVIDERS = ("docker", "podman")

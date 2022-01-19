@@ -446,6 +446,7 @@ ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    sudo dpkg --add-architecture i386 && \
     ulimit -n 1024 && \
     apt-get -y update && apt-get -y install \
 # Poky 2.7 build dependencies
@@ -496,10 +497,13 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
 # Base OS stuff that reasonable workstations have, but which the registry image
 # doesn't
     tzdata \
+# Testing requirements
+    wine64 \
+    wine32 \
 && rm -rf /var/lib/apt/lists/*
 
 # Python modules used by resulttool
-RUN python3 -m pip install iterfzf
+RUN python3 -m pip install iterfzf testtools python-subunit
 
 # Copy prebuilt items
 COPY --from=prebuilt-icecream /dist/icecream /
@@ -512,8 +516,9 @@ ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
 RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    sudo dpkg --add-architecture i386 && \
     ulimit -n 1024 && \
-    apt-get -y update && apt-get -y install \
+    apt -y update && apt upgrade apt -y && apt -y install \
 # Poky 3.3 build dependencies
     gawk \
     wget \
@@ -569,10 +574,12 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     tzdata \
 # Dependencies for other layers
     xxd \
+# Testing requirements
+    wine64 \
+    wine32 \
 && rm -rf /var/lib/apt/lists/*
 
-# Python modules used by resulttool
-RUN python3 -m pip install iterfzf
+RUN python3 -m pip install iterfzf testtools python-subunit
 
 # Copy prebuilt items
 COPY --from=prebuilt-icecream /dist/icecream /
@@ -583,33 +590,11 @@ COPY --from=prebuilt-icecream /dist/icecream /
 FROM ubuntu-18.04-oe as ubuntu-18.04-oetest
 ENV PYREX_BASE none
 
-RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
-    sudo dpkg --add-architecture i386 && \
-    apt-get -y update && apt-get -y install \
-        wine64 \
-        wine32 \
-&& rm -rf /var/lib/apt/lists/*
-
-# Python modules used for tests
-RUN python3 -m pip install testtools python-subunit
-
 #
 # Ubuntu 20.04 OE Test Image
 #
 FROM ubuntu-20.04-oe as ubuntu-20.04-oetest
 ENV PYREX_BASE none
-
-RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
-    sudo dpkg --add-architecture i386 && \
-    apt -y update && \
-    apt -y upgrade apt && \
-    apt -y install \
-        wine64 \
-        wine32 \
-&& rm -rf /var/lib/apt/lists/*
-
-# Python modules used for tests
-RUN python3 -m pip install testtools python-subunit
 
 #
 # Ubuntu 14.04 Base, customized with Garmin internal LAN configuration.
