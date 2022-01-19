@@ -61,17 +61,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {image: ubuntu-14.04-base,    provider: docker, sh: bash}
-          - {image: ubuntu-14.04-oe,      provider: docker, sh: bash}
-          - {image: ubuntu-16.04-base,    provider: docker, sh: bash}
-          - {image: ubuntu-16.04-oe,      provider: docker, sh: bash}
-          - {image: ubuntu-18.04-base,    provider: docker, sh: bash}
-          - {image: ubuntu-18.04-oe,      provider: docker, sh: zsh }
-          - {image: ubuntu-18.04-oetest,  provider: docker, sh: bash}
-          - {image: ubuntu-20.04-base,    provider: docker, sh: bash}
-          - {image: ubuntu-20.04-oe,      provider: docker, sh: bash}
-          - {image: ubuntu-20.04-oe,      provider: podman, sh: bash}
-          - {image: ubuntu-20.04-oetest,  provider: docker, sh: bash}
+          - {image: ubuntu-14.04-base,      provider: docker, sh: bash}
+          - {image: ubuntu-14.04-oe,        provider: docker, sh: bash}
+          - {image: ubuntu-14.04-oegarmin,  provider: docker, sh: bash}
+          - {image: ubuntu-16.04-base,      provider: docker, sh: bash}
+          - {image: ubuntu-16.04-oe,        provider: docker, sh: bash}
+          - {image: ubuntu-16.04-oegarmin,  provider: docker, sh: bash}
+          - {image: ubuntu-18.04-base,      provider: docker, sh: bash}
+          - {image: ubuntu-18.04-oe,        provider: docker, sh: zsh }
+          - {image: ubuntu-18.04-oetest,    provider: docker, sh: bash}
+          - {image: ubuntu-18.04-oegarmin,  provider: docker, sh: bash}
+          - {image: ubuntu-20.04-base,      provider: docker, sh: bash}
+          - {image: ubuntu-20.04-oe,        provider: docker, sh: bash}
+          - {image: ubuntu-20.04-oe,        provider: podman, sh: bash}
+          - {image: ubuntu-20.04-oetest,    provider: docker, sh: bash}
+          - {image: ubuntu-20.04-oegarmin,  provider: docker, sh: bash}
 
     runs-on: ubuntu-20.04
 
