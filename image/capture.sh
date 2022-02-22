@@ -98,7 +98,7 @@ cat > "$PYREX_CAPTURE_DEST" <<HEREDOC
     "user" : {
         "cwd": "$PWD",
         "export": {
-            "BB_ENV_EXTRAWHITE": "$BB_ENV_EXTRAWHITE",
+            "BB_ENV_PASSTHROUGH_ADDITIONS": "$BB_ENV_PASSTHROUGH_ADDITIONS",
             "BUILDDIR": "$BUILDDIR"
         }
     },

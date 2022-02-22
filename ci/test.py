@@ -96,7 +96,7 @@ class PyrexTest(object):
         os.environ["PYREX_BUILD_QUIET"] = "0"
         os.environ["PYREX_OEINIT"] = os.path.join(self.pokyroot, "oe-init-build-env")
         os.environ["PYREX_CONFIG_BIND"] = PYREX_ROOT
-        for var in ("SSH_AUTH_SOCK", "BB_ENV_EXTRAWHITE"):
+        for var in ("SSH_AUTH_SOCK", "BB_ENV_PASSTHROUGH_ADDITIONS"):
             if var in os.environ:
                 del os.environ[var]
 
@@ -766,17 +766,17 @@ class PyrexImageType_base(PyrexTest):
 
         self.assertEqual(groups, my_groups)
 
-    def test_bb_env_extrawhite(self):
+    def test_BB_ENV_PASSTHROUGH_ADDITIONS(self):
         env = os.environ.copy()
-        env["BB_ENV_EXTRAWHITE"] = "TEST_BB_EXTRA"
+        env["BB_ENV_PASSTHROUGH_ADDITIONS"] = "TEST_BB_EXTRA"
         env["TEST_BB_EXTRA"] = "Hello"
 
         s = set(
             self.assertPyrexContainerShellCommand(
-                "echo $BB_ENV_EXTRAWHITE", env=env, quiet_init=True, capture=True
+                "echo $BB_ENV_PASSTHROUGH_ADDITIONS", env=env, quiet_init=True, capture=True
             ).split()
         )
-        self.assertIn(env["BB_ENV_EXTRAWHITE"], s)
+        self.assertIn(env["BB_ENV_PASSTHROUGH_ADDITIONS"], s)
 
         s = self.assertPyrexContainerShellCommand(
             "echo $TEST_BB_EXTRA", env=env, quiet_init=True, capture=True
@@ -1080,7 +1080,7 @@ class PyrexImageType_oe(PyrexImageType_base):
     def test_env_capture(self):
         extra_white = set(
             self.assertPyrexHostCommand(
-                "echo $BB_ENV_EXTRAWHITE", quiet_init=True, capture=True
+                "echo $BB_ENV_PASSTHROUGH_ADDITIONS", quiet_init=True, capture=True
             ).split()
         )
 
@@ -1094,9 +1094,9 @@ class PyrexImageType_oe(PyrexImageType_base):
         )
         self.assertEqual(builddir, self.build_dir)
 
-    def test_bb_env_extrawhite_parse(self):
+    def test_BB_ENV_PASSTHROUGH_ADDITIONS_parse(self):
         env = os.environ.copy()
-        env["BB_ENV_EXTRAWHITE"] = "TEST_BB_EXTRA"
+        env["BB_ENV_PASSTHROUGH_ADDITIONS"] = "TEST_BB_EXTRA"
         env["TEST_BB_EXTRA"] = "foo"
 
         s = self.assertPyrexHostCommand(
