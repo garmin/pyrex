@@ -113,7 +113,8 @@ cat > "$PYREX_CAPTURE_DEST" <<HEREDOC
                 "$OEROOT/scripts/runqemu*",
                 "$OEROOT/scripts/oe-run-native",
                 "$OEROOT/scripts/oe-find-native-sysroot",
-                "$OEROOT/scripts/wic"
+                "$OEROOT/scripts/wic",
+                "$OEROOT/scripts/git"
             ]
         }
     },
