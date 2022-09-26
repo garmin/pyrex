@@ -76,6 +76,10 @@ jobs:
           - {image: ubuntu-20.04-oe,        provider: podman, sh: bash}
           - {image: ubuntu-20.04-oetest,    provider: docker, sh: bash}
           - {image: ubuntu-20.04-oegarmin,  provider: docker, sh: bash}
+          - {image: ubuntu-22.04-base,      provider: docker, sh: bash}
+          - {image: ubuntu-22.04-oe,        provider: docker, sh: bash}
+          - {image: ubuntu-22.04-oe,        provider: podman, sh: bash}
+          - {image: ubuntu-22.04-oegarmin,  provider: docker, sh: bash}
 
     runs-on: ubuntu-20.04
 
