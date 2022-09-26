@@ -27,6 +27,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import time
 
 PYREX_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(PYREX_ROOT)
@@ -1072,6 +1073,17 @@ class PyrexImageType_oe(PyrexImageType_base):
             capture=True,
             cwd=cwd,
         )
+
+        # Since bitbake is being invoked outside of Pyrex, we need to wait
+        # until it exits before trying to cleanup the build directory,
+        # otherwise it can race.
+        wait_time = 20
+        for _ in range(wait_time):
+            if not os.path.exists(os.path.join(builddir, "bitbake.lock")):
+                break
+            time.sleep(1)
+        else:
+            self.fail(f"bitbake did not exit within {wait_time} seconds")
 
         shutil.rmtree(builddir)
 
