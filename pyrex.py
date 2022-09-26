@@ -551,10 +551,11 @@ def prep_container(
     container_envvars.extend(config["run"]["envvars"].split())
     container_envvars.extend(extra_envvars)
 
-    # Pass along BB_ENV_EXTRAWHITE and anything it has whitelisted
-    if "BB_ENV_EXTRAWHITE" in os.environ:
-        engine_args.extend(["-e", "BB_ENV_EXTRAWHITE"])
-        container_envvars.extend(os.environ["BB_ENV_EXTRAWHITE"].split())
+    # Pass along extra environment variables
+    for e in ("BB_ENV_EXTRAWHITE", "BB_ENV_PASSTHROUGH_ADDITIONS"):
+        if e in os.environ:
+            engine_args.extend(["-e", e])
+            container_envvars.extend(os.environ[e].split())
 
     # Pass environment variables. If a variable passed with an argument
     # "-e VAR" is not set in the parent environment, podman passes an

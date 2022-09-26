@@ -63,7 +63,8 @@ built_images = set()
 class PyrexTest(object):
     @property
     def pokyroot(self):
-        return os.path.join(PYREX_ROOT, "poky", self.pokyver)
+        major, minor = self.pokyver
+        return os.path.join(PYREX_ROOT, "poky", f"{major}.{minor}")
 
     def setUp(self):
         self.build_dir = os.path.join(PYREX_ROOT, "build", "%d" % os.getpid())
@@ -96,7 +97,11 @@ class PyrexTest(object):
         os.environ["PYREX_BUILD_QUIET"] = "0"
         os.environ["PYREX_OEINIT"] = os.path.join(self.pokyroot, "oe-init-build-env")
         os.environ["PYREX_CONFIG_BIND"] = PYREX_ROOT
-        for var in ("SSH_AUTH_SOCK", "BB_ENV_EXTRAWHITE"):
+        for var in (
+            "SSH_AUTH_SOCK",
+            "BB_ENV_EXTRAWHITE",
+            "BB_ENV_PASSTHROUGH_ADDITIONS",
+        ):
             if var in os.environ:
                 del os.environ[var]
 
@@ -766,17 +771,21 @@ class PyrexImageType_base(PyrexTest):
 
         self.assertEqual(groups, my_groups)
 
-    def test_bb_env_extrawhite(self):
+    def test_env_passthrough_var(self):
         env = os.environ.copy()
-        env["BB_ENV_EXTRAWHITE"] = "TEST_BB_EXTRA"
+        if self.pokyver < (4, 0):
+            varname = "BB_ENV_EXTRAWHITE"
+        else:
+            varname = "BB_ENV_PASSTHROUGH_ADDITIONS"
+        env[varname] = "TEST_BB_EXTRA"
         env["TEST_BB_EXTRA"] = "Hello"
 
         s = set(
             self.assertPyrexContainerShellCommand(
-                "echo $BB_ENV_EXTRAWHITE", env=env, quiet_init=True, capture=True
+                f"echo ${varname}", env=env, quiet_init=True, capture=True
             ).split()
         )
-        self.assertIn(env["BB_ENV_EXTRAWHITE"], s)
+        self.assertIn(env[varname], s)
 
         s = self.assertPyrexContainerShellCommand(
             "echo $TEST_BB_EXTRA", env=env, quiet_init=True, capture=True
@@ -1078,25 +1087,35 @@ class PyrexImageType_oe(PyrexImageType_base):
         self.assertEqual(oe_topdir, pyrex_topdir)
 
     def test_env_capture(self):
-        extra_white = set(
+        if self.pokyver < (4, 0):
+            varname = "BB_ENV_EXTRAWHITE"
+        else:
+            varname = "BB_ENV_PASSTHROUGH_ADDITIONS"
+
+        extra_env = set(
             self.assertPyrexHostCommand(
-                "echo $BB_ENV_EXTRAWHITE", quiet_init=True, capture=True
+                f"echo ${varname}", quiet_init=True, capture=True
             ).split()
         )
 
         # The exact values aren't relevant, only that they are correctly
         # imported from the capture
-        self.assertIn("MACHINE", extra_white)
-        self.assertIn("DISTRO", extra_white)
+        self.assertIn("MACHINE", extra_env)
+        self.assertIn("DISTRO", extra_env)
 
         builddir = self.assertPyrexHostCommand(
             "echo $BUILDDIR", quiet_init=True, capture=True
         )
         self.assertEqual(builddir, self.build_dir)
 
-    def test_bb_env_extrawhite_parse(self):
+    def test_bb_env_extra_parse(self):
+        if self.pokyver < (4, 0):
+            varname = "BB_ENV_EXTRAWHITE"
+        else:
+            varname = "BB_ENV_PASSTHROUGH_ADDITIONS"
+
         env = os.environ.copy()
-        env["BB_ENV_EXTRAWHITE"] = "TEST_BB_EXTRA"
+        env[varname] = "TEST_BB_EXTRA"
         env["TEST_BB_EXTRA"] = "foo"
 
         s = self.assertPyrexHostCommand(
@@ -1130,20 +1149,20 @@ class PyrexImageType_oetest(PyrexImageType_oe):
 PROVIDERS = ("docker", "podman")
 
 TEST_IMAGES = (
-    ("ubuntu-14.04-base", "2.6"),
-    ("ubuntu-16.04-base", "2.6"),
-    ("ubuntu-18.04-base", "2.6"),
-    ("ubuntu-20.04-base", "3.1"),
-    ("ubuntu-14.04-oe", "2.6"),
-    ("ubuntu-16.04-oe", "2.6"),
-    ("ubuntu-18.04-oe", "2.6"),
-    ("ubuntu-20.04-oe", "3.1"),
-    ("ubuntu-14.04-oegarmin", "2.6"),
-    ("ubuntu-16.04-oegarmin", "2.6"),
-    ("ubuntu-18.04-oegarmin", "2.6"),
-    ("ubuntu-20.04-oegarmin", "3.1"),
-    ("ubuntu-18.04-oetest", "2.6"),
-    ("ubuntu-20.04-oetest", "3.1"),
+    ("ubuntu-14.04-base", (2, 6)),
+    ("ubuntu-16.04-base", (2, 6)),
+    ("ubuntu-18.04-base", (2, 6)),
+    ("ubuntu-20.04-base", (3, 1)),
+    ("ubuntu-14.04-oe", (2, 6)),
+    ("ubuntu-16.04-oe", (2, 6)),
+    ("ubuntu-18.04-oe", (2, 6)),
+    ("ubuntu-20.04-oe", (3, 1)),
+    ("ubuntu-14.04-oegarmin", (2, 6)),
+    ("ubuntu-16.04-oegarmin", (2, 6)),
+    ("ubuntu-18.04-oegarmin", (2, 6)),
+    ("ubuntu-20.04-oegarmin", (3, 1)),
+    ("ubuntu-18.04-oetest", (2, 6)),
+    ("ubuntu-20.04-oetest", (3, 1)),
 )
 
 

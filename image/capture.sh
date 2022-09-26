@@ -92,13 +92,18 @@ check_bound "$(pwd)"
 
 check_bound "$PYREX_CAPTURE_DEST"
 
+json_str() {
+    echo "\"$1\": \"${!1}\""
+}
+
 cat > "$PYREX_CAPTURE_DEST" <<HEREDOC
 {
     "tempdir": "$PWD/pyrex",
     "user" : {
         "cwd": "$PWD",
         "export": {
-            "BB_ENV_EXTRAWHITE": "$BB_ENV_EXTRAWHITE",
+            ${BB_ENV_EXTRAWHITE:+$(json_str "BB_ENV_EXTRAWHITE"),}
+            ${BB_ENV_PASSTHROUGH_ADDITIONS:+$(json_str "BB_ENV_PASSTHROUGH_ADDITIONS"),}
             "BUILDDIR": "$BUILDDIR"
         }
     },
