@@ -207,7 +207,7 @@ class PyrexTest(object):
         cwd=PYREX_ROOT,
         builddir=None,
         bitbakedir="",
-        init_env={}
+        init_env={},
     ):
         if builddir is None:
             builddir = self.build_dir
@@ -251,7 +251,7 @@ class PyrexTest(object):
         builddir=None,
         bitbakedir="",
         init_env={},
-        **kwargs
+        **kwargs,
     ):
         cmd_file, command = self._write_host_command(
             args,
@@ -265,7 +265,7 @@ class PyrexTest(object):
             [os.environ.get("SHELL", "/bin/bash"), cmd_file],
             pretty_command=command,
             cwd=cwd,
-            **kwargs
+            **kwargs,
         )
 
     def assertPyrexContainerShellCommand(self, *args, **kwargs):
@@ -343,7 +343,7 @@ class PyrexImageType_base(PyrexTest):
                 self.assertPyrexContainerShellCommand(
                     "cp --no-preserve=all /proc/1/cmdline %s" % capture_file,
                     *args,
-                    **kwargs
+                    **kwargs,
                 )
                 with open(capture_file, "rb") as f:
                     return f.read()
