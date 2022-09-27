@@ -24,6 +24,8 @@ jobs:
           - image: ubuntu-20.04-oe
           - image: ubuntu-20.04-oetest
           - image: ubuntu-20.04-oegarmin
+          - image: ubuntu-22.04-oe
+          - image: ubuntu-22.04-oegarmin
 
     runs-on: ubuntu-20.04
 
