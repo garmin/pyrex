@@ -228,6 +228,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     curl -fsSL 'https://packagecloud.io/github/git-lfs/gpgkey' | gpg --dearmor > /etc/apt/keyrings/github_git-lfs-archive-keyring.gpg && \
     apt-get -y update && \
     apt-get -y install git-lfs && \
+# Configure git lfs
+    git lfs install --system > /dev/null 2>&1 && \
 # Clean up apt-cache
     rm -rf /var/lib/apt/lists/* &&\
 # generate utf8 locale
@@ -540,6 +542,9 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
 # Testing requirements
     wine64 \
     wine32 \
+    && \
+# Configure git lfs
+    git lfs install --system > /dev/null 2>&1 \
 && rm -rf /var/lib/apt/lists/*
 
 # Python modules used by resulttool
