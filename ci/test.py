@@ -1098,6 +1098,22 @@ class PyrexImageType_oe(PyrexImageType_base):
 
         self.assertEqual(oe_topdir, pyrex_topdir)
 
+    @skipIfOS("ubuntu", "14.04")
+    def test_git_lfs_version(self):
+        # Require the version that first supports local paths, so bitbake can
+        # reference a local path with lfs.
+        d = self.assertPyrexContainerCommand(
+            "git lfs version", quiet_init=True, capture=True
+        )
+        # Returns a User-Agent string git-lfs uses,
+        # which is in the format git-lfs/major.minor.patch (platform information)
+        self.assertTrue(d.startswith("git-lfs"))
+        (major, minor, patch) = (
+            int(x) for x in d.split("/")[1].split(" ")[0].split(".")
+        )
+
+        self.assertTrue(major > 2 or (major == 2 and minor >= 10))
+
     def test_env_capture(self):
         if self.pokyver < (4, 0):
             varname = "BB_ENV_EXTRAWHITE"
