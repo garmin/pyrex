@@ -474,7 +474,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
 && rm -rf /var/lib/apt/lists/*
 
 # Python modules used by resulttool
-RUN python3 -m pip install jinja2 iterfzf
+RUN python3 -m pip install jinja2 iterfzf==0.5.0.20.0
 
 # Copy prebuilt items
 COPY --from=prebuilt-icecream /dist/icecream /
