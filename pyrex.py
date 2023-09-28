@@ -34,7 +34,7 @@ import tempfile
 import textwrap
 import types
 
-VERSION = "1.8.1"
+VERSION = "1.9.0"
 
 VERSION_REGEX = re.compile(r"^([0-9]+\.){2}[0-9]+(-.*)?$")
 VERSION_TAG_REGEX = re.compile(r"^v([0-9]+\.){2}[0-9]+(-.*)?$")
