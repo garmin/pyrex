@@ -58,6 +58,24 @@ def skipIfOS(os, version):
     return decorator
 
 
+def minPokyVer(major, minor):
+    def ver_str(major, minor):
+        return "%d.%d" % (major, minor)
+
+    def decorator(func):
+        def wrapper(self, *args, **kwargs):
+            if self.pokyver < (major, minor):
+                self.skipTest(
+                    "Test cannot be used with poky version < %s (using %s)"
+                    % (ver_str(major, minor), ver_str(*self.pokyver))
+                )
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
 built_images = set()
 
 
@@ -1052,6 +1070,7 @@ class PyrexImageType_oe(PyrexImageType_base):
         )
         self.assertEqual(s, test_string)
 
+    @minPokyVer(3, 1)
     def test_top_dir(self):
         # Verify that the TOPDIR reported by bitbake in pyrex is the same as
         # the one reported by bitbake outside of pyrex
@@ -1179,20 +1198,20 @@ PROVIDERS = ("docker", "podman")
 TEST_IMAGES = (
     ("ubuntu-14.04-base", (2, 6)),
     ("ubuntu-16.04-base", (2, 6)),
-    ("ubuntu-18.04-base", (2, 6)),
+    ("ubuntu-18.04-base", (3, 1)),
     ("ubuntu-20.04-base", (3, 1)),
     ("ubuntu-22.04-base", (4, 0)),
     ("ubuntu-14.04-oe", (2, 6)),
     ("ubuntu-16.04-oe", (2, 6)),
-    ("ubuntu-18.04-oe", (2, 6)),
+    ("ubuntu-18.04-oe", (3, 1)),
     ("ubuntu-20.04-oe", (3, 1)),
     ("ubuntu-22.04-oe", (4, 0)),
     ("ubuntu-14.04-oegarmin", (2, 6)),
     ("ubuntu-16.04-oegarmin", (2, 6)),
-    ("ubuntu-18.04-oegarmin", (2, 6)),
+    ("ubuntu-18.04-oegarmin", (3, 1)),
     ("ubuntu-20.04-oegarmin", (3, 1)),
     ("ubuntu-22.04-oegarmin", (4, 0)),
-    ("ubuntu-18.04-oetest", (2, 6)),
+    ("ubuntu-18.04-oetest", (3, 1)),
     ("ubuntu-20.04-oetest", (3, 1)),
 )
 
@@ -1200,7 +1219,7 @@ TEST_IMAGES = (
 def add_image_tests():
     self = sys.modules[__name__]
     for provider in PROVIDERS:
-        for (image, pokyver) in TEST_IMAGES:
+        for image, pokyver in TEST_IMAGES:
             (_, _, image_type) = image.split("-")
 
             parent = getattr(self, "PyrexImageType_" + image_type)
