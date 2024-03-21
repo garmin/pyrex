@@ -1175,6 +1175,9 @@ class PyrexImageType_oe(PyrexImageType_base):
     def test_wine(self):
         self.assertPyrexContainerCommand("wine --version")
 
+    def test_ssh(self):
+        self.assertPyrexContainerCommand("ssh -V")
+
 
 class PyrexImageType_oegarmin(PyrexImageType_oe):
     """
