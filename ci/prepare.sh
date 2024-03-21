@@ -20,20 +20,21 @@ TOP_DIR=$(readlink -f "$(dirname "$0")/../")
 
 rm -rf "$TOP_DIR/poky"
 mkdir "$TOP_DIR/poky"
-wget --no-check-certificate -O "$TOP_DIR/poky/poky-2.6.tar.bz2" "https://downloads.yoctoproject.org/releases/yocto/yocto-2.6/poky-thud-20.0.0.tar.bz2"
-echo 'ef3d4305054282938bfe70dc5a08eba8a701a22b49795b1c2d8ed5aed90d0581 *poky/poky-2.6.tar.bz2' | sha256sum -c
+wget --no-check-certificate -O "$TOP_DIR/poky/poky-2.6.tar.bz2" "https://downloads.yoctoproject.org/releases/yocto/yocto-2.6.4/poky-thud-20.0.4.tar.bz2"
 
-wget --no-check-certificate -O "$TOP_DIR/poky/poky-3.1.tar.bz2" "http://downloads.yoctoproject.org/releases/yocto/yocto-3.1/poky-dunfell-23.0.0.tar.bz2"
-echo 'c1f4a486e5f090dbdf50c15a5d22afa6689bd609604b48d63eb0643ad58eb370 *poky/poky-3.1.tar.bz2' | sha256sum -c
+wget --no-check-certificate -O "$TOP_DIR/poky/poky-3.1.tar.bz2" "http://downloads.yoctoproject.org/releases/yocto/yocto-3.1.32/poky-dunfell-23.0.32.tar.bz2"
 
-wget --no-check-certificate -O "$TOP_DIR/poky/poky-4.0.tar.bz2" http://downloads.yoctoproject.org/releases/yocto/yocto-4.0/poky-00cfdde791a0176c134f31e5a09eff725e75b905.tar.bz2
-echo '4cedb491b7bf0d015768c61690f30d7d73f4266252d6fba907bba97eac83648c *poky/poky-4.0.tar.bz2' | sha256sum -c
+wget --no-check-certificate -O "$TOP_DIR/poky/poky-4.0.tar.bz2" "http://downloads.yoctoproject.org/releases/yocto/yocto-4.0.16/poky-54af8c5e80ebf63707ef4e51cc9d374f716da603.tar.bz2"
 
-mkdir "$TOP_DIR/poky/2.6" "$TOP_DIR/poky/3.1" "$TOP_DIR/poky/4.0"
-echo "Extracting..."
-tar -xf "$TOP_DIR/poky/poky-2.6.tar.bz2" -C "$TOP_DIR/poky/2.6" --strip-components=1
-tar -xf "$TOP_DIR/poky/poky-3.1.tar.bz2" -C "$TOP_DIR/poky/3.1" --strip-components=1
-tar -xf "$TOP_DIR/poky/poky-4.0.tar.bz2" -C "$TOP_DIR/poky/4.0" --strip-components=1
-ln -s ../../pyrex-init-build-env "$TOP_DIR/poky/2.6/"
-ln -s ../../pyrex-init-build-env "$TOP_DIR/poky/3.1/"
-ln -s ../../pyrex-init-build-env "$TOP_DIR/poky/4.0/"
+sha256sum -c <<HEREDOC
+9210c22c1f533c09202219ca89317c1ab06d27ac987cc856ee3a6a2aa41ad476 *poky/poky-2.6.tar.bz2
+8a80432093ee79a27ea4984bea89f0ca8a9f7de5da3837d69ed4d5a6410bfad6 *poky/poky-3.1.tar.bz2
+a53ec3a661cf56ca40c0fbf1500288c2c20abe94896d66a572bc5ccf5d92e9d6 *poky/poky-4.0.tar.bz2
+HEREDOC
+
+for v in "2.6" "3.1" "4.0"; do
+    mkdir "$TOP_DIR/poky/$v"
+    echo "Extracting $v..."
+    tar -xf "$TOP_DIR/poky/poky-$v.tar.bz2" -C "$TOP_DIR/poky/$v" --strip-components=1
+    ln -s ../../pyrex-init-build-env "$TOP_DIR/poky/$v/"
+done
