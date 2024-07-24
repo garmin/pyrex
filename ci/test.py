@@ -582,6 +582,32 @@ class PyrexImageType_base(PyrexTest):
         )
         self.assertIn("Error: bad option(s) 'bad-option' for bind", s)
 
+    def test_bind_dest(self):
+        temp_dir = tempfile.mkdtemp("-pyrex")
+        self.addCleanup(shutil.rmtree, temp_dir)
+
+        temp_file = os.path.join(temp_dir, "data")
+
+        conf = self.get_config()
+        conf["run"]["bind"] += " %s:/foo" % (temp_dir)
+        conf.write_conf()
+
+        self.assertPyrexContainerShellCommand("echo 123 > /foo/data")
+
+        with open(temp_file, "r") as f:
+            self.assertEqual(f.read(), "123\n")
+
+    def test_malformed_bind_dest(self):
+
+        b = "/src:/dst:illegal-token"
+
+        conf = self.get_config()
+        conf["run"]["bind"] += " %s" % b
+        conf.write_conf()
+
+        s = self.assertPyrexContainerShellCommand("true", capture=True, returncode=1)
+        self.assertIn("Error: too many colons in run.bind entry '%s'." % b, s)
+
     def test_bad_confversion(self):
         # Verify that a bad config is an error
         conf = self.get_config()
