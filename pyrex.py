@@ -369,6 +369,17 @@ def parse_bind_options(bind):
     return src, dst, options
 
 
+def prettyprint_bind(src, dst, options):
+    options_keys = list(vars(options).keys())
+    options_keys.sort()
+    options_str = ""
+    for k in options_keys:
+        if getattr(options, k):
+            options_str = options_str + ",{option}".format(option=k)
+
+    return "{src}:{dst}{options}".format(src=src, dst=dst, options=options_str)
+
+
 def prep_container(
     config,
     build_config,
@@ -547,12 +558,31 @@ def prep_container(
         + os.environ.get("PYREX_CONFIG_BIND", "").split()
         + extra_bind
     )
-    for b in set(binds):
+
+    binds_by_dst = {}
+    prettyprinted_binds_by_dst = {}
+
+    for b in binds:
         try:
             src, dst, options = parse_bind_options(b)
         except ParsingError as e:
             print("Error: %s" % e)
             return []
+
+        if dst in binds_by_dst:
+            # Allow identical entries
+            if prettyprint_bind(src, dst, options) == prettyprinted_binds_by_dst[dst]:
+                continue
+            else:
+                print(
+                    "Error: more than one bind for same destination path {dst}: '{bind1}' and '{bind2}'".format(
+                        dst=dst, bind1=binds_by_dst[dst], bind2=b
+                    )
+                )
+                return []
+        else:
+            binds_by_dst[dst] = b
+            prettyprinted_binds_by_dst[dst] = prettyprint_bind(src, dst, options)
 
         if not os.path.exists(src):
             if options.optional:
