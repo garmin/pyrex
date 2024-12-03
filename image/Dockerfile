@@ -331,6 +331,36 @@ COPY --from=prebuilt-setpriv /dist/setpriv /
 COPY --from=prebuilt-tini /dist/tini /
 
 #
+# Ubuntu 24.04 Base
+#
+FROM ubuntu:noble as ubuntu-24.04-base
+ENV PYREX_BASE none
+LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
+
+# Install software required to run init scripts.
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    ulimit -n 1024 && \
+    apt-get -y update && apt-get -y install --no-install-recommends \
+        locales \
+        lsb-release \
+        ncurses-term \
+        python3 \
+        util-linux \
+        sudo \
+        curl \
+        ca-certificates \
+    && \
+# Clean up apt-cache
+    rm -rf /var/lib/apt/lists/* && \
+# generate utf8 locale
+    locale-gen en_US.UTF-8 && \
+    (locale -a | tee /dev/stderr | grep -qx en_US.utf8)
+
+# Copy prebuilt items
+COPY --from=prebuilt-setpriv /dist/setpriv /
+COPY --from=prebuilt-tini /dist/tini /
+
+#
 # Ubuntu 14.04 Yocto Base
 #
 FROM ubuntu-14.04-base as ubuntu-14.04-oe
@@ -732,6 +762,81 @@ RUN python3 -m pip install iterfzf testtools python-subunit
 COPY --from=prebuilt-icecream /dist/icecream /
 
 #
+# Ubuntu 24.04 Base
+#
+FROM ubuntu-24.04-base as ubuntu-24.04-oe
+ENV PYREX_BASE none
+LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
+
+RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
+    sudo dpkg --add-architecture i386 && \
+    ulimit -n 1024 && \
+    apt -y update && apt upgrade apt -y && apt -y install --no-install-recommends \
+# Poky 4.0 build dependencies
+    gawk \
+    wget \
+    git \
+    git-lfs \
+    diffstat \
+    unzip \
+    texinfo \
+    gcc \
+    build-essential \
+    chrpath \
+    socat \
+    cpio \
+    python3 \
+    python3-pip \
+    python3-pexpect \
+    xz-utils \
+    debianutils \
+    iputils-ping \
+    python3-git \
+    python3-jinja2 \
+    libsdl1.2-dev \
+    pylint \
+    xterm \
+    python3-subunit \
+    python3-testtools \
+    mesa-common-dev \
+    zstd \
+    liblz4-tool \
+# Testing dependencies
+    iproute2 \
+    sysstat \
+# Dependencies for "bitbake -c menuconfig"
+    libncurses5-dev \
+    libtinfo-dev \
+# Not listed, but required dependencies (from ASSUME_PROVIDED)
+    bzip2 \
+    libbz2-dev \
+    sed \
+    findutils \
+# Required for some poorly written 3rd party recipes :(
+    python3-six \
+# Connectivity
+    ssh \
+# Corollary to the core Yocto gcc-multilib package. Allows various
+# prebuilt native tools to work
+    g++-multilib \
+# Screen to enable devshell
+    screen \
+# Base OS stuff that reasonable workstations have, but which the registry image
+# doesn't
+    tzdata \
+    file \
+# Dependencies for other layers
+    xxd \
+# Testing requirements
+    wine \
+    wine64 \
+    wine32 \
+&& rm -rf /var/lib/apt/lists/*
+
+# Copy prebuilt items
+COPY --from=prebuilt-icecream /dist/icecream /
+
+#
 # Ubuntu 18.04 OE Test Image
 #
 FROM ubuntu-18.04-oe as ubuntu-18.04-oetest
@@ -771,6 +876,12 @@ ENV PYREX_BASE none
 # Ubuntu 22.04 Base, customized with Garmin internal LAN configuration.
 #
 FROM ubuntu-22.04-oe AS ubuntu-22.04-oegarmin
+ENV PYREX_BASE none
+
+#
+# Ubuntu 24.04 Base, customized with Garmin internal LAN configuration.
+#
+FROM ubuntu-24.04-oe AS ubuntu-24.04-oegarmin
 ENV PYREX_BASE none
 
 #
