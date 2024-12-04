@@ -69,9 +69,9 @@ OEROOT=$(pwd)/oe-core
 ```
 
 ## What is Pyrex?
-At its core, Pyrex is an attempt to provided a consistent environment in which
+At its core, Pyrex is an attempt to provide a consistent environment in which
 developers can run Yocto and bitbake commands. Pyrex is targeted at development
-teams who want are doing interactive development with Yocto (although, Pyrex
+teams who are doing interactive development with Yocto (although, Pyrex
 doesn't aim to be a full development environment, see below), and as such makes
 some different design decisions than other containerized solutions like
 [CROPS][].
@@ -102,11 +102,11 @@ graphical tools such as `hob` when using Pyrex.
 ## When should you use Pyrex?
 There are a number of situations where Pyrex can be very useful:
 
-1. If you have multiple developers building on development machines with
-   different setups (e.g. different distros). In these cases, Pyrex can help
+1. **You have multiple developers building on development machines with
+   different setups (e.g. different distros)**. In these cases, Pyrex can help
    ensure that builds are consistent between different developers.
-2. You have to build multiple different versions of Yocto. Sadly, it isn't
-   always possible to always use the latest and greatest version of Yocto, or
+2. **You have to build multiple different versions of Yocto**. Sadly, it isn't
+   possible to always use the latest and greatest version of Yocto, or
    even to use the same version of Yocto for all projects within a group. In
    these cases, Pyrex can be helpful because it will easily allow the different
    versions to use a container image that suits them without the developers
@@ -115,16 +115,16 @@ There are a number of situations where Pyrex can be very useful:
 ## When should you *not* use Pyrex?
 There are some situations where Pyrex may not always make sense:
 
-1. You aren't doing development. If all you need is a reproducible container
+1. **You aren't doing development**. If all you need is a reproducible container
    to build Yocto in (for example, you just want to try out a build to see
    what Yocto is like), Pyrex is probably not for you. Pyrex has some amount
    of setup overhead and because of its focus doesn't isolate the container as
    much as some other solutions. In these cases [CROPS][] is probably a better
    solution.
-2. You are a lone developer. Pyrex is primarily intended to ensure that a group
+2. **You are the lone developer**. Pyrex is primarily intended to ensure that a group
    of developers (e.g. a corporate or other group environment) working in Yocto
    will get consistent builds, regardless of their individual machine setups.
-   This probably isn't much of a concern for a single individual.
+   This probably isn't much of a concern for an individual.
 
 ## Using Pyrex
 
@@ -245,7 +245,7 @@ Common reasons users might need to bind new paths include:
 * Additional layers that are not under the default bind directories
 
 When the container environment is setup some basic sanity checks will be
-performed to makes sure that important directories like the bitbake and build
+performed to make sure that important directories like the bitbake and build
 directories are bound into the container.
 
 You should **never** map directories like `/usr/bin`, `/etc/`, `/` as these
@@ -296,7 +296,7 @@ The following items are either known to not work, or haven't been fully tested:
   from causing bad behaviors. It is still possible to pause the container using
   the `docker pause` command, but this doesn't integrate with the parent shells
   job control.
-* **Rootless Docker** This in untested, and probably doesn't work. It shouldn't
+* **Rootless Docker** This is untested, and probably doesn't work. It shouldn't
   be too hard since this should be very similar to how `podman` works.
   Currently however, it is assumed that if the container engine is `docker` it
   is running as root and if it is `podman` it is running rootless.
@@ -319,7 +319,7 @@ build the image locally instead. See the [Developer Documentation][].
   supports. Pyrex aims to support a vanilla Yocto setup with minimal manual
   configuration.
 * *What's with [cleanup.py](./image/cleanup.py)?* When a container's main
-  process exits, any remaining process appears to be sent a `SIGKILL`.  This
+  process exits, any remaining processes appear to be sent a `SIGKILL`.  This
   can cause a significant problem with many of the child processes that bitbake
   spawns, since unceremoniously killing them might result in lost data.  The
   cleanup script is attached to a modified version of
@@ -339,7 +339,7 @@ build the image locally instead. See the [Developer Documentation][].
   present on a host machine.
 * *Were you aware of
   [Pyrex](http://www.cosc.canterbury.ac.nz/greg.ewing/python/Pyrex/)?* Oops.
-  Hopefully there isn't too much confusion; that Pyrex looks abandoned anyway
+  Hopefully there isn't too much confusion; that Pyrex looks abandoned anyway.
 * *I can't access SSH or authenticated HTTP sources inside the container!* This
   happens because the container doesn't bind in any of your personal
   authentication files (e.g. `~/.ssh/config`) by default. If you need support
