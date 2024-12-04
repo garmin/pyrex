@@ -30,6 +30,9 @@ jobs:
           - image: ubuntu-24.04-oegarmin
 
     runs-on: ubuntu-20.04
+    permissions:
+      packages: write
+      contents: read
 
     env:
       USE_HELPER: "1"
