@@ -93,8 +93,8 @@ To make a release of Pyrex:
    For example, the `1.0.0` release would be tagged `v1.0.0`
 4. Tagging the repository will trigger a new CI build. This build will
    automatically push the container images to
-   [dockerhub](https://cloud.docker.com/u/garminpyrex/repository/list) using
-   the same tag that was created for the release. Verify that the
+   [ghcr](https://github.com/orgs/garmin/packages?repo_name=pyrex) using the
+   same tag that was created for the release. Verify that the
    [Release build](https://github.com/garmin/pyrex/actions?query=workflow%3Arelease)
    passes and the container images are pushed. In the unlikely event this
    fails, delete the release, fix the issue, and try again. To manually deploy
