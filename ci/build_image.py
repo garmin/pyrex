@@ -51,7 +51,7 @@ def main():
         provider,
         "build",
         "-t",
-        "garminpyrex/%s:ci-test" % args.image,
+        "ghcr.io/garmin/%s:ci-test" % args.image,
         "-f",
         docker_file,
         "--network=host",
