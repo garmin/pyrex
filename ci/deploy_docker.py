@@ -39,7 +39,7 @@ def deploy_image(top_dir, image, tag):
 
     (_, _, image_type) = image.split("-")
 
-    repo = "garmin/%s" % image
+    repo = "garmin/pyrex-%s" % image
     name = "ghcr.io/%s:%s" % (repo, tag)
 
     print("Deploying %s..." % name)

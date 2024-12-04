@@ -148,6 +148,6 @@ jobs:
           if [ "$TAG" = "master" ]; then
             TAG="latest"
           fi
-          docker tag ghcr.io/garmin/${{ matrix.image }}:ci-test ghcr.io/garmin/${{ matrix.image }}:$TAG
-          docker push ghcr.io/garmin/${{ matrix.image }}:$TAG
+          docker tag ghcr.io/garmin/pyrex-${{ matrix.image }}:ci-test ghcr.io/garmin/pyrex-${{ matrix.image }}:$TAG
+          docker push ghcr.io/garmin/pyrex-${{ matrix.image }}:$TAG
         if: ${{ ( github.ref == 'refs/heads/next' || github.ref == 'refs/heads/master' ) && github.event_name == 'push' && matrix.provider == 'docker' }}
