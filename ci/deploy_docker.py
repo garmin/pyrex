@@ -39,19 +39,18 @@ def deploy_image(top_dir, image, tag):
 
     (_, _, image_type) = image.split("-")
 
-    repo = "garminpyrex/%s" % image
-    name = "%s:%s" % (repo, tag)
+    repo = "garmin/%s" % image
+    name = "ghcr.io/%s:%s" % (repo, tag)
 
     print("Deploying %s..." % name)
 
     # Get a login token for the Docker registry and download the manifest
     token = requests.get(
-        "https://auth.docker.io/token?service=registry.docker.io&scope=repository:%s:pull"
-        % repo,
+        "https://ghcr.io/token?scope=repository:%s:pull" % repo,
         json=True,
     ).json()["token"]
     manifest = requests.get(
-        "https://registry.hub.docker.com/v2/%s/manifests/%s" % (repo, tag),
+        "https://ghcr.io/v2/%s/manifests/%s" % (repo, tag),
         headers={"Authorization": "Bearer %s" % token},
         json=True,
     ).json()
