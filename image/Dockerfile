@@ -150,7 +150,7 @@ RUN set -x && mkdir -p /usr/src/util-linux && \
 #
 # Prebuilt static tini
 #
-FROM prebuilt-base as prebuilt-tini
+FROM prebuilt-base AS prebuilt-tini
 ENV PYREX_BASE none
 ENV TINI_SHA1=c3b92ce685d0387c5d508f1856aa6d4cae25db8d
 RUN mkdir -p /usr/src/tini && \
@@ -167,7 +167,7 @@ RUN mkdir -p /usr/src/tini && \
 #
 # Ubuntu 14.04 base
 #
-FROM ubuntu:trusty as ubuntu-14.04-base
+FROM ubuntu:trusty AS ubuntu-14.04-base
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -203,7 +203,7 @@ RUN ldconfig -v
 #
 # Ubuntu 16.04 Base
 #
-FROM ubuntu:xenial as ubuntu-16.04-base
+FROM ubuntu:xenial AS ubuntu-16.04-base
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -243,7 +243,7 @@ COPY --from=prebuilt-tini /dist/tini /
 #
 # Ubuntu 18.04 Base
 #
-FROM ubuntu:bionic as ubuntu-18.04-base
+FROM ubuntu:bionic AS ubuntu-18.04-base
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -273,7 +273,7 @@ COPY --from=prebuilt-tini /dist/tini /
 #
 # Ubuntu 20.04 Base
 #
-FROM ubuntu:focal as ubuntu-20.04-base
+FROM ubuntu:focal AS ubuntu-20.04-base
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -303,7 +303,7 @@ COPY --from=prebuilt-tini /dist/tini /
 #
 # Ubuntu 22.04 Base
 #
-FROM ubuntu:jammy as ubuntu-22.04-base
+FROM ubuntu:jammy AS ubuntu-22.04-base
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -333,7 +333,7 @@ COPY --from=prebuilt-tini /dist/tini /
 #
 # Ubuntu 24.04 Base
 #
-FROM ubuntu:noble as ubuntu-24.04-base
+FROM ubuntu:noble AS ubuntu-24.04-base
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -363,7 +363,7 @@ COPY --from=prebuilt-tini /dist/tini /
 #
 # Ubuntu 14.04 Yocto Base
 #
-FROM ubuntu-14.04-base as ubuntu-14.04-oe
+FROM ubuntu-14.04-base AS ubuntu-14.04-oe
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -442,7 +442,7 @@ COPY --from=prebuilt-icecream /dist/icecream /
 #
 # Ubuntu 16.04 Yocto Base
 #
-FROM ubuntu-16.04-base as ubuntu-16.04-oe
+FROM ubuntu-16.04-base AS ubuntu-16.04-oe
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -516,7 +516,7 @@ COPY --from=prebuilt-icecream /dist/icecream /
 #
 # Ubuntu 18.04 Base
 #
-FROM ubuntu-18.04-base as ubuntu-18.04-oe
+FROM ubuntu-18.04-base AS ubuntu-18.04-oe
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -599,7 +599,7 @@ COPY --from=prebuilt-icecream /dist/icecream /
 #
 # Ubuntu 20.04 Base
 #
-FROM ubuntu-20.04-base as ubuntu-20.04-oe
+FROM ubuntu-20.04-base AS ubuntu-20.04-oe
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -687,7 +687,7 @@ COPY --from=prebuilt-icecream /dist/icecream /
 #
 # Ubuntu 22.04 Base
 #
-FROM ubuntu-22.04-base as ubuntu-22.04-oe
+FROM ubuntu-22.04-base AS ubuntu-22.04-oe
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -764,7 +764,7 @@ COPY --from=prebuilt-icecream /dist/icecream /
 #
 # Ubuntu 24.04 Base
 #
-FROM ubuntu-24.04-base as ubuntu-24.04-oe
+FROM ubuntu-24.04-base AS ubuntu-24.04-oe
 ENV PYREX_BASE none
 LABEL maintainer="Joshua Watt <Joshua.Watt@garmin.com>"
 
@@ -839,13 +839,13 @@ COPY --from=prebuilt-icecream /dist/icecream /
 #
 # Ubuntu 18.04 OE Test Image
 #
-FROM ubuntu-18.04-oe as ubuntu-18.04-oetest
+FROM ubuntu-18.04-oe AS ubuntu-18.04-oetest
 ENV PYREX_BASE none
 
 #
 # Ubuntu 20.04 OE Test Image
 #
-FROM ubuntu-20.04-oe as ubuntu-20.04-oetest
+FROM ubuntu-20.04-oe AS ubuntu-20.04-oetest
 ENV PYREX_BASE none
 
 #
@@ -890,7 +890,7 @@ ENV PYREX_BASE none
 # This stage sets up the minimal image startup and entry points. It also
 # ensures that the en_US.UTF-8 locale is installed and set correctly.
 #
-FROM ${PYREX_BASE} as pyrex-base
+FROM ${PYREX_BASE} AS pyrex-base
 ENV PYREX_BASE none
 
 # Set Locales
@@ -928,7 +928,7 @@ CMD ["/usr/libexec/pyrex/run", "/bin/bash"]
 # Icecream destributed target setup correctly and install all of the desired
 # yocto dependencies.
 #
-FROM pyrex-base as pyrex-oe
+FROM pyrex-base AS pyrex-oe
 ENV PYREX_BASE none
 
 # Setup Icecream distributed compiling client. The client tries several IPC
@@ -948,7 +948,7 @@ ENV ICECC_VERSION=/usr/share/icecc/toolchain/native-gcc.tar.gz
 #
 # OE build image. Includes many additional packages for testing
 #
-FROM pyrex-oe as pyrex-oetest
+FROM pyrex-oe AS pyrex-oetest
 ENV PYREX_BASE none
 
 #
@@ -956,7 +956,7 @@ ENV PYREX_BASE none
 # it has additional Garmin-internal TLS root certificates installed into the
 # trust store to facilitate using internal Garmin hosts whose certificate chain
 # does not extend up to publicly registered CA's.
-FROM pyrex-oe as pyrex-oegarmin
+FROM pyrex-oe AS pyrex-oegarmin
 ENV PYREX_BASE none
 
 RUN mkdir -p /usr/share/ca-certificates/garmin
