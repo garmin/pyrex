@@ -50,7 +50,9 @@ jobs:
 
       - name: Install packages
         run: |
-          sudo apt install -y diffstat
+          sudo apt install -y \
+            chrpath \
+            diffstat
 
       - name: Install python packages
         run: |
