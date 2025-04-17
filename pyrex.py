@@ -284,7 +284,7 @@ def get_build_hash(config):
     # "image" folder to determine when it is out of date.
 
     h = hashlib.sha256()
-    for (root, dirs, files) in os.walk(os.path.join(PYREX_ROOT, "image")):
+    for root, dirs, files in os.walk(os.path.join(PYREX_ROOT, "image")):
         # Process files and directories in alphabetical order so that hashing
         # is consistent
         dirs.sort()

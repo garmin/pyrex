@@ -95,7 +95,7 @@ def main():
                 )
 
             # Create user and groups
-            for (gid, group) in groups:
+            for gid, group in groups:
                 if gid == 0:
                     continue
                 subprocess.check_call(
