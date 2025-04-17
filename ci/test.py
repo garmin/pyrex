@@ -130,7 +130,6 @@ class PyrexTest(object):
         os.makedirs(self.thread_dir)
 
     def prebuild_image(self):
-        global built_images
         image = ":".join((self.test_image, self.provider))
         if image not in built_images:
             self.assertSubprocess(

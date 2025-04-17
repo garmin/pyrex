@@ -739,8 +739,6 @@ def create_shims(config, build_config, buildconf):
     commands = set()
 
     def add_commands(globs, target):
-        nonlocal commands
-
         for g in globs:
             for cmd in glob.iglob(g):
                 norm_cmd = os.path.normpath(cmd)

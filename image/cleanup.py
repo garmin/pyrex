@@ -85,7 +85,6 @@ def stop_process_waiting(signum, frame):
 
 
 def wait_for_processes(sig, max_wait):
-    global keep_waiting
     global keep_waiting_notified
     global signals_enabled
 
