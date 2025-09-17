@@ -356,9 +356,9 @@ build the image locally instead. See the [Developer Documentation][].
         ${env:HOME}/.config/git,optional,readonly
     ```
 
-[OE_TERMINAL]: https://www.yoctoproject.org/docs/current/mega-manual/mega-manual.html#var-OE_TERMINAL
+[OE_TERMINAL]: https://docs.yoctoproject.org/singleindex.html#term-OE_TERMINAL
 [CROPS]: https://github.com/crops
-[TEMPLATECONF]: https://www.yoctoproject.org/docs/latest/mega-manual/mega-manual.html#creating-a-custom-template-configuration-directory
+[TEMPLATECONF]: https://docs.yoctoproject.org/singleindex.html#creating-a-custom-template-configuration-directory
 [poky]: https://git.yoctoproject.org/cgit/cgit.cgi/poky/
-[Sanity Tested Distros]: https://www.yoctoproject.org/docs/current/mega-manual/mega-manual.html#var-SANITY_TESTED_DISTROS
+[Sanity Tested Distros]: https://docs.yoctoproject.org/singleindex.html#term-SANITY_TESTED_DISTROS
 [Developer Documentation]: ./DEVELOPING.md
