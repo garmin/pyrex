@@ -738,7 +738,7 @@ def create_shims(config, build_config, buildconf):
 
     commands = set()
 
-    def add_commands(globs, target):
+    def expand_commands(globs):
         for g in globs:
             for cmd in glob.iglob(g):
                 norm_cmd = os.path.normpath(cmd)
@@ -749,11 +749,27 @@ def create_shims(config, build_config, buildconf):
                 ):
                     commands.add(norm_cmd)
                     name = os.path.basename(cmd)
+                    yield cmd, os.path.join(shimdir, name)
 
-                    os.symlink(target.format(command=cmd), os.path.join(shimdir, name))
+    for cmd, shim_path in expand_commands(nopyrex_globs):
+        os.symlink(cmd, shim_path)
 
-    add_commands(nopyrex_globs, "{command}")
-    add_commands(command_globs, "exec-shim-pyrex")
+    for cmd, shim_path in expand_commands(command_globs):
+        if shutil.which(os.path.basename(cmd), path=build_config["run"]["env"]["PATH"]):
+            os.symlink("exec-shim-pyrex", shim_path)
+        else:
+            with open(shim_path, "w") as f:
+                f.write(
+                    textwrap.dedent(
+                        """\
+                        #! /bin/sh
+                        exec {runfile} "{cmd}" "$@"
+                        """.format(
+                            runfile=runfile, cmd=cmd
+                        )
+                    )
+                )
+            os.chmod(shim_path, stat.S_IRWXU)
 
     return shimdir
 
