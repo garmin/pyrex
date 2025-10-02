@@ -127,7 +127,8 @@ cat > "$PYREX_CAPTURE_DEST" <<HEREDOC
         "env" : {
             "BBPATH": "$BBPATH",
             "PATH": "$PATH",
-            "BUILDDIR": "$BUILDDIR"
+            "BUILDDIR": "$BUILDDIR",
+            "PYTHONPATH": "$PYTHONPATH"
         }
     }
 }
