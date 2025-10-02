@@ -1055,6 +1055,10 @@ class PyrexImageType_oe(PyrexImageType_base):
 
             self.assertPyrexHostCommand("bitbake -p", init_env=env)
 
+    @minPokyVer(4, 0)
+    def test_bb_import(self):
+        self.assertPyrexContainerCommand("python3 -c 'import bb'")
+
     def test_builddir_alt_env(self):
         with tempfile.TemporaryDirectory() as builddir:
             # Binding the build directory in the conf file will allow building
