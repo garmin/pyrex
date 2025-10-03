@@ -420,6 +420,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     python-crypto \
     python-six \
     python3-six \
+# Required for 3rd party scripts
+    python3-yaml \
 # Connectivity
     ssh \
 # An updated version of Git (from the PPA source above)
@@ -491,6 +493,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     python-crypto \
     python-six \
     python3-six \
+# Required for 3rd party scripts
+    python3-yaml \
 # Connectivity
     ssh \
 # An updated version of Git (from the PPA source above)
@@ -564,6 +568,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     python-crypto \
     python-six \
     python3-six \
+# Required for 3rd party scripts
+    python3-yaml \
 # Connectivity
     ssh \
 # Corollary to the core Yocto gcc-multilib package. Allows various
@@ -652,6 +658,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     python-crypto \
     python-six \
     python3-six \
+# Required for 3rd party scripts
+    python3-yaml \
 # Connectivity
     ssh \
 # Corollary to the core Yocto gcc-multilib package. Allows various
@@ -737,6 +745,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     findutils \
 # Required for some poorly written 3rd party recipes :(
     python3-six \
+# Required for 3rd party scripts
+    python3-yaml \
 # Connectivity
     ssh \
 # Corollary to the core Yocto gcc-multilib package. Allows various
@@ -814,6 +824,8 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     findutils \
 # Required for some poorly written 3rd party recipes :(
     python3-six \
+# Required for 3rd party scripts
+    python3-yaml \
 # Connectivity
     ssh \
 # Corollary to the core Yocto gcc-multilib package. Allows various
