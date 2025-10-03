@@ -37,6 +37,7 @@ RUN apk add --update \
     lzo-dev \
     musl-utils \
     openssl-dev \
+    python3-yaml \
     wget \
     xz \
     xz-dev \
@@ -180,6 +181,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         ncurses-term \
         python \
         python3 \
+        python3-yaml \
         sudo \
         curl \
     && \
@@ -216,6 +218,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         ncurses-term \
         python \
         python3 \
+        python3-yaml \
         sudo \
         curl \
         apt-transport-https \
@@ -256,6 +259,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         ncurses-term \
         python \
         python3 \
+        python3-yaml \
         setpriv \
         sudo \
         curl \
@@ -286,6 +290,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         ncurses-term \
         python \
         python3 \
+        python3-yaml \
         util-linux \
         sudo \
         curl \
@@ -315,6 +320,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         lsb-release \
         ncurses-term \
         python3 \
+        python3-yaml \
         util-linux \
         sudo \
         curl \
@@ -345,6 +351,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
         lsb-release \
         ncurses-term \
         python3 \
+        python3-yaml \
         util-linux \
         sudo \
         curl \
@@ -466,6 +473,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     cpio \
     python \
     python3 \
+    python3-yaml \
     python3-pip \
     python3-pexpect \
     xz-utils \
@@ -538,6 +546,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     cpio \
     python \
     python3 \
+    python3-yaml \
     python3-pip \
     python3-pexpect \
     xz-utils \
@@ -621,6 +630,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     cpio \
     python \
     python3 \
+    python3-yaml \
     python3-pip \
     python3-pexpect \
     xz-utils \
@@ -709,6 +719,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     socat \
     cpio \
     python3 \
+    python3-yaml \
     python3-pip \
     python3-pexpect \
     xz-utils \
@@ -786,6 +797,7 @@ RUN set -x && export DEBIAN_FRONTEND=noninteractive && \
     socat \
     cpio \
     python3 \
+    python3-yaml \
     python3-pip \
     python3-pexpect \
     xz-utils \
